@@ -18,11 +18,13 @@
 ```groovy
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'   // REST API (Boot 4의 web 스타터, Jackson 포함)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA (Hibernate)
+    runtimeOnly 'org.postgresql:postgresql'                                // PostgreSQL 드라이버
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 ```
-- 넣지 않는 것: JPA, Lombok, Validation, Security, DevTools, DB 드라이버
+- 넣지 않는 것: Lombok, Validation, Security, DevTools
 - 그래서 DTO는 `record`, 도메인은 생성자와 getter를 직접 쓴 클래스, 입력 검증은 Service에서 직접 함
 
 ## 2. 아키텍처 — 3계층
@@ -35,7 +37,7 @@ dependencies {
 ├───────▼────────┤  Business      : 규칙, 검증, 금액 계산, 집계, 트랜잭션 단위 로직
 │  Service       │
 ├───────▼────────┤  Data Access   : 저장/조회만 함 (규칙 없음)
-│  Repository    │  ← interface + InMemory 구현체 (나중에 JDBC/JPA로 교체 가능)
+│  Repository    │  ← JpaRepository를 상속한 interface (Spring Data가 구현 생성)
 └────────────────┘
 ```
 규칙
@@ -82,9 +84,8 @@ backend/
    │  │  │  ├─ MyDashboardService, AdminDashboardService, AdminMenuService, AdminOrderService
    │  │  ├─ repository/
    │  │  │  ├─ MemberRepository, CategoryRepository, MenuRepository, MenuHistoryRepository
-   │  │  │  ├─ BasketItemRepository, OrderRepository, FavoriteRepository      (interface)
-   │  │  │  └─ memory/InMemory*Repository.java   // ConcurrentHashMap + AtomicLong
-   │  │  ├─ domain/
+   │  │  │  └─ BasketItemRepository, OrderRepository, FavoriteRepository      (JpaRepository 상속 interface)
+   │  │  ├─ domain/   // @Entity — PostgreSQL 테이블과 매핑 (enum은 @Enumerated(STRING))
    │  │  │  ├─ Member, Role(MEMBER/ADMIN)
    │  │  │  ├─ Category, Menu, MenuStatus(ON/SOLDOUT/HIDDEN), MenuOption, OptionKind, Nutrition, MenuHistory
    │  │  │  ├─ BasketItem, Favorite
@@ -136,7 +137,7 @@ spring.jackson.time-zone=Asia/Seoul
   - `/api/admin/**` → 위 조건에 더해 role이 ADMIN이어야 함 (아니면 403)
   - 공개 API는 헤더가 있으면 읽기만 한다 (메뉴 상세의 `favorite` 표시에 사용)
 - Controller는 `LoginMember loginMember` 파라미터로 현재 사용자를 받는다 (ArgumentResolver).
-- 비밀번호는 메모리에 평문으로 저장한다. 학습용이며 실제 서비스에서는 Security와 해시로 바꿔야 한다.
+- 비밀번호는 DB에 평문으로 저장한다. 학습용이며 실제 서비스에서는 Security와 해시로 바꿔야 한다.
 
 ## 5. 기능별 API 명세
 
@@ -274,11 +275,16 @@ MyDashboardResponse {
 ### 0단계 — 공통 기반
 - Gradle 프로젝트 생성 (`settings.gradle`, `build.gradle`, wrapper), `BackendApplication`, `application.properties`
 - 공통: `ApiException` 계열, `GlobalExceptionHandler`, `ErrorResponse`, `PageResponse`, `WebConfig`(CORS)
-- domain 클래스 전체, Repository 인터페이스 + InMemory 구현 전체, `SeedDataLoader`
+- domain 클래스 전체(Entity 매핑), JpaRepository 인터페이스 전체, `SeedDataLoader`
 **완료 체크**
-- [ ] `./gradlew build` 성공
-- [ ] `./gradlew bootRun`으로 8080 포트에서 기동
-- [ ] 없는 URL 호출 시 `{status, code, message}` 형식의 404 응답
+- [x] `./gradlew build` 성공
+- [x] `./gradlew bootRun`으로 8080 포트에서 기동
+- [x] 없는 URL 호출 시 `{status, code, message}` 형식의 404 응답
+- [ ] `build.gradle`에 `spring-boot-starter-data-jpa`와 PostgreSQL 드라이버 추가
+- [ ] `application.properties`에 datasource와 JPA 설정 (url, `ddl-auto`, `show-sql`)
+- [ ] domain 클래스를 `@Entity`로 매핑 (enum은 `@Enumerated(STRING)`, 연관관계 설정)
+- [ ] Repository를 `JpaRepository`를 상속한 인터페이스로 작성
+- [ ] 기동 로그에서 테이블 생성(`create table ...`) 확인
 - [ ] 시드 데이터 적재 확인 (기동 로그에 회원 6 · 카테고리 4 · 메뉴 12 건수 출력)
 
 ### 1단계 — 사용자 메뉴 조회
@@ -402,4 +408,4 @@ MyDashboardResponse {
 - 단계가 끝나면 `./gradlew bootRun`을 실행하고 curl/HTTP 파일로 완료 기준을 확인한 뒤, 해당 프론트 화면을 mock에서 API로 바꿔 확인한다.
 
 ## 8. 범위 밖 (추후)
-DB 영속화(JDBC/JPA), Spring Security + 비밀번호 해시, 회원가입/비밀번호 찾기, 이미지 업로드, 쿠폰, Bean Validation
+Spring Security + 비밀번호 해시, 회원가입/비밀번호 찾기, 이미지 업로드, 쿠폰, Bean Validation
