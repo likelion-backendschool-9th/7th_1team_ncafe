@@ -5,8 +5,7 @@ import lombok.*; // 롬복을 설치 한 사람만 사용할 것
 
 @Entity
 @Table(name = "menus")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

@@ -21,7 +21,6 @@ public class MenuAdminController {
 
     @PostMapping
     public Menu createMenu(@RequestBody Menu menu) {
-        System.out.println("asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf");
         return menuRepository.save(menu);
     }
 
