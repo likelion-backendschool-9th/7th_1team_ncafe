@@ -1,26 +1,24 @@
-// 관리자 방 — m3-layout (드로어 + 상단 앱 바 + 본문). 페이지는 layout-content 안만 만든다.
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import AdminNav from "./_components/AdminNav";
-import { ADMIN } from "@/lib/mock";
+import styles from "./_components/admin.module.css";
 
-export const metadata: Metadata = { title: { default: "관리자", template: "%s - NCafe 관리자" } };
+export const metadata: Metadata = {
+  title: { default: "관리자", template: "%s · 관리자 · NCafe Racecourse" },
+  robots: { index: false, follow: false },
+};
 
+// 관리자 전용 레이아웃 — 사용자 사이트의 Header/Footer 를 쓰지 않는다.
+// 이번 단계는 로그인이 없으므로 누구나 들어올 수 있다(주소로 직접 진입).
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="m3-layout layout:fixed-drawer">
+    <div className={styles.shell}>
       <AdminNav />
-      <div className="layout-main">
-        <header className="m3-top-app-bar layout-header bar:outlined">
-          <span className="bar-title">관리자</span>
-          <div className="bar-trailing">
-            <span className="font-size:body-sm font-weight:semibold">{ADMIN.name}</span>
-            <button type="button" className="m3-btn btn:outlined btn-size:xs">
-              로그아웃
-            </button>
-          </div>
-        </header>
-        <main className="layout-content">{children}</main>
+      <div className={styles.workspace}>
+        <p className={styles.mockBand} role="note">
+          <strong>MOCK ADMIN</strong> — 서버에 저장되지 않습니다. 변경 내용은 새로고침하면 초기화됩니다.
+        </p>
+        <main className={styles.content}>{children}</main>
       </div>
     </div>
   );

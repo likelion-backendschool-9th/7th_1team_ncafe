@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
-  <rect width="400" height="300" fill="#f3ebe2"/>
-  <ellipse cx="200" cy="248" rx="96" ry="12" fill="rgba(0,0,0,0.08)"/>
-  <path d="M120 96h160v88c0 28-22 50-50 50h-60c-28 0-50-22-50-50z" fill="#ffffff"/>
-  <path d="M280 116h18a26 26 0 0 1 0 52h-18" fill="none" stroke="#ffffff" stroke-width="14"/>
-  <path d="M132 108h136v24H132z" fill="#c9a27e"/>
-  <path d="M170 60c0-12 10-12 10-24M200 60c0-12 10-12 10-24M230 60c0-12 10-12 10-24" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="5" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="56" fill="#f3ead3"/><circle cx="60" cy="60" r="51" fill="none" stroke="#c9a227" stroke-width="1.5" stroke-dasharray="3 4"/><ellipse cx="60" cy="90" rx="34" ry="7" fill="#e3d4ae" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M30 50 h60 l-6 26 a16 16 0 0 1 -16 12 h-16 a16 16 0 0 1 -16 -12 z" fill="#fbf6ea" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M90 56 h3 a7 7 0 0 1 0 14 h-6" fill="none" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="60" cy="50" rx="30" ry="6" fill="#c98a3a" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M60 54 c-8 -5 -6 -10 -2 -9 c2 0 2 2 2 2 c0 0 0 -2 2 -2 c4 -1 6 4 -2 9z" fill="#fbf6ea"/></svg>

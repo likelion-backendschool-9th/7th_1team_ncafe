@@ -1,0 +1,251 @@
+/* ===== 사이트 골격 ===== */
+.site {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+}
+
+/* ===== Header ===== */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--green-900);
+  color: var(--text-on-dark);
+  border-bottom: 3px double var(--gold-500);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: var(--header-h);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.logoName {
+  font-family: var(--font-display), var(--font-body), serif;
+  font-weight: 900;
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  color: var(--cream-50);
+}
+
+.logoSub {
+  font-family: var(--font-board), sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  color: var(--gold-300);
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.nav ul {
+  display: flex;
+  gap: 4px;
+}
+
+.navLink {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 6px 16px;
+  font-family: var(--font-board), sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.16em;
+  color: var(--cream-200);
+  transition: color 0.15s;
+}
+
+.navKo {
+  font-family: var(--font-body), sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  color: rgba(243, 234, 211, 0.55);
+}
+
+.navLink:hover {
+  color: var(--gold-300);
+}
+
+.navLink[aria-current="page"] {
+  color: var(--cream-50);
+}
+
+.navLink[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 3px;
+  background: var(--gold-500);
+  border-radius: 2px;
+}
+
+.burger {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.burger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--cream-50);
+}
+
+@media (max-width: 860px) {
+  .headerInner {
+    justify-content: space-between;
+  }
+
+  .burger {
+    display: flex;
+  }
+
+  .nav {
+    position: fixed;
+    inset: var(--header-h) 0 0 0;
+    background: var(--green-900);
+    display: none;
+    align-items: flex-start;
+    padding-top: 24px;
+  }
+
+  .navOpen {
+    display: flex;
+  }
+
+  .nav ul {
+    flex-direction: column;
+    width: 100%;
+    padding-inline: var(--gutter);
+  }
+
+  .navLink {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px 8px;
+    font-size: 1.4rem;
+    border-bottom: 1px solid rgba(243, 234, 211, 0.12);
+  }
+
+  .navKo {
+    font-size: 0.9rem;
+  }
+
+  .navLink[aria-current="page"]::after {
+    left: 0;
+    right: auto;
+    top: 14px;
+    bottom: 14px;
+    width: 3px;
+    height: auto;
+  }
+}
+
+/* ===== Footer ===== */
+.footer {
+  margin-top: 40px;
+  background: var(--green-900);
+  color: var(--cream-200);
+  border-top: 3px double var(--gold-500);
+  padding-block: 40px 24px;
+  font-size: 0.9rem;
+}
+
+.footerInner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  justify-content: space-between;
+}
+
+.footerName {
+  font-family: var(--font-display), var(--font-body), serif;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  color: var(--cream-50);
+}
+
+.footerInfo {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 12px 40px;
+  margin: 0;
+}
+
+.footerInfo dt {
+  font-family: var(--font-board), sans-serif;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  color: var(--gold-300);
+}
+
+.footerInfo dd {
+  margin: 0;
+}
+
+.footerInfo a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.disclaimer {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(243, 234, 211, 0.15);
+  font-size: 0.78rem;
+  color: rgba(243, 234, 211, 0.6);
+}
+
+@media (max-width: 860px) {
+  .footerInfo {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== 준비 중 페이지(각 기능 단계에서 교체) ===== */
+.soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 24px;
+  text-align: center;
+  border: 1.5px dashed var(--brown-300);
+  border-radius: var(--radius-md);
+  background: var(--cream-100);
+}

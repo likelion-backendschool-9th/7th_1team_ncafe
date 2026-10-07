@@ -1,14 +1,54 @@
-/* ===== 디자인 시스템 =====
- * 변수는 @newtil/design-tokens 가, 컴포넌트는 @newtil/materials 가, 브랜드 값은 NCafe 테마가 정한다.
- * 페이지 모듈 CSS 는 레이아웃만 갖고 컴포넌트(버튼·카드·필드·배지)는 newtil 클래스를 문자열로 쓴다.
- */
-@import "@newtil/design-tokens";
-@import "@newtil/materials/index.css";
-@import "@newtil/materials/themes/ncafe.css";
-/* 마감 층 — 규격 밖의 배치·간격은 유틸리티(속성:값)와 속성:ex 로. postcss.config.js 의 JIT 가 쓰인 것만 넣는다. */
-@import "@newtil/css";
+/* ===== 디자인 토큰 — BLUEPRINT 2.1 ===== */
+:root {
+  /* Main */
+  --green-900: #0f2a1d;
+  --green-800: #163a29;
+  --green-700: #1f4d36;
+  --green-500: #2f6b4c;
+  --green-100: #dfe9df;
+  --cream-50: #fbf6ea;
+  --cream-100: #f3ead3;
+  --cream-200: #ece0c2;
+  --cream-300: #e3d4ae;
+  --brown-700: #5a3a22;
+  --brown-500: #8b5e3c;
+  --brown-300: #c4a27f;
 
-* {
+  /* Accent (조금만) */
+  --gold-500: #c9a227;
+  --gold-300: #e3c766;
+  --red-600: #b23a2e;
+
+  /* Text */
+  --text-strong: #2b1d12;
+  --text-body: #4a3727;
+  --text-muted: #8a7660;
+  --text-on-dark: #f3ead3;
+
+  /* 좌석 상태 */
+  --seat-available: #2f6b4c;
+  --seat-using: #8b5e3c;
+  --seat-reserved: #c9a227;
+  --seat-repair: #8a8a8a;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --shadow-sm: 0 1px 2px rgba(43, 29, 18, 0.12);
+  --shadow-md: 0 6px 18px rgba(43, 29, 18, 0.14);
+
+  /* Layout */
+  --container: 1200px;
+  --gutter: 20px;
+  --header-h: 68px;
+
+  color-scheme: light;
+}
+
+/* ===== 리셋 ===== */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -19,12 +59,21 @@ body {
 }
 
 body {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-body), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-size: 15px;
-  line-height: 1.5;
-  color: var(--color-text);
-  background: var(--color-surface-1);
+  line-height: 1.6;
+  color: var(--text-body);
+  background-color: var(--cream-50);
+  /* 오래된 종이 질감 — 아주 옅은 가로줄 */
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(139, 94, 60, 0.025) 0px,
+    rgba(139, 94, 60, 0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 a {
@@ -32,7 +81,8 @@ a {
   text-decoration: none;
 }
 
-img {
+img,
+svg {
   display: block;
   max-width: 100%;
 }
@@ -49,16 +99,19 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
 h1,
 h2,
 h3,
 h4,
-h5,
-h6,
 p,
 ul,
 ol,
-figure {
+figure,
+fieldset {
   margin: 0;
 }
 
@@ -68,6 +121,195 @@ ol {
   list-style: none;
 }
 
-table {
-  border-collapse: collapse;
+fieldset {
+  padding: 0;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold-500);
+  outline-offset: 2px;
+}
+
+/* ===== 공통 유틸 ===== */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.page {
+  padding-block: 40px 72px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-body), serif;
+}
+
+.font-board {
+  font-family: var(--font-board), "Arial Narrow", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 영문 대제목 + 한글 부제 */
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  font-family: var(--font-board), sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brown-500);
+}
+
+.title-xl,
+.title-lg,
+.title-md {
+  font-family: var(--font-display), var(--font-body), serif;
+  color: var(--green-900);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.title-xl {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 800;
+}
+
+.title-lg {
+  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+  font-weight: 800;
+}
+
+.title-md {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* 장식 구분선 — 트랙 레일 */
+.rail {
+  height: 10px;
+  margin-block: 48px;
+  background:
+    linear-gradient(var(--brown-500), var(--brown-500)) top / 100% 2px no-repeat,
+    linear-gradient(var(--brown-500), var(--brown-500)) bottom / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, var(--brown-500) 0 3px, transparent 3px 28px);
+  opacity: 0.45;
+}
+
+/* ===== 버튼 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--green-900);
+  background: var(--green-700);
+  color: var(--cream-50);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.15s;
+  box-shadow: inset 0 0 0 2px rgba(243, 234, 211, 0.18);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--green-900);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--green-900);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--green-100);
+}
+
+.btn-gold {
+  background: var(--gold-500);
+  border-color: var(--brown-700);
+  color: var(--text-strong);
+}
+
+.btn-gold:hover:not(:disabled) {
+  background: var(--gold-300);
+}
+
+.btn-danger {
+  background: var(--red-600);
+  border-color: #7d2219;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #94291f;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* 가로 스크롤 컨테이너 (트랙·배치도) */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: 16px;
+  }
+
+  .page {
+    padding-block: 28px 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
