@@ -1,0 +1,372 @@
+/* ===== /menu/[id] — 메뉴 상세(메뉴판 티켓을 크게 펼친 모양) ===== */
+
+/* ----- 현재 위치 ----- */
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 20px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.crumbs li + li::before {
+  content: "›";
+  margin-right: 8px;
+  color: var(--text-faint);
+}
+
+.crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  transition: color 0.15s;
+}
+
+.crumbs a:hover {
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ----- 티켓 -----
+   메뉴판 카드(menu.module.css .ticket)와 같은 방식 — STUB 경계의 위·아래에 반원 홈을 마스크로 뚫는다. */
+.ticket {
+  --stub: 76px;
+  --notch: 12px;
+  position: relative;
+  display: flex;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.visual {
+  position: relative;
+  flex: none;
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  width: clamp(240px, 36%, 380px);
+  aspect-ratio: 1;
+  margin: 24px 0 24px 24px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.visualImg {
+  width: 60%;
+  height: auto;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 40px 32px;
+}
+
+.badge {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+/* 이름 ........ 가격 — 메뉴판 카드의 점선 리더를 크게 */
+.leader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  color: var(--text-strong);
+}
+
+.name {
+  min-width: 0;
+  font-size: clamp(1.6rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.dots {
+  flex: 1;
+  min-width: 24px;
+  border-bottom: 2px dotted var(--border-strong);
+  transform: translateY(-6px);
+}
+
+.price {
+  flex: none;
+  font-size: clamp(1.3rem, 2.4vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.won {
+  margin-left: 2px;
+  font-size: 0.7em;
+  font-weight: 700;
+}
+
+.eng {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.desc {
+  margin-top: 20px;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text-body);
+}
+
+/* 정보 — 카테고리 · 판매 상태 */
+.facts {
+  margin: 28px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.facts > div {
+  display: flex;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+
+.facts dt {
+  flex: none;
+  width: 72px;
+  color: var(--text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.factEng {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.factOnSale::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--brand-700);
+  vertical-align: 2px;
+}
+
+/* 빨강은 품절·위험 전용 */
+.facts .factSoldOut {
+  color: var(--red-600);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 28px;
+}
+
+/* 절취선 너머 STUB — 세로 글씨 */
+.stub {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: var(--stub);
+  border-left: 2px dashed var(--border-strong);
+}
+
+.stubLabel,
+.serial {
+  writing-mode: vertical-rl;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  color: var(--text-faint);
+}
+
+.serial {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+/* 품절 — 일러스트를 흐리게 + 빨간 스탬프 */
+.ticketSoldOut .visualImg {
+  opacity: 0.4;
+}
+
+.stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 18px;
+  border: 3px solid var(--red-600);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--red-600);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  transform: translate(-50%, -50%) rotate(-12deg);
+}
+
+.stamp small {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+}
+
+/* ----- 같은 카테고리 ----- */
+.related {
+  margin-top: 64px;
+}
+
+/* ----- 불러오는 중(MenuDetailSkeleton) — 실제 티켓과 같은 틀에 회색 막대만 ----- */
+.crumbsSkeleton {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  margin-bottom: 20px;
+}
+
+.bone {
+  display: block;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-100);
+  animation: bonePulse 1.4s ease-in-out infinite;
+}
+
+.boneCrumb {
+  width: 96px;
+  height: 14px;
+  background: var(--bg-muted);
+}
+
+.boneTitle {
+  width: 72%;
+  height: 38px;
+}
+
+.boneShort {
+  width: 32%;
+  margin-top: 14px;
+}
+
+.boneLong {
+  width: 64%;
+  height: 18px;
+  margin-top: 26px;
+}
+
+.boneFacts {
+  width: 100%;
+  height: 92px;
+  margin-top: 28px;
+  background: var(--bg-muted);
+}
+
+.boneButton {
+  width: 132px;
+  height: 46px;
+}
+
+@keyframes bonePulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ----- 반응형 ----- */
+@media (max-width: 1023px) {
+  .body {
+    padding: 32px 28px 28px;
+  }
+}
+
+/* 모바일: 일러스트 → 정보 → STUB 세로로. 홈은 STUB 경계의 왼쪽·오른쪽에 뚫는다. */
+@media (max-width: 767px) {
+  .ticket {
+    --stub: 48px;
+    --notch: 10px;
+    flex-direction: column;
+    -webkit-mask:
+      radial-gradient(circle var(--notch) at 0 calc(100% - var(--stub)), transparent 98%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--notch) at 100% calc(100% - var(--stub)), transparent 98%, #000) right / 51% 100% no-repeat;
+    mask:
+      radial-gradient(circle var(--notch) at 0 calc(100% - var(--stub)), transparent 98%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--notch) at 100% calc(100% - var(--stub)), transparent 98%, #000) right / 51% 100% no-repeat;
+  }
+
+  .visual {
+    align-self: stretch;
+    width: auto;
+    aspect-ratio: 16 / 10;
+    margin: 16px 16px 0;
+  }
+
+  .visualImg {
+    width: 36%;
+  }
+
+  .body {
+    padding: 24px 20px 24px;
+  }
+
+  .desc {
+    margin-top: 16px;
+    font-size: 1rem;
+  }
+
+  .actions :global(.btn),
+  .boneButton {
+    flex: 1;
+  }
+
+  .stub {
+    flex-direction: row;
+    width: auto;
+    height: var(--stub);
+    border-left: 0;
+    border-top: 2px dashed var(--border-strong);
+  }
+
+  .stubLabel,
+  .serial {
+    writing-mode: horizontal-tb;
+  }
+
+  .stamp {
+    font-size: 1.3rem;
+  }
+
+  .related {
+    margin-top: 48px;
+  }
+}

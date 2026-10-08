@@ -12,7 +12,7 @@ const LINEUP_SIZE = 8;
 
 /**
  * 메인 "TODAY'S LINEUP" — 배지(WINNER·BEST·NEW) 메뉴를 4열 정사각 썸네일 그리드로 보여 준다.
- * 데이터는 메뉴 라우트의 Service 만 거친다. 카드는 /menu 로 이동한다(상세 페이지 없음).
+ * 데이터는 메뉴 라우트의 Service 만 거친다. 카드는 그 메뉴의 상세(/menu/[id])로 이동한다.
  *
  * "use cache": 모두에게 같은 내용이라 결과를 캐시해 정적 셸에 포함시킨다. Suspense 로 감싸지 않아야
  * 첫 HTML 에 바로 보인다(감싸면 하이드레이션 전까지 fallback 이 보인다).
@@ -60,7 +60,7 @@ function LineupCard({ menu, category }: { menu: Menu; category: string }) {
   const soldOut = menu.status === "SOLD_OUT";
 
   return (
-    <Link href="/menu" className={`${styles.card} ${soldOut ? styles.cardSoldOut : ""}`}>
+    <Link href={`/menu/${menu.id}`} className={`${styles.card} ${soldOut ? styles.cardSoldOut : ""}`}>
       <div className={styles.thumb}>
         <Image src={menu.image} alt="" width={240} height={240} className={styles.thumbImg} />
         {menu.badge && (

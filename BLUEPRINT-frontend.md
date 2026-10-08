@@ -98,10 +98,18 @@ frontend/
 │  │  │
 │  │  ├─ menu/                    # /menu
 │  │  │  ├─ page.tsx
+│  │  │  ├─ [id]/                 # /menu/[id] 메뉴 상세
+│  │  │  │  ├─ page.tsx           # generateStaticParams(메뉴판에 보이는 메뉴) + 상세 조립
+│  │  │  │  └─ not-found.tsx      # HIDDEN · 숨김 카테고리 · 없는 id → "SCRATCHED"
 │  │  │  ├─ _components/
+│  │  │  │  ├─ MenuBoard.tsx      # 검색창 + 탭 + 티켓 그리드 (client, 검색어·탭 State)
+│  │  │  │  ├─ MenuSearch.tsx     # 검색창(Esc · × 로 지우기)
 │  │  │  │  ├─ MenuCategory.tsx   # 카테고리 탭
-│  │  │  │  └─ MenuCard.tsx       # 티켓 스타일 메뉴 카드
+│  │  │  │  ├─ MenuCard.tsx       # 티켓 스타일 메뉴 카드 (누르면 상세)
+│  │  │  │  └─ MenuDetail.tsx     # 상세 — 크게 펼친 티켓 + 같은 카테고리 메뉴
 │  │  │  ├─ _lib/
+│  │  │  │  ├─ menuBoard.ts       # 순수 함수: 메뉴판 선정(selectBoard) · 상세 선정(selectDetail) · 일련번호
+│  │  │  │  ├─ menuSearch.ts      # 순수 함수: 검색 매칭(부분 일치 + 한글 초성)
 │  │  │  │  └─ menuService.ts     # 메뉴·카테고리 조회 + 관리자 CRUD (메뉴 도메인의 유일한 데이터 창구)
 │  │  │  ├─ _data/
 │  │  │  │  ├─ menus.ts           # 메뉴 + 관리자 폼용 이미지 목록(MENU_IMAGES)
@@ -811,11 +819,22 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 
 ### 8.4 `/menu` — 경마 티켓 스타일 메뉴판
 
-- 상단: `MENU BOARD` / 오늘의 라인업. 클래식 카페 메뉴판 느낌(세리프 제목, 점선 리더 `아메리카노 ........ 4,500`).
-- `MenuCategory` 탭: `getCategories()` 결과 중 `visible` 인 것만 `order` 순으로 (전체 탭 포함). 기본 데이터는 Coffee / Non Coffee / Tea / Dessert. URL 쿼리 `?category=` 동기화(선택).
+- 상단: `TODAY'S LINE-UP` / `MENU BOARD`. 클래식 카페 메뉴판 느낌은 세리프 대신 점선 리더(`아메리카노 ........ 4,500원`)로 낸다(2.2 — Pretendard 하나).
+- `MenuCategory` 탭: `getCategories()` 결과 중 `visible` 인 것만 `order` 순으로 (전체 탭 포함, 탭마다 메뉴 수). 기본 데이터는 Coffee / Non Coffee / Tea / Dessert. 선택은 클라이언트 State 로만 두고 URL 쿼리 `?category=` 동기화는 하지 않았다 — `cacheComponents` 에서 쿼리를 읽으면 페이지가 정적 셸에서 빠지기 때문(필요해지면 `useSearchParams` + Suspense 로 추가).
 - `status: "HIDDEN"` 메뉴는 보이지 않고, `"SOLD_OUT"` 은 카드에 "품절" 스탬프 + 흐리게.
-- `MenuCard` = 티켓: 좌측 이미지, 우측 이름(한/영)·가격·설명, 절취선 너머 작은 "STUB" 에 일련번호. 인기 메뉴는 `BEST`, 1위 메뉴는 금색 `WINNER` 배지(TicketBadge).
+- `MenuCard` = 티켓: 좌측 이미지, 우측 이름(한/영)·가격·설명, 절취선 너머 작은 "STUB" 에 일련번호. 인기 메뉴는 `BEST`, 1위 메뉴는 금색 `WINNER` 배지(TicketBadge). 카드 어디를 눌러도 상세(`/menu/[id]`)로 간다(이름 링크 + `::after` 로 카드 전체를 덮음).
 - 그리드: PC 3열 / 태블릿 2열 / 모바일 1열.
+- **검색**(`MenuSearch`): 제목 오른쪽(모바일은 제목 아래) 검색창, 칠 때마다 바로 거른다. 선택한 탭과 함께 적용되고 탭 개수도 검색 결과 기준. 매칭(`_lib/menuSearch.ts`): 이름은 부분 일치 + 한글 초성(`ㅇㅁㄹ` → 아메리카노), 영문명·설명은 부분 일치, 카테고리명은 앞부분 일치("커피" 가 "논커피" 에 걸리지 않게). 공백·대소문자 무시, 입력 중인 마지막 글자는 덜 조합된 상태도 받아 준다(`칼`·`카람` → 카라멜). 결과 0건이면 "전체에서 보기"(다른 탭에 결과가 있을 때) 또는 "검색어 지우기". 검색어도 탭처럼 URL(`?q=`)에 남기지 않는다.
+- 상세에 갔다가 "메뉴판으로" 돌아오면 검색어·탭이 그대로다 — `cacheComponents` 가 이전 페이지를 `<Activity>` 로 숨겨 두기 때문(최근 3개 라우트).
+
+#### `/menu/[id]` — 메뉴 상세
+
+- 메뉴판 티켓을 크게 펼친 모양: 일러스트 · `WINNER/BEST/NEW` 배지 · 이름 `........` 가격(점선 리더) · 영문명 · 설명 · 정보(카테고리, 판매 상태) · "메뉴판으로" 버튼 · STUB 일련번호. 모바일은 세로로 쌓고 STUB 을 아래로 보낸다.
+- 위에 현재 위치(`메뉴판 › 커피`), 아래에 **같은 카테고리의 다른 메뉴** 최대 3개(메뉴판 순서, `MenuCard` 재사용).
+- 메뉴판에 보이는 메뉴만 연다(`selectDetail`). HIDDEN · 숨김 카테고리 · 없는 id 는 `notFound()` → 같은 폴더의 `not-found.tsx`("SCRATCHED"). 품절은 열리고 스탬프 + 빨간 "품절" 상태로 보인다.
+- 빌드 때 `generateStaticParams` 로 메뉴판의 메뉴를 모두 미리 만들고, 데이터는 `"use cache"` 로 id 별 캐시(메뉴판과 같은 `cacheLife("hours")`). 목록에 없던 id 는 첫 요청 때 렌더된다. 이때 정적 셸이 먼저 나가므로 없는 메뉴의 응답 코드는 404 가 아니라 200 + `noindex` 다(Next 문서의 스트리밍 동작).
+- `params` 는 페이지 최상단이 아니라 `<Suspense>` 안의 `MenuDetailContent` 에서만 읽는다. `partialPrefetching` 은 모든 링크가 같은 App Shell 을 미리 받아 두는 방식이라, 밖에서 읽으면 Shell 이 URL 하나에 묶여 개발 모드에서 "URL data outside of Suspense" 가 뜬다. Shell 에는 같은 티켓 틀의 `MenuDetailSkeleton` 이 들어가고, 카드를 누르면 잠깐 보였다가 내용으로 바뀐다(빌드한 메뉴를 주소로 바로 열면 같은 HTML 안에서 곧바로 교체된다).
+- 메인 `TODAY'S LINEUP` 카드도 해당 메뉴의 상세로 연결한다.
 
 ### 8.5 `/event` — Race Event & Race Ticket
 
@@ -1012,17 +1031,24 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 손님용 메뉴판. 2·3단계의 데이터를 경마 티켓 스타일로 보여 준다. 설계: 8.4.
 
 **구현**
-- [ ] `menuService.ts` — `getTodayWinnerMenu`
-- [ ] `MenuCategory.tsx` — 노출 카테고리 탭(`order` 순) + 전체 탭
-- [ ] `MenuCard.tsx` — 티켓 카드(이미지 · 한/영 이름 · 가격 점선 리더 · 설명 · STUB 일련번호)
-- [ ] BEST / WINNER 배지, 품절 스탬프
-- [ ] `app/(site)/menu/page.tsx` 조립
+- [x] `menuService.ts` — `getTodayWinnerMenu` (2단계에서 미리 만들어 둠, 14단계 대시보드가 쓴다)
+- [x] `_lib/menuBoard.ts` — `selectBoard`(노출 카테고리 `order` 순 · HIDDEN/숨김 카테고리 메뉴 제외) · `ticketSerial`
+- [x] `MenuCategory.tsx` — 노출 카테고리 탭(`order` 순) + 전체 탭, 개수 표시, ←/→ · Home/End 키보드 이동
+- [x] `MenuCard.tsx` — 티켓 카드(이미지 · 한/영 이름 · 가격 점선 리더 · 설명 · STUB 일련번호)
+- [x] BEST / WINNER / NEW 배지, 품절 스탬프
+- [x] `MenuBoard.tsx`(client, 탭 State) + `app/(site)/menu/page.tsx` 조립(`"use cache"` 로 정적 셸)
+- [x] `_lib/menuSearch.ts` + `MenuSearch.tsx` — 메뉴판 검색(부분 일치 + 한글 초성, 탭과 함께 적용, 빈 상태 안내)
+- [x] `_lib/menuBoard.ts` — `parseMenuId` · `selectDetail`(메뉴판에 보이는 메뉴만 + 같은 카테고리 메뉴)
+- [x] `app/(site)/menu/[id]/page.tsx` + `MenuDetail.tsx` + `not-found.tsx` — 메뉴 상세, 메인 라인업·메뉴판 카드에서 연결
 
 **완료 확인**
-- [ ] 탭을 바꾸면 해당 카테고리 메뉴만 보인다
-- [ ] 숨김 카테고리 · HIDDEN 메뉴는 보이지 않는다
-- [ ] 품절 메뉴는 "품절"로 구분된다
-- [ ] PC 3열 / 태블릿 2열 / 모바일 1열
+- [x] 탭을 바꾸면 해당 카테고리 메뉴만 보인다
+- [x] 숨김 카테고리 · HIDDEN 메뉴는 보이지 않는다
+- [x] 품절 메뉴는 "품절"로 구분된다
+- [x] PC 3열 / 태블릿 2열 / 모바일 1열
+- [x] 이름 · 영문명 · 설명 · 초성으로 찾을 수 있고, 탭 개수가 검색 결과에 맞게 바뀐다
+- [x] 카드를 누르면 상세가 열리고, "메뉴판으로" 돌아오면 검색어·탭이 그대로다
+- [x] HIDDEN 메뉴 · 없는 id 의 상세 주소는 "SCRATCHED" 화면이 뜬다
 
 ---
 
