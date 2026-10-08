@@ -1,0 +1,301 @@
+/* ===== Hero — 전폭 배너 + 하단 겹침 탭 페이지네이션 ===== */
+.hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--green-900);
+  color: #fff;
+  overflow: hidden;
+}
+
+.viewport {
+  position: relative;
+  height: clamp(460px, 34vw, 560px);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.7s ease,
+    visibility 0s 0.7s;
+}
+
+.slideActive {
+  opacity: 1;
+  visibility: visible;
+  z-index: 1;
+  transition: opacity 0.7s ease;
+}
+
+/* 사진 — 활성화되면 천천히 원래 크기로 돌아오는 느린 줌 */
+.photo {
+  object-fit: cover;
+  transform: scale(1.06);
+  transition: transform 7s linear;
+}
+
+.slideActive .photo {
+  transform: scale(1);
+}
+
+/* 좌측 텍스트 가독성용 어둡기 + 하단 탭 영역 그라데이션 */
+.shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 20, 14, 0.9) 0%, rgba(8, 20, 14, 0.72) 38%, rgba(8, 20, 14, 0.25) 68%, rgba(8, 20, 14, 0.15) 100%),
+    linear-gradient(0deg, rgba(8, 20, 14, 0.9) 0%, rgba(8, 20, 14, 0) 42%);
+}
+
+.content {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-bottom: 76px; /* 탭 높이만큼 비워 둔다 */
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 580px;
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    transform 0.8s cubic-bezier(0.23, 1, 0.32, 1) 0.25s,
+    opacity 0.8s ease 0.25s;
+}
+
+.slideActive .text {
+  opacity: 1;
+  transform: none;
+}
+
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--green-300);
+}
+
+.title {
+  font-size: clamp(2.6rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fff;
+}
+
+.headline {
+  margin-top: 6px;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.description {
+  max-width: 46ch;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.cta {
+  background: #fff;
+  border-color: #fff;
+  color: var(--text-strong);
+}
+
+.cta:hover:not(:disabled) {
+  background: var(--bg-muted);
+  border-color: var(--bg-muted);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 이전/다음 — 호버 시에만 보인다 */
+.arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-top: -60px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
+}
+
+.hero:hover .arrow,
+.arrow:focus-visible {
+  opacity: 1;
+}
+
+.arrow:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.arrowPrev {
+  left: max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)));
+}
+
+.arrowNext {
+  right: max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)));
+}
+
+/* 하단 탭 페이지네이션 — 배너 위에 겹친다 */
+.tabs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+.tabsInner {
+  display: flex;
+  gap: 2px;
+}
+
+.tab {
+  position: relative;
+  flex: 0 1 290px;
+  min-width: 0;
+  height: 76px;
+  padding: 14px 18px 0;
+  border: 0;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+  transition: background 0.3s;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.tab small {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.tab strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabActive {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 3px 0 0 var(--green-300);
+}
+
+/* 자동 전환 진행바 — 길이는 --autoplay 와 같다 */
+.progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--green-300);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: progress var(--autoplay) linear forwards;
+}
+
+@keyframes progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (max-width: 860px) {
+  .viewport {
+    height: 560px;
+  }
+
+  .content {
+    align-items: flex-start;
+    padding-top: 48px;
+    padding-bottom: 110px;
+  }
+
+  .title {
+    font-size: 2.6rem;
+  }
+
+  .tabsInner {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabsInner::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex: 0 0 240px;
+  }
+
+  .arrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo,
+  .slideActive .photo {
+    transform: none;
+    transition: none;
+  }
+
+  .text {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .progress {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

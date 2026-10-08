@@ -3,26 +3,28 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
 }
 
 .main {
   flex: 1;
 }
 
-/* ===== Header ===== */
+/* ===== Header — 화이트, 로고 좌측 · 내비 중앙 · 쿠폰 우측 ===== */
 .header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--green-900);
-  color: var(--text-on-dark);
-  border-bottom: 3px double var(--gold-500);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
 }
 
 .headerInner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   height: var(--header-h);
 }
 
@@ -30,7 +32,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+  justify-self: start;
 }
 
 .logoText {
@@ -40,24 +42,17 @@
 }
 
 .logoName {
-  font-family: var(--font-display), var(--font-body), serif;
-  font-weight: 900;
-  font-size: 1.3rem;
-  letter-spacing: 0.08em;
-  color: var(--cream-50);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  color: var(--text-strong);
 }
 
 .logoSub {
-  font-family: var(--font-board), sans-serif;
-  font-size: 0.62rem;
-  letter-spacing: 0.24em;
-  color: var(--gold-300);
-}
-
-.nav {
-  flex: 1;
-  display: flex;
-  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--green-700);
 }
 
 .nav ul {
@@ -67,43 +62,85 @@
 
 .navLink {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   min-height: 44px;
-  padding: 6px 16px;
-  font-family: var(--font-board), sans-serif;
-  font-size: 1rem;
-  letter-spacing: 0.16em;
-  color: var(--cream-200);
+  padding: 0 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
   transition: color 0.15s;
 }
 
+/* 한글 부제 — PC 에서는 스크린리더용으로만, 모바일 메뉴에서는 표시 */
 .navKo {
-  font-family: var(--font-body), sans-serif;
-  font-size: 0.66rem;
-  letter-spacing: 0.05em;
-  color: rgba(243, 234, 211, 0.55);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .navLink:hover {
-  color: var(--gold-300);
+  color: var(--text-strong);
 }
 
 .navLink[aria-current="page"] {
-  color: var(--cream-50);
+  color: var(--text-strong);
 }
 
 .navLink[aria-current="page"]::after {
   content: "";
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 0;
-  height: 3px;
-  background: var(--gold-500);
+  left: 16px;
+  right: 16px;
+  bottom: 2px;
+  height: 2px;
+  background: var(--green-700);
   border-radius: 2px;
+}
+
+.utility {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 내 쿠폰 칩 → /event */
+.coupon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  font-size: 0.85rem;
+  color: var(--text-strong);
+  transition: background 0.15s;
+}
+
+.coupon:hover {
+  background: var(--bg-subtle);
+}
+
+.coupon svg {
+  color: var(--green-700);
+}
+
+.couponText {
+  color: var(--text-muted);
+}
+
+.couponCount {
+  margin-right: 1px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
 }
 
 .burger {
@@ -122,12 +159,18 @@
   display: block;
   width: 22px;
   height: 2px;
-  background: var(--cream-50);
+  background: var(--text-strong);
+  border-radius: 1px;
 }
 
 @media (max-width: 860px) {
   .headerInner {
+    display: flex;
     justify-content: space-between;
+  }
+
+  .logoSub {
+    display: none;
   }
 
   .burger {
@@ -137,10 +180,11 @@
   .nav {
     position: fixed;
     inset: var(--header-h) 0 0 0;
-    background: var(--green-900);
+    background: var(--bg);
     display: none;
     align-items: flex-start;
-    padding-top: 24px;
+    padding-top: 8px;
+    overflow-y: auto;
   }
 
   .navOpen {
@@ -149,69 +193,101 @@
 
   .nav ul {
     flex-direction: column;
+    gap: 0;
     width: 100%;
     padding-inline: var(--gutter);
   }
 
   .navLink {
-    flex-direction: row;
+    width: 100%;
     justify-content: space-between;
-    padding: 16px 8px;
-    font-size: 1.4rem;
-    border-bottom: 1px solid rgba(243, 234, 211, 0.12);
+    padding: 18px 4px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-strong);
+    border-bottom: 1px solid var(--border);
   }
 
   .navKo {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
     font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .navLink[aria-current="page"] {
+    color: var(--green-700);
   }
 
   .navLink[aria-current="page"]::after {
-    left: 0;
+    left: -4px;
     right: auto;
-    top: 14px;
-    bottom: 14px;
+    top: 18px;
+    bottom: 18px;
     width: 3px;
     height: auto;
   }
 }
 
-/* ===== Footer ===== */
+/* ===== Footer — 짙은 초록 블록, 가운데 정렬 ===== */
 .footer {
-  margin-top: 40px;
+  margin-top: 88px;
   background: var(--green-900);
-  color: var(--cream-200);
-  border-top: 3px double var(--gold-500);
-  padding-block: 40px 24px;
+  color: rgba(255, 255, 255, 0.72);
+  padding-block: 56px 32px;
   font-size: 0.9rem;
+  text-align: center;
 }
 
 .footerInner {
   display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .footerName {
-  font-family: var(--font-display), var(--font-body), serif;
   font-weight: 800;
-  font-size: 1.2rem;
-  letter-spacing: 0.08em;
-  color: var(--cream-50);
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  color: #fff;
+}
+
+.footerTagline {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .footerInfo {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 12px 40px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 32px;
   margin: 0;
 }
 
+.footerInfo div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .footerInfo dt {
-  font-family: var(--font-board), sans-serif;
-  letter-spacing: 0.2em;
-  font-size: 0.72rem;
-  color: var(--gold-300);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--green-300);
 }
 
 .footerInfo dd {
@@ -219,21 +295,58 @@
 }
 
 .footerInfo a {
+  color: #fff;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.disclaimer {
-  margin-top: 28px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(243, 234, 211, 0.15);
-  font-size: 0.78rem;
-  color: rgba(243, 234, 211, 0.6);
+.footerNav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 24px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }
 
-@media (max-width: 860px) {
+.footerNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.15s;
+}
+
+.footerNav a:hover {
+  color: #fff;
+}
+
+.disclaimer {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.copyright {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 767px) {
+  .footer {
+    margin-top: 64px;
+    padding-block: 44px 28px;
+  }
+
   .footerInfo {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
 }
 
@@ -245,7 +358,7 @@
   gap: 16px;
   padding: 64px 24px;
   text-align: center;
-  border: 1.5px dashed var(--brown-300);
-  border-radius: var(--radius-md);
-  background: var(--cream-100);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
 }

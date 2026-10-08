@@ -230,7 +230,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: #fffdf7;
+  background: var(--surface);
   border: 1px solid var(--cream-300);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -677,13 +677,13 @@
   .table tr {
     margin-bottom: 12px;
     padding: 12px 14px;
-    background: #fffdf7;
+    background: var(--surface);
     border: 1px solid var(--cream-300);
     border-radius: var(--radius-md);
   }
 
   .table tbody tr:hover {
-    background: #fffdf7;
+    background: var(--surface);
   }
 
   .table td {

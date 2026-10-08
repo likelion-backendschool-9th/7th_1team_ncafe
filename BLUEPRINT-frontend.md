@@ -11,8 +11,8 @@
 | 항목 | 결정 |
 |---|---|
 | 프레임워크 | Next.js (App Router) + TypeScript (strict) |
-| 스타일 | CSS Modules + 전역 CSS 변수(디자인 토큰). 외부 UI 라이브러리 없음 |
-| 폰트 | `next/font/google` — 제목: Playfair Display / Oswald(전광판), 본문: Noto Sans KR |
+| 스타일 | CSS Modules + 전역 CSS 변수(디자인 토큰). 화이트 베이스 · 짙은 초록 포인트. 외부 UI 라이브러리 없음 |
+| 폰트 | Pretendard(가변) 하나로 통일 — CDN 동적 서브셋 `<link>`. 세리프·전광판 전용 폰트 없음 |
 | 상태 | React State + Context(쿠폰·내 정보처럼 페이지를 넘나드는 값만) |
 | 폴더 구조 | 라우트 단위 Colocation (`app/<route>/_components·_hooks·_lib·_data·_types.ts`) |
 | 데이터 | `_data/*.ts` Mock → `_lib/*Service.ts` → 컴포넌트 (API 교체 지점은 Service 파일 하나) |
@@ -39,10 +39,16 @@ frontend/
 │  │
 │  ├─ (site)/                     # 사용자 사이트 route group — URL 에는 (site) 가 붙지 않는다
 │  │  ├─ layout.tsx               # Header + Footer
-│  │  ├─ page.tsx                 # /  메인
+│  │  ├─ page.tsx                 # /  메인 — Hero + MenuLineup 조립
 │  │  ├─ _components/             # 메인(/) 전용
-│  │  │  ├─ Hero.tsx              # NEXT RACE + 카운트다운
-│  │  │  └─ DashboardCard.tsx     # 좌석/인기메뉴/쿠폰/다음경주 카드 (Link)
+│  │  │  ├─ Hero.tsx              # 전폭 슬라이더 + 하단 탭 페이지네이션 (hero.module.css)
+│  │  │  ├─ MenuLineup.tsx        # TODAY'S LINEUP 4열 메뉴 그리드, "use cache" (menuLineup.module.css)
+│  │  │  └─ DashboardCard.tsx     # (14단계) 좌석/인기메뉴/쿠폰/다음경주 카드 (Link)
+│  │  ├─ _lib/
+│  │  │  └─ lineup.ts             # 라인업 선정 순수 함수 (WINNER → BEST → NEW, 품절은 뒤로)
+│  │  ├─ _data/
+│  │  │  └─ heroSlides.ts         # 히어로 슬라이드 문구·이미지 (값만)
+│  │  ├─ _types.ts                # HeroSlide
 │  │  │
 │  │  ├─ race/                    # /race  ★ 핵심
 │  │  │  ├─ page.tsx
@@ -160,6 +166,7 @@ frontend/
 │
 └─ public/
    └─ images/
+      ├─ hero/                    # 히어로 사진 (next-race.jpg) + CREDITS.md 출처·라이선스
       └─ menus/                   # 메뉴 일러스트 SVG 10종
 ```
 
@@ -193,48 +200,62 @@ frontend/
 
 ### 2.1 컬러 토큰 (`globals.css`)
 
+> 2026-10-08 재구성. 참고: 언스페셜티·NC 의 "화이트 바탕 + 거의 검정 텍스트 + 포인트 컬러 하나" 톤.
+> 이전 크림/브라운 토큰(`--cream-*`, `--brown-*`)은 관리자 화면 호환용 **별칭**으로만 남아 있고 새 코드에서는 쓰지 않는다.
+
 ```css
 :root {
-  /* Main */
-  --green-900: #0f2a1d;   /* 짙은 초록 — 헤더, 전광판 배경 */
-  --green-700: #1f4d36;   /* 트랙 잔디, 주요 버튼 */
-  --green-500: #2f6b4c;
-  --cream-50:  #fbf6ea;   /* 페이지 배경 (오래된 종이) */
-  --cream-100: #f3ead3;   /* 카드 배경 */
-  --cream-300: #e3d4ae;   /* 테두리, 구분선 */
-  --brown-700: #5a3a22;   /* 본문 강조, 메뉴판 텍스트 */
-  --brown-500: #8b5e3c;   /* 트랙 흙길, 보조 */
-
-  /* Accent (조금만) */
-  --gold-500:  #c9a227;   /* 1위, WINNER, 테두리 장식 */
-  --red-600:   #b23a2e;   /* LIVE, 마감 임박, 티켓 펀치 */
+  /* Surface */
+  --bg: #ffffff;          /* 페이지 배경 */
+  --bg-subtle: #f7f7f8;   /* 카드·썸네일 배경, 호버 */
+  --bg-muted: #f2f2f3;    /* 구분 영역 */
 
   /* Text */
-  --text-strong: #2b1d12;
-  --text-body:   #4a3727;
-  --text-muted:  #8a7660;
-  --text-on-dark: #f3ead3;
+  --text-strong: #0f1011; /* 제목 */
+  --text-body:   #3d3d43; /* 본문 */
+  --text-muted:  #62626a; /* 보조 */
+  --text-faint:  #8e8e95; /* 캡션 */
+  --text-on-dark: #ffffff;
+
+  /* Brand — 짙은 초록은 "포인트"에만: 버튼, 배지, 현재 메뉴 밑줄, 푸터 블록 */
+  --green-900: #0f2a1d;   /* 푸터, 전광판 칸, 강조 버튼 */
+  --green-700: #1f4d36;   /* 기본 버튼, 밑줄, 아이콘 */
+  --green-500: #2f6b4c;
+  --green-300: #8cc4a6;   /* 어두운 배경 위 소제목·진행바 */
+  --green-100: #e1efe6;   /* 선택 상태 배경 */
+
+  /* Accent (조금만) */
+  --gold-500: #c9a227;    /* WINNER 전용 */
+  --red-600:  #c6382c;    /* BEST 배지, 품절, 위험 동작, LIVE */
+
+  /* Border */
+  --border: rgba(15, 16, 17, 0.08);
+  --border-strong: rgba(15, 16, 17, 0.18);
 
   /* 좌석 상태 */
   --seat-available: #2f6b4c;
   --seat-using:     #8b5e3c;
   --seat-reserved:  #c9a227;
   --seat-repair:    #8a8a8a;
+
+  /* Shape: --radius-sm 6px · --radius-md 10px · --radius-lg 16px · --radius-pill */
 }
 ```
 
-- 배경은 크림, 큰 블록(헤더·전광판·트랙)은 짙은 초록, 텍스트는 브라운 계열.
-- 금색·빨간색은 **포인트 전용**이다. 넓은 면적에 쓰지 않는다. 화려한 네온, 검정+금 조합, 칩·룰렛·카드 이미지는 쓰지 않는다(카지노처럼 보이지 않게).
+- 배경은 흰색, 텍스트는 거의 검정. 넓은 색면은 **푸터와 히어로(사진 위 어두운 그라데이션)** 두 곳뿐이다.
+- 초록·금색·빨간색은 **포인트 전용**이다. 종이 질감, 이중 테두리, 네온, 검정+금 조합, 칩·룰렛·카드 이미지는 쓰지 않는다(카지노처럼 보이지 않게).
 
 ### 2.2 타이포그래피
 
 | 용도 | 폰트 | 예 |
 |---|---|---|
-| 대제목(영문) | Playfair Display (세리프, 빈티지) | `DAILY CAFE RACE` |
-| 전광판 숫자 | Oswald 또는 모노스페이스, `font-variant-numeric: tabular-nums` | `01 : 24 : 32` |
-| 본문(한글) | Noto Sans KR | 설명문 |
+| 대제목(영문) | Pretendard 800, 자간 −0.02~−0.03em | `NEXT RACE`, `TODAY'S LINEUP` |
+| 소제목(eyebrow) | Pretendard 700, 0.76rem, 자간 +0.18em, 대문자 | `DAILY CAFE RACE` |
+| 전광판 숫자 | Pretendard 700 + `font-variant-numeric: tabular-nums` (`.font-board`) | `01 : 24 : 32` |
+| 본문(한글) | Pretendard 400/500, 15px, 자간 −0.01em, `word-break: keep-all` | 설명문 |
 
-영문 대제목 + 한글 부제 패턴을 전 페이지에서 쓴다 (`TRACKSIDE` / 창가 좌석).
+- 폰트는 Pretendard 가변 하나다. `app/layout.tsx` 가 CDN 동적 서브셋 CSS 를 `<link>` 로 연결하고, 폰트 스택은 `--font-sans` 에 있다(`--font-body/display/board` 는 호환용 별칭).
+- 영문 대제목 + 한글 부제 패턴을 전 페이지에서 쓴다 (`TRACKSIDE` / 창가 좌석). 경마장 느낌은 세리프 대신 **대문자 영문 제목 + 티켓·전광판 컴포넌트 + 카피**로 낸다.
 
 ### 2.3 시그니처 UI 요소
 
@@ -246,7 +267,7 @@ frontend/
 | **트랙** | 레이스, 장식 구분선 | 초록 잔디 + 흰 레인선 + 체크무늬 FINISH 라인 |
 | **좌석 안내도** | 좌석 페이지 | 경기장 좌석 안내도처럼 구역명 라벨 + 구역 색 테두리 |
 
-공통: 모서리 반경 작게(4–8px), 얇은 이중 테두리, 은은한 종이 질감(옵션), 그림자 최소화.
+공통: 모서리 6–16px, 1px 연한 테두리(`--border`), 질감·이중 테두리 없음, 그림자는 모달 정도에만. 전광판은 짙은 초록 칸 + 흰 숫자로 단순화.
 
 ### 2.4 말 마스코트
 
@@ -265,16 +286,19 @@ frontend/
 
 ## 3. 공통 레이아웃
 
+참고 구성: 카페게이트(로고 좌측 · 내비 중앙 · 전폭 히어로 · 가운데 정렬 다크 푸터).
+
 ### Header
-- 좌: 로고(말발굽 + 컵 심볼, `NCAFE RACECOURSE` 류 워드마크)
-- 중: `HOME · MENU · SEAT · RACE · EVENT` — 현재 경로는 금색 밑줄 + 짙은 초록
-- 우: `🎟 5` 내 쿠폰 수(UserContext 구독) — 클릭 시 `/event`
-- 모바일: 햄버거 → 전체 화면 메뉴
+- 화이트(반투명 + blur) sticky, 하단 1px 테두리. 높이 72px(모바일 60px)
+- 좌: 로고(짙은 초록 원 + 흰 말발굽·컵 `LogoMark`) + `NCAFE` / `RACECOURSE` 워드마크
+- 중: `HOME · MENU · SEAT · RACE · EVENT` — 회색 → 현재 경로는 검정 + 초록 2px 밑줄. 한글 부제는 PC 에서 스크린리더용, 모바일 메뉴에서 표시
+- 우: 티켓 아이콘 + `5장` 내 쿠폰 칩(UserContext 구독) — 클릭 시 `/event`
+- 모바일(≤860px): 햄버거 → 전체 화면 흰 메뉴
 - RACE 메뉴 옆에 경주가 임박하면 작은 빨간 `LIVE` 점(선택)
 
 ### Footer
-- 짙은 초록 배경, 영업시간 / 주소 / "오늘의 레이스 18:00"
-- 하단 고지: **"본 이벤트는 카페 내부 이벤트 쿠폰으로 진행되는 미니게임이며, 현금·실제 금전 거래와 무관합니다."**
+- 짙은 초록(`--green-900`) 블록, 가운데 정렬: 워드마크 + 태그라인 → OPEN / ADDRESS / DAILY RACE → 메뉴 링크 줄
+- 하단 고지: **"본 이벤트는 카페 내부 이벤트 쿠폰으로 진행되는 미니게임이며, 현금·실제 금전 거래와 무관합니다."** + 저작권 줄
 
 ---
 
@@ -504,7 +528,7 @@ export async function reserveSeat(id: string): Promise<{ ok: true }> {
 | `app/(site)/event/_lib/eventService.ts` | `getEvents()` | GET /api/events |
 | `lib/time.ts` | `getNextRaceTime()` | GET /api/races/next |
 
-- 메인(`/`)은 자기 `_data/` 가 없다. 대시보드 값은 위 Service 들을 import 해서 모은다.
+- 메인(`/`)의 `_data/` 에는 히어로 슬라이드 문구(`heroSlides.ts`)만 둔다. 좌석 수·인기 메뉴 같은 대시보드 값은 위 Service 들을 import 해서 모은다.
 - 관리자 페이지(`/admin/*`)도 자기 `_data/` 가 없다. 메뉴·카테고리는 `app/(site)/menu/_lib/menuService.ts` 하나로만 읽고 쓴다.
 - **Mock 단계의 한계**: 관리자 쓰기 함수는 성공만 돌려주고, 변경은 관리자 화면의 React State 에만 반영된다. 새로고침하면 초기화되고 `/menu` 에는 반영되지 않는다. API 를 연결하면 두 화면이 같은 데이터를 보게 된다.
 - 내 쿠폰(`GET /api/my/coupons`)은 `UserProvider` 가 초기화할 때 불러오는 구조로 확장한다.
@@ -533,26 +557,40 @@ interface UserState {
 
 ## 8. 페이지별 설계
 
-### 8.1 `/` 메인 — "경마 전광판"
+### 8.1 `/` 메인 — 히어로 슬라이더 + 오늘의 라인업
+
+참고: 히어로는 넥슨 `.promotionBanner`(전폭 배너 + 하단 겹침 탭 페이지네이션), 라인업은 언스페셜티 `.prdList.grid4`(4열 정사각 썸네일).
 
 ```
-┌──────────────────── HERO (짙은 초록 전광판) ────────────────────┐
-│  NEXT RACE                                                      │
-│  18:00                                                          │
-│  Race starts in   [01] : [24] : [32]                            │
-│  [ 출전표 보러가기 → /race ]                                       │
-│  (트랙 일러스트 위로 말 마스코트 7마리가 천천히 지나가는 장식)          │
-└─────────────────────────────────────────────────────────────────┘
-┌─ 이용 가능 좌석 ─┐┌─ 오늘의 인기 메뉴 ─┐┌─ 내 쿠폰 ─┐┌─ 다음 경주 ─┐
-│   12 / 30       ││  아이스 아메리카노   ││   5장     ││   18:00    │
-│   → /seat       ││   → /menu          ││ → /event  ││  → /race   │
-└─────────────────┘└───────────────────┘└───────────┘└────────────┘
+┌──────────────────── HERO (전폭, 사진 + 어두운 그라데이션) ───────────────────┐
+│  DAILY CAFE RACE                                                           │
+│  NEXT RACE                                           [ 경주마 사진 ]        │
+│  첫 번째 레이스를 준비하고 있어요                                              │
+│  출전표와 카운트다운이 곧 공개됩니다 …                                          │
+│  [ RACE 페이지 보기 ]  ( COMING SOON )                                       │
+│ ┌ DAILY RACE ─────────┐┌ (WINNER 메뉴) ┐┌ (이용 가능 좌석) ┐┌ (내 쿠폰·이벤트) ┐│  ← 탭 페이지네이션
+│ │ NEXT RACE 준비 중 ▬▬▬││              ││               ││                ││     (지금은 1탭)
+└─┴─────────────────────┴┴──────────────┴┴───────────────┴┴────────────────┴┘
+  TODAY'S LINEUP                                              전체 메뉴 보기 ›
+  오늘의 출전 메뉴 — 가장 많은 선택을 받은 메뉴들
+  ┌ WINNER ┐ ┌ BEST ┐ ┌ BEST ┐ ┌ BEST ┐
+  │  썸네일  │ │      │ │      │ │      │    ← 4열(태블릿 3열 · 모바일 2열) × 2줄 = 8개
+  │ 카테고리 │ │      │ │      │ │      │       썸네일 좌상단 TicketBadge, 품절은 흐리게 + SOLD OUT
+  │ 이름/영문│ │      │ │      │ │      │       카드 클릭 → /menu
+  │ 가격    │ │      │ │      │ │      │
+  └────────┘ └──────┘ └──────┘ └──────┘
 ```
 
-- 카운트다운: `lib/useCountdown.ts` 의 `useCountdown(target)` — 1초 `setInterval`, 0이 되면 "NOW RACING" 으로 표시 전환 후 다음 경주로 롤오버.
-- `DashboardCard` 는 `<Link>` 전체 클릭, hover 시 티켓이 살짝 들리는 효과.
-- 하이드레이션 불일치 방지: 카운트다운은 클라이언트 마운트 후 표시(`"use client"` + 초기값 `--:--:--`).
-- (선택) 아래에 "오늘의 출전마" 가로 스크롤 띠, 최근 우승마 1줄.
+**Hero (`_components/Hero.tsx`, client)**
+- 슬라이드 데이터는 `HeroSlide[]` prop. 지금은 `_data/heroSlides.ts` 의 NEXT RACE 1장(준비 중 문구 + 경주마 사진). 구조는 4슬라이드(NEXT RACE · 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트)를 전제로 하며, 추가 슬라이드는 14단계에서 각 Service 값으로 page 가 만들어 넘긴다.
+- 높이 `clamp(460px, 34vw, 560px)`, 사진은 `next/image fill` + 좌→우·하→상 그라데이션. 활성 슬라이드는 느린 줌(7s)과 텍스트 페이드업.
+- 하단 탭: 소제목 + 굵은 제목, 활성 탭은 밝은 배경 + 좌측 초록 바 + 진행바(5초, `--autoplay`). 슬라이드가 2장 이상일 때만 자동 전환·이전/다음 버튼·진행바가 동작하고, 호버·포커스 중에는 멈춘다. `prefers-reduced-motion` 이면 전환 효과 없음.
+- 카운트다운은 6단계에서 NEXT RACE 슬라이드에 연결한다(`lib/useCountdown.ts`, 클라이언트 마운트 후 표시).
+
+**MenuLineup (`_components/MenuLineup.tsx`, server)**
+- `getMenus()` + `getCategories()` → `_lib/lineup.ts` 의 `pickLineup(menus, 8)`: HIDDEN 제외, WINNER → BEST → NEW → 배지 없음 순(같은 등급은 원래 순서), 품절은 뒤로.
+- 컴포넌트 본문에 `"use cache"` + `cacheLife("hours")` 를 둔다. 모두에게 같은 내용이라 빌드 때 정적 셸에 포함되고, API 연결 뒤에는 관리자 저장 시 `revalidateTag` 로 갱신한다. **Suspense 로 감싸지 않는다** — 감싸면 내용이 숨김 영역에 들어가 하이드레이션 전까지 fallback 이 보인다. (Cache Components 규칙: 캐시되지 않은 비동기·요청 시점 데이터만 Suspense 경계 안에서 읽는다.)
+- 대시보드 카드 4개(좌석/인기메뉴/쿠폰/다음경주)는 14단계에서 히어로 슬라이드로 흡수할지 별도 섹션으로 둘지 정한다.
 
 ### 8.2 `/race` — 핵심 ①
 
@@ -898,11 +936,11 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] `components/HorseAvatar.tsx` — 말 마스코트 SVG (대표색 주입, 달리기 애니메이션)
 - [x] `components/UserProvider.tsx` + `types/common.ts` — 쿠폰 Context 뼈대
 - [x] `app/not-found.tsx` — 경마장 컨셉의 404
-
+- [x] (2026-10-08 재구성) 화이트 베이스 · Pretendard · 초록 포인트로 토큰·헤더(쿠폰 칩 포함)·푸터·버튼·모달·배지·전광판 재정비. 메인에 `Hero`(슬라이더 골격) + `MenuLineup` 선반영 — 8.1 참고
 **완료 확인**
 - [x] 5개 메뉴 링크가 모두 동작하고(빈 페이지라도) 현재 경로가 강조된다
 - [x] 860px 이하에서 햄버거 메뉴가 열리고 닫힌다
-- [x] 크림 배경 · 짙은 초록 헤더 · 세리프 제목이 적용되어 "빈티지 경마장" 톤이 보인다
+- [x] 흰 배경 · 흰 헤더 · 짙은 초록 푸터 · Pretendard 제목이 적용되고, 경마장 느낌은 티켓 배지·전광판·카피로 드러난다
 - [x] `npm run build`, `npm run lint` 통과
 
 ---
@@ -983,7 +1021,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 **구현**
 - [ ] `UserProvider` — `coupons`, `rewards`, `spendCoupon()`, `addReward()` 완성 (`INITIAL_COUPONS = 5`)
-- [ ] Header 쿠폰 칩이 Context 값을 표시
+- [x] Header 쿠폰 칩이 Context 값을 표시 (1단계 재구성 때 선반영)
 - [ ] `app/(site)/event/_types.ts`, `_data/events.ts`, `_lib/eventService.ts`
 - [ ] `CouponCard.tsx` — Race Ticket 디자인, 사용 여부 스탬프
 - [ ] `EventCard.tsx` — 이벤트 소개 + `/race` 이동 버튼
@@ -1145,8 +1183,11 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 앞 단계의 Service 들을 모아 보여 주는 화면. 설계: 8.1.
 
 **구현**
-- [ ] `Hero.tsx` — NEXT RACE + 카운트다운 + 출전표 이동, 마스코트 장식
-- [ ] `DashboardCard.tsx` — 이용 가능 좌석 · 오늘의 인기 메뉴 · 내 쿠폰 · 다음 경주
+- [x] `Hero.tsx` — 전폭 슬라이더 골격(탭 페이지네이션 · 자동 전환 · 진행바). 현재 NEXT RACE 1장(준비 중 문구 + 사진)
+- [x] `MenuLineup.tsx` + `_lib/lineup.ts` — TODAY'S LINEUP 배지 메뉴 8개 그리드
+- [ ] NEXT RACE 슬라이드에 카운트다운 연결(6단계 뒤)
+- [ ] 히어로 슬라이드 추가 — 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트 (각 Service 값으로 page 가 조립)
+- [ ] `DashboardCard.tsx` — 이용 가능 좌석 · 오늘의 인기 메뉴 · 내 쿠폰 · 다음 경주 (슬라이드로 흡수할지 별도 섹션으로 둘지 결정)
 - [ ] `app/(site)/page.tsx` — `getSeatSummary`, `getTodayWinnerMenu` 를 각 라우트 Service 에서 가져와 조립
 
 **완료 확인**
@@ -1174,7 +1215,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 | 영역 | 보여야 하는 느낌 |
 |---|---|
-| 메인 | 경마 전광판 |
+| 메인 | 레이스 안내 배너(전광판 탭) + 출전 메뉴 라인업 |
 | 말 | 카페 마스코트 |
 | 메뉴 | 경마 티켓 |
 | 좌석 | 경기장 좌석 안내도 |

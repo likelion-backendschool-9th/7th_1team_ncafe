@@ -1,28 +1,14 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR, Oswald, Playfair_Display } from "next/font/google";
 import { UserProvider } from "@/components/UserProvider";
 import "./globals.css";
 
 // 루트 레이아웃 — 폰트 · 전역 Provider 만. 사용자 사이트의 Header/Footer 는 (site)/layout.tsx,
 // 관리자 화면은 admin/layout.tsx 가 각각 붙인다.
 
-const display = Playfair_Display({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["600", "700", "800", "900"],
-});
-
-const board = Oswald({
-  variable: "--font-board",
-  subsets: ["latin"],
-});
-
-const body = Noto_Sans_KR({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  preload: false,
-});
+// 폰트: Pretendard(가변) 하나로 통일한다. 한글 동적 서브셋을 CDN 에서 받는 방식이라
+// next/font 가 아닌 <link> 로 연결한다(폰트 스택은 globals.css 의 --font-sans).
+const PRETENDARD_CSS =
+  "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
 
 export const metadata: Metadata = {
   title: { default: "NCafe Racecourse", template: "%s · NCafe Racecourse" },
@@ -31,7 +17,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${display.variable} ${board.variable} ${body.variable}`}>
+    <html lang="ko">
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={PRETENDARD_CSS} />
+      </head>
       <body>
         <UserProvider>{children}</UserProvider>
       </body>

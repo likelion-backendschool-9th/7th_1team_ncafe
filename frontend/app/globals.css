@@ -1,29 +1,42 @@
-/* ===== 디자인 토큰 — BLUEPRINT 2.1 ===== */
+/* ===== 디자인 토큰 — BLUEPRINT 2.1 =====
+   화이트 베이스 · 산세리프(Pretendard) · 짙은 초록 포인트.
+   배경은 흰색/연회색, 텍스트는 거의 검정, 초록은 버튼·배지·강조·푸터처럼 "포인트"에만 쓴다.
+   금색은 WINNER 표시 전용, 빨강은 LIVE·품절·위험 동작 전용이다. */
 :root {
-  /* Main */
+  /* Surface */
+  --bg: #ffffff;
+  --bg-subtle: #f7f7f8;
+  --bg-muted: #f2f2f3;
+  --surface: #ffffff;
+
+  /* Text */
+  --text-strong: #0f1011;
+  --text-body: #3d3d43;
+  --text-muted: #62626a;
+  --text-faint: #8e8e95;
+  --text-on-dark: #ffffff;
+
+  /* Brand — 짙은 초록 */
   --green-900: #0f2a1d;
   --green-800: #163a29;
   --green-700: #1f4d36;
+  --green-600: #275c41;
   --green-500: #2f6b4c;
-  --green-100: #dfe9df;
-  --cream-50: #fbf6ea;
-  --cream-100: #f3ead3;
-  --cream-200: #ece0c2;
-  --cream-300: #e3d4ae;
-  --brown-700: #5a3a22;
-  --brown-500: #8b5e3c;
-  --brown-300: #c4a27f;
+  --green-400: #4f9470;
+  --green-300: #8cc4a6;
+  --green-100: #e1efe6;
+  --green-50: #f1f7f3;
 
   /* Accent (조금만) */
   --gold-500: #c9a227;
   --gold-300: #e3c766;
-  --red-600: #b23a2e;
+  --gold-100: #faf3dc;
+  --red-600: #c6382c;
+  --red-100: #fbe9e6;
 
-  /* Text */
-  --text-strong: #2b1d12;
-  --text-body: #4a3727;
-  --text-muted: #8a7660;
-  --text-on-dark: #f3ead3;
+  /* Border */
+  --border: rgba(15, 16, 17, 0.08);
+  --border-strong: rgba(15, 16, 17, 0.18);
 
   /* 좌석 상태 */
   --seat-available: #2f6b4c;
@@ -31,16 +44,35 @@
   --seat-reserved: #c9a227;
   --seat-repair: #8a8a8a;
 
+  /* Legacy alias — 이전 크림/브라운 토큰을 쓰는 화면(관리자 등) 호환용. 새 코드에서는 위의 토큰을 쓴다. */
+  --cream-50: var(--bg);
+  --cream-100: var(--bg-subtle);
+  --cream-200: var(--bg-muted);
+  --cream-300: #e4e4e7;
+  --brown-700: var(--text-body);
+  --brown-500: var(--text-muted);
+  --brown-300: #cfcfd4;
+
   /* Shape */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --shadow-sm: 0 1px 2px rgba(43, 29, 18, 0.12);
-  --shadow-md: 0 6px 18px rgba(43, 29, 18, 0.14);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(15, 16, 17, 0.06);
+  --shadow-md: 0 8px 24px rgba(15, 16, 17, 0.1);
+
+  /* Typography — Pretendard 하나로 통일. 아래 세 변수는 기존 CSS 모듈 호환용 별칭이다. */
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue",
+    "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-board: var(--font-sans);
 
   /* Layout */
   --container: 1200px;
   --gutter: 20px;
-  --header-h: 68px;
+  --header-h: 72px;
 
   color-scheme: light;
 }
@@ -59,21 +91,15 @@ body {
 }
 
 body {
-  font-family: var(--font-body), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.6;
+  letter-spacing: -0.01em;
   color: var(--text-body);
-  background-color: var(--cream-50);
-  /* 오래된 종이 질감 — 아주 옅은 가로줄 */
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(139, 94, 60, 0.025) 0px,
-    rgba(139, 94, 60, 0.025) 1px,
-    transparent 1px,
-    transparent 4px
-  );
+  background-color: var(--bg);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  word-break: keep-all;
 }
 
 a {
@@ -92,6 +118,7 @@ input,
 select,
 textarea {
   font: inherit;
+  letter-spacing: inherit;
   color: inherit;
 }
 
@@ -127,7 +154,7 @@ fieldset {
 }
 
 :focus-visible {
-  outline: 3px solid var(--gold-500);
+  outline: 2px solid var(--green-700);
   outline-offset: 2px;
 }
 
@@ -140,7 +167,7 @@ fieldset {
 }
 
 .page {
-  padding-block: 40px 72px;
+  padding-block: 48px 80px;
 }
 
 .visually-hidden {
@@ -152,12 +179,17 @@ fieldset {
   white-space: nowrap;
 }
 
+/* 영문 대제목용 — 굵고 좁은 자간 */
 .font-display {
-  font-family: var(--font-display), var(--font-body), serif;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
+/* 전광판 숫자용 — 고정폭 숫자 */
 .font-board {
-  font-family: var(--font-board), "Arial Narrow", sans-serif;
+  font-family: var(--font-board);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -165,40 +197,41 @@ fieldset {
 .section-head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 20px;
+  gap: 6px;
+  margin-bottom: 28px;
 }
 
 .eyebrow {
-  font-family: var(--font-board), sans-serif;
-  font-size: 0.8rem;
-  letter-spacing: 0.22em;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--brown-500);
+  color: var(--green-600);
 }
 
 .title-xl,
 .title-lg,
 .title-md {
-  font-family: var(--font-display), var(--font-body), serif;
-  color: var(--green-900);
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  color: var(--text-strong);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .title-xl {
-  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-size: clamp(2rem, 4.5vw, 3rem);
   font-weight: 800;
 }
 
 .title-lg {
-  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 800;
 }
 
 .title-md {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
@@ -206,15 +239,11 @@ fieldset {
   font-size: 0.95rem;
 }
 
-/* 장식 구분선 — 트랙 레일 */
+/* 구분선 */
 .rail {
-  height: 10px;
-  margin-block: 48px;
-  background:
-    linear-gradient(var(--brown-500), var(--brown-500)) top / 100% 2px no-repeat,
-    linear-gradient(var(--brown-500), var(--brown-500)) bottom / 100% 2px no-repeat,
-    repeating-linear-gradient(90deg, var(--brown-500) 0 3px, transparent 3px 28px);
-  opacity: 0.45;
+  height: 1px;
+  margin-block: 56px;
+  background: var(--border);
 }
 
 /* ===== 버튼 ===== */
@@ -226,18 +255,22 @@ fieldset {
   min-height: 44px;
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--green-900);
+  border: 1px solid var(--green-700);
   background: var(--green-700);
-  color: var(--cream-50);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
   white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
-  box-shadow: inset 0 0 0 2px rgba(243, 234, 211, 0.18);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.15s;
 }
 
 .btn:hover:not(:disabled) {
   background: var(--green-900);
+  border-color: var(--green-900);
 }
 
 .btn:active:not(:disabled) {
@@ -245,36 +278,41 @@ fieldset {
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--green-900);
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: var(--green-100);
-}
-
-.btn-gold {
-  background: var(--gold-500);
-  border-color: var(--brown-700);
+  border-color: var(--border-strong);
   color: var(--text-strong);
 }
 
+.btn-outline:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+/* 강조 버튼(저장·등록). 금색은 WINNER 표시 전용이라 버튼에는 가장 짙은 초록을 쓴다. 클래스명은 호환용으로 유지. */
+.btn-gold {
+  background: var(--green-900);
+  border-color: var(--green-900);
+  color: #fff;
+}
+
 .btn-gold:hover:not(:disabled) {
-  background: var(--gold-300);
+  background: var(--green-800);
+  border-color: var(--green-800);
 }
 
 .btn-danger {
   background: var(--red-600);
-  border-color: #7d2219;
+  border-color: var(--red-600);
   color: #fff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #94291f;
+  background: #a52d23;
+  border-color: #a52d23;
 }
 
 .btn-sm {
@@ -297,10 +335,11 @@ fieldset {
 @media (max-width: 767px) {
   :root {
     --gutter: 16px;
+    --header-h: 60px;
   }
 
   .page {
-    padding-block: 28px 56px;
+    padding-block: 32px 64px;
   }
 }
 
