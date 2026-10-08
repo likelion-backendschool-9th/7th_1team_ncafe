@@ -1,4 +1,4 @@
-/* 관리자 화면 — 컨셉 톤(짙은 초록·크림)은 유지하되 장식을 줄인 업무 화면 */
+/* 관리자 화면 — 사이트 톤(그레이스케일·크림)은 유지하되 장식을 줄인 업무 화면 */
 
 /* ===== 골격 ===== */
 .shell {
@@ -15,33 +15,28 @@
   flex-direction: column;
   gap: 28px;
   padding: 24px 16px;
-  background: var(--green-900);
+  background: var(--brand-900);
   color: var(--cream-100);
   border-right: 3px double var(--gold-500);
 }
 
+/* 한 줄 워드마크(밝은 색) + ADMIN OFFICE */
 .brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-inline: 8px;
-}
-
-.brand > span:last-child {
-  display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  align-items: flex-start;
+  gap: 2px;
+  padding-inline: 8px;
+  color: #fff;
 }
 
-.brandName {
-  font-family: var(--font-display), var(--font-body), serif;
-  font-weight: 900;
-  font-size: 1.15rem;
-  letter-spacing: 0.08em;
-  color: var(--cream-50);
+.brandLogo {
+  width: 184px;
+  height: auto;
 }
 
 .brandSub {
+  line-height: 1.1;
   font-family: var(--font-board), sans-serif;
   font-size: 0.66rem;
   letter-spacing: 0.24em;
@@ -71,7 +66,7 @@
 
 .navItem[aria-current="page"] {
   background: var(--cream-50);
-  color: var(--green-900);
+  color: var(--brand-900);
   font-weight: 700;
   box-shadow: inset 4px 0 0 var(--gold-500);
 }
@@ -141,7 +136,7 @@
   font-family: var(--font-display), var(--font-body), serif;
   font-size: 2rem;
   font-weight: 800;
-  color: var(--green-900);
+  color: var(--brand-900);
   line-height: 1.2;
 }
 
@@ -198,8 +193,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--green-700);
-  box-shadow: 0 0 0 3px rgba(47, 107, 76, 0.2);
+  border-color: var(--brand-700);
+  box-shadow: 0 0 0 3px rgba(51, 51, 56, 0.2);
 }
 
 .input[aria-invalid="true"] {
@@ -242,7 +237,7 @@
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   color: var(--cream-100);
-  background: var(--green-800);
+  background: var(--brand-800);
   white-space: nowrap;
 }
 
@@ -312,8 +307,8 @@
 }
 
 .status_ON_SALE {
-  color: var(--green-700);
-  border-color: var(--green-500);
+  color: var(--brand-700);
+  border-color: var(--brand-500);
 }
 
 .status_SOLD_OUT {
@@ -383,14 +378,14 @@
   width: 36px;
   height: 36px;
   font-size: 0.75rem;
-  color: var(--green-900);
+  color: var(--brand-900);
   background: var(--cream-100);
   border: 1px solid var(--brown-300);
   border-radius: var(--radius-sm);
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: var(--green-100);
+  background: var(--brand-100);
 }
 
 .iconBtn:disabled {
@@ -430,8 +425,8 @@
 }
 
 .switch[aria-checked="true"] {
-  background: var(--green-700);
-  border-color: var(--green-900);
+  background: var(--brand-700);
+  border-color: var(--brand-900);
   justify-content: flex-start;
 }
 
@@ -459,7 +454,7 @@
   font-family: var(--font-display), var(--font-body), serif;
   font-size: 1.4rem;
   font-weight: 800;
-  color: var(--green-900);
+  color: var(--brand-900);
   margin-bottom: 4px;
 }
 
@@ -551,8 +546,8 @@
 }
 
 .radio:has(input:checked) {
-  border-color: var(--green-700);
-  background: var(--green-100);
+  border-color: var(--brand-700);
+  background: var(--brand-100);
   font-weight: 700;
 }
 
@@ -562,7 +557,7 @@
 
 .radio input,
 .checkLine input {
-  accent-color: var(--green-700);
+  accent-color: var(--brand-700);
   width: 16px;
   height: 16px;
 }
@@ -580,7 +575,7 @@
 .toast {
   padding: 10px 20px;
   border-radius: 999px;
-  background: var(--green-900);
+  background: var(--brand-900);
   color: var(--cream-50);
   border: 1.5px solid var(--gold-500);
   box-shadow: var(--shadow-md);

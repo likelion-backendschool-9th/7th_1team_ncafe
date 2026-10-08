@@ -1,7 +1,7 @@
 /* ===== 디자인 토큰 — BLUEPRINT 2.1 =====
-   화이트 베이스 · 산세리프(Pretendard) · 짙은 초록 포인트.
-   배경은 흰색/연회색, 텍스트는 거의 검정, 초록은 버튼·배지·강조·푸터처럼 "포인트"에만 쓴다.
-   금색은 WINNER 표시 전용, 빨강은 LIVE·품절·위험 동작 전용이다. */
+   화이트 베이스 · 산세리프(Pretendard) · 그레이스케일 포인트(manhattaN cafe 로고 톤).
+   배경은 흰색/연회색, 텍스트는 거의 검정, --brand-* 회색 계열은 버튼·배지·강조처럼 "포인트"에만 쓴다.
+   금색은 WINNER 표시 전용, 빨강은 LIVE·품절·위험 동작 전용이다 — 유채색은 이 둘뿐이다. */
 :root {
   /* Surface */
   --bg: #ffffff;
@@ -16,16 +16,16 @@
   --text-faint: #8e8e95;
   --text-on-dark: #ffffff;
 
-  /* Brand — 짙은 초록 */
-  --green-900: #0f2a1d;
-  --green-800: #163a29;
-  --green-700: #1f4d36;
-  --green-600: #275c41;
-  --green-500: #2f6b4c;
-  --green-400: #4f9470;
-  --green-300: #8cc4a6;
-  --green-100: #e1efe6;
-  --green-50: #f1f7f3;
+  /* Brand — 그레이스케일(이전 짙은 초록 단계를 같은 명도 순서로 옮김) */
+  --brand-900: #141416;
+  --brand-800: #232326;
+  --brand-700: #333338;
+  --brand-600: #47474d;
+  --brand-500: #5e5e65;
+  --brand-400: #85858c;
+  --brand-300: #c2c2c7;
+  --brand-100: #e8e8ea;
+  --brand-50: #f4f4f5;
 
   /* Accent (조금만) */
   --gold-500: #c9a227;
@@ -39,7 +39,7 @@
   --border-strong: rgba(15, 16, 17, 0.18);
 
   /* 좌석 상태 */
-  --seat-available: #2f6b4c;
+  --seat-available: #333338; /* 짙은 회색 — 수리 중(#8a8a8a)과 명도로 구분, 실제 화면은 아이콘·텍스트도 함께 쓴다 */
   --seat-using: #8b5e3c;
   --seat-reserved: #c9a227;
   --seat-repair: #8a8a8a;
@@ -154,7 +154,7 @@ fieldset {
 }
 
 :focus-visible {
-  outline: 2px solid var(--green-700);
+  outline: 2px solid var(--brand-700);
   outline-offset: 2px;
 }
 
@@ -206,7 +206,7 @@ fieldset {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--green-600);
+  color: var(--brand-600);
 }
 
 .title-xl,
@@ -255,8 +255,8 @@ fieldset {
   min-height: 44px;
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--green-700);
-  background: var(--green-700);
+  border: 1px solid var(--brand-700);
+  background: var(--brand-700);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
@@ -269,8 +269,8 @@ fieldset {
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--green-900);
-  border-color: var(--green-900);
+  background: var(--brand-900);
+  border-color: var(--brand-900);
 }
 
 .btn:active:not(:disabled) {
@@ -292,16 +292,16 @@ fieldset {
   border-color: var(--border-strong);
 }
 
-/* 강조 버튼(저장·등록). 금색은 WINNER 표시 전용이라 버튼에는 가장 짙은 초록을 쓴다. 클래스명은 호환용으로 유지. */
+/* 강조 버튼(저장·등록). 금색은 WINNER 표시 전용이라 버튼에는 가장 짙은 회색을 쓴다. 클래스명은 호환용으로 유지. */
 .btn-gold {
-  background: var(--green-900);
-  border-color: var(--green-900);
+  background: var(--brand-900);
+  border-color: var(--brand-900);
   color: #fff;
 }
 
 .btn-gold:hover:not(:disabled) {
-  background: var(--green-800);
-  border-color: var(--green-800);
+  background: var(--brand-800);
+  border-color: var(--brand-800);
 }
 
 .btn-danger {
@@ -335,7 +335,7 @@ fieldset {
 @media (max-width: 767px) {
   :root {
     --gutter: 16px;
-    --header-h: 60px;
+    --header-h: 72px; /* PC 와 같은 높이 — 적층형 로고(56px)가 위아래 8px 여백을 갖는다 */
   }
 
   .page {

@@ -31,28 +31,22 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
   justify-self: start;
-}
-
-.logoText {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-
-.logoName {
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: 0.06em;
   color: var(--text-strong);
 }
 
-.logoSub {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--green-700);
+/* 한 줄 워드마크 — viewBox 108×18 은 위아래 여백이 커서 폭으로 크기를 정한다.
+   216px 일 때 소문자 높이 ≈ 14px(내비 글자와 비슷한 무게). 좁은 PC 에서는 내비와 겹치지 않게 줄어든다. */
+.logoWide {
+  width: clamp(168px, 15vw, 216px);
+  height: auto;
+}
+
+/* 3줄 적층형 — 모바일 헤더 전용. 높이 56px 일 때 소문자 높이 ≈ 10px 로, 이보다 작으면 글자가 뭉개진다. */
+.logoStacked {
+  display: none;
+  height: 56px;
+  width: auto;
 }
 
 .nav ul {
@@ -98,7 +92,7 @@
   right: 16px;
   bottom: 2px;
   height: 2px;
-  background: var(--green-700);
+  background: var(--brand-700);
   border-radius: 2px;
 }
 
@@ -129,7 +123,7 @@
 }
 
 .coupon svg {
-  color: var(--green-700);
+  color: var(--brand-700);
 }
 
 .couponText {
@@ -169,8 +163,12 @@
     justify-content: space-between;
   }
 
-  .logoSub {
+  .logoWide {
     display: none;
+  }
+
+  .logoStacked {
+    display: block;
   }
 
   .burger {
@@ -220,7 +218,7 @@
   }
 
   .navLink[aria-current="page"] {
-    color: var(--green-700);
+    color: var(--brand-700);
   }
 
   .navLink[aria-current="page"]::after {
@@ -233,11 +231,12 @@
   }
 }
 
-/* ===== Footer — 짙은 초록 블록, 가운데 정렬 ===== */
+/* ===== Footer — 옅은 회색 블록, 가운데 정렬 ===== */
 .footer {
   margin-top: 88px;
-  background: var(--green-900);
-  color: rgba(255, 255, 255, 0.72);
+  background: var(--bg-muted);
+  border-top: 1px solid var(--border);
+  color: var(--text-body);
   padding-block: 56px 32px;
   font-size: 0.9rem;
   text-align: center;
@@ -259,14 +258,14 @@
 
 .footerName {
   font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: 0.14em;
-  color: #fff;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+  color: var(--text-strong);
 }
 
 .footerTagline {
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
 }
 
 .footerInfo {
@@ -287,7 +286,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: var(--green-300);
+  color: var(--text-faint);
 }
 
 .footerInfo dd {
@@ -295,7 +294,7 @@
 }
 
 .footerInfo a {
-  color: #fff;
+  color: var(--text-strong);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -314,27 +313,27 @@
   display: inline-flex;
   align-items: center;
   min-height: 36px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted);
   transition: color 0.15s;
 }
 
 .footerNav a:hover {
-  color: #fff;
+  color: var(--text-strong);
 }
 
 .disclaimer {
   margin-top: 36px;
   padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--border-strong);
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
 }
 
 .copyright {
   margin-top: 8px;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-faint);
 }
 
 @media (max-width: 767px) {

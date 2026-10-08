@@ -16,7 +16,7 @@ export const HERO_SLIDES: HeroSlide[] = [
     status: "COMING SOON",
     cta: { label: "RACE 페이지 보기", href: "/race" },
     image: nextRacePhoto,
-    imageAlt: "트랙을 달리는 경주마들",
-    imagePosition: "72% center",
+    imageAlt: "커다란 아이스 커피 컵을 둘러싼 트랙을 번호 조끼를 입은 귀여운 말들이 달리는 일러스트",
+    imagePosition: "center",
   },
 ];

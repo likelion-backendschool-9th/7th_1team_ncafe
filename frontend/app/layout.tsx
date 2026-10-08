@@ -11,7 +11,7 @@ const PRETENDARD_CSS =
   "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
 
 export const metadata: Metadata = {
-  title: { default: "NCafe Racecourse", template: "%s · NCafe Racecourse" },
+  title: { default: "manhattaN cafe", template: "%s · manhattaN cafe" },
   description: "경마장을 테마로 한 감성 카페 — 오늘의 Daily Race 에 참가하고 쿠폰 보상을 받아보세요.",
 };
 

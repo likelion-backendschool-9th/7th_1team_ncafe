@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogoMark } from "@/components/Header";
+import BrandLogo from "@/components/BrandLogo";
 import styles from "./admin.module.css";
 
 const NAV = [
@@ -15,12 +15,10 @@ export default function AdminNav() {
 
   return (
     <aside className={styles.sidebar}>
-      <Link href="/admin/menus" className={styles.brand}>
-        <LogoMark size={34} />
-        <span>
-          <span className={styles.brandName}>NCAFE</span>
-          <span className={styles.brandSub}>ADMIN OFFICE</span>
-        </span>
+      <Link href="/admin/menus" className={styles.brand} aria-label="manhattaN cafe 관리자 홈">
+        {/* 어두운 사이드바에서는 기본 0.2 사선이 묻혀 조금 진하게 */}
+        <BrandLogo className={styles.brandLogo} slashOpacity={0.3} />
+        <span className={styles.brandSub}>ADMIN OFFICE</span>
       </Link>
 
       <nav aria-label="관리자 메뉴">

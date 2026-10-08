@@ -56,7 +56,7 @@ export default function HorseAvatar({ color, number, emblem, size = 96, running 
           textAnchor="middle"
           fontSize="15"
           fontWeight="700"
-          fill="#0f2a1d"
+          fill="#141416"
           style={{ fontFamily: "var(--font-board), sans-serif" }}
         >
           {number}

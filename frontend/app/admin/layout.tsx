@@ -4,7 +4,7 @@ import AdminNav from "./_components/AdminNav";
 import styles from "./_components/admin.module.css";
 
 export const metadata: Metadata = {
-  title: { default: "관리자", template: "%s · 관리자 · NCafe Racecourse" },
+  title: { default: "관리자", template: "%s · 관리자 · manhattaN cafe" },
   robots: { index: false, follow: false },
 };
 

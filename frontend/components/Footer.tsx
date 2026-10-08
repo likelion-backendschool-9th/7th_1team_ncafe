@@ -14,7 +14,7 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={`container ${styles.footerInner}`}>
         <div className={styles.footerBrand}>
-          <p className={styles.footerName}>NCAFE RACECOURSE</p>
+          <p className={styles.footerName}>manhattaN cafe</p>
           <p className={styles.footerTagline}>경마장을 테마로 한 감성 카페</p>
         </div>
 
@@ -49,7 +49,7 @@ export default function Footer() {
         <p className={styles.disclaimer}>
           본 이벤트는 카페 내부 이벤트 쿠폰으로 진행되는 미니게임이며, 현금·실제 금전 거래와 무관합니다.
         </p>
-        <p className={styles.copyright}>© 2026 NCAFE RACECOURSE. All rights reserved.</p>
+        <p className={styles.copyright}>© 2026 manhattaN cafe. All rights reserved.</p>
       </div>
     </footer>
   );

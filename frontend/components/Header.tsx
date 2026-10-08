@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import BrandLogo from "./BrandLogo";
 import { useUser } from "./UserProvider";
 import styles from "./layout.module.css";
 
@@ -31,12 +32,10 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={`container ${styles.headerInner}`}>
-        <Link href="/" className={styles.logo} aria-label="NCafe Racecourse 홈">
-          <LogoMark />
-          <span className={styles.logoText}>
-            <span className={styles.logoName}>NCAFE</span>
-            <span className={styles.logoSub}>RACECOURSE</span>
-          </span>
+        <Link href="/" className={styles.logo} aria-label="manhattaN cafe 홈">
+          {/* PC 는 한 줄 워드마크, 모바일(햄버거 메뉴 구간)은 3줄 적층형 — CSS 로 하나만 보인다 */}
+          <BrandLogo variant="horizontal" className={styles.logoWide} />
+          <BrandLogo variant="stacked" className={styles.logoStacked} />
         </Link>
 
         <nav id="site-nav" className={`${styles.nav} ${open ? styles.navOpen : ""}`} aria-label="주 메뉴">
@@ -79,22 +78,6 @@ export default function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-/** 말발굽 + 커피잔 로고 — 짙은 초록 원 위에 흰 말발굽 */
-export function LogoMark({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      <circle cx="20" cy="20" r="20" fill="#0f2a1d" />
-      <path d="M12 25.5 C12 13.5, 28 13.5, 28 25.5" fill="none" stroke="#ffffff" strokeWidth="3.6" strokeLinecap="round" />
-      <circle cx="13.4" cy="20.5" r="0.9" fill="#0f2a1d" />
-      <circle cx="26.6" cy="20.5" r="0.9" fill="#0f2a1d" />
-      <circle cx="16" cy="15.8" r="0.9" fill="#0f2a1d" />
-      <circle cx="24" cy="15.8" r="0.9" fill="#0f2a1d" />
-      <path d="M15.5 24.5 h9 v3 a3.5 3.5 0 0 1 -3.5 3.5 h-2 a3.5 3.5 0 0 1 -3.5 -3.5 z" fill="#8cc4a6" />
-      <path d="M24.5 25.5 h1.4 a1.4 1.4 0 0 1 0 2.8 h-1.4" fill="none" stroke="#8cc4a6" strokeWidth="1.2" />
-    </svg>
   );
 }
 
