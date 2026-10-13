@@ -55,21 +55,6 @@ export function mergeHistory(...sources: RaceResult[][]): RaceResult[] {
   return merged.sort((a, b) => b.raceNo - a.raceNo);
 }
 
-/** 경주 출발 시각 표시 — "10/13 18:00"(KST) */
-export function formatRaceDate(iso: string): string {
-  const d = new Date(iso);
-  const parts = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
-}
-
 /** 순위 → 경마 용어(1 · 2 · 3착) */
 export function rankLabel(rank: number): string {
   return rank === 1 ? "WIN!" : rank === 2 ? "PLACE!" : rank === 3 ? "SHOW!" : "NEXT TIME!";

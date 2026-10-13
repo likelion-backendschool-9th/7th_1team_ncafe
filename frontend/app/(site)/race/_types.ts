@@ -27,6 +27,7 @@ export interface RaceResult {
 /** 내가 건 경주 — 쿠폰 1장(RACE_ENTRY_COUPONS)을 이미 낸 상태 */
 export interface RaceBet {
   raceNo: number;
+  startsAt: string; // ISO — 그 경주의 출발 시각. 결과를 받을 때(시드) 쓴다
   horseId: number;
   placedAt: string; // ISO
 }

@@ -23,3 +23,13 @@ export function payoutSummary(): string {
     .map((p) => `${p.rank}위 ${p.coupons}장`)
     .join(" · ");
 }
+
+/** 돌려받은 쿠폰의 구성 — "원금 1 + 추가 3". 돌려받지 못했으면(0장) 빈 문자열 */
+export function payoutBreakdown(payout: number): string {
+  return payout > 0 ? `원금 ${RACE_ENTRY_COUPONS} + 추가 ${payout - RACE_ENTRY_COUPONS}` : "";
+}
+
+/** 정산 쿠폰 내역 문구 — "Race #13 · 1위 (원금 1 + 추가 3)" */
+export function payoutLabel(raceNo: number, rank: number, payout: number): string {
+  return `Race #${raceNo} · ${rank}위 (${payoutBreakdown(payout)})`;
+}

@@ -12,7 +12,8 @@ interface PlannedSectionProps {
 }
 
 /**
- * 아직 기능이 없는 마이페이지 섹션의 자리 — 내 레이스 기록(9단계) · 좌석 예약 내역(11단계)에서 실제 목록으로 바꾼다.
+ * 아직 기능이 없는 마이페이지 섹션의 자리 — 지금은 좌석 예약 내역만(11단계에서 실제 목록으로 바꾼다).
+ * 내 레이스 기록은 9단계에서 MyRaces 로 바꿨다.
  */
 export default function PlannedSection({ id, label, title, description, href, linkLabel }: PlannedSectionProps) {
   return (

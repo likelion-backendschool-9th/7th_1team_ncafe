@@ -135,3 +135,18 @@ export function formatRaceSlot(slot: RaceSlot): string {
 export function formatRaceTimes(): string {
   return RACE_TIMES.join(" · ");
 }
+
+/** 경주 출발 시각 표시 — "10/13 18:00"(KST). /race 경주 기록 · /my 내 레이스 기록 공용 */
+export function formatRaceDate(iso: string): string {
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
+}

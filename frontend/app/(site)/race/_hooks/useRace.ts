@@ -5,12 +5,13 @@ import { useRaceSession } from "@/components/RaceProvider";
 import { useUser } from "@/components/UserProvider";
 import { getRaceSchedule, RACE_GATE_CLOSE_MS } from "@/lib/time";
 import { useNow } from "@/lib/useCountdown";
+import type { RaceEntry } from "@/types/common";
 import { RACE_ENTRY_COUPONS } from "../_lib/payout";
 import { placeBet as requestBet } from "../_lib/raceService";
 import { backfillHistory, latestRaceAt, mergeHistory, nextRaceNo, settledRaceUntil } from "../_lib/records";
 import { advanceTo, createRace, FINISH_HOLD_MS, liveOrder, STEP_MS } from "../_lib/simulation";
 import type { SceneFrame, TrackScene } from "../_lib/trackScene";
-import type { Horse, RaceBet, RaceEventMessage, RaceResult, RaceRun, RaceStage } from "../_types";
+import type { Horse, RaceEventMessage, RaceResult, RaceRun, RaceStage } from "../_types";
 
 export type BetOutcome = "OK" | "NO_COUPON" | "CLOSED" | "BUSY";
 /** 걸 수 없는 이유 — 출전표 위 안내문 · 버튼 비활성 */
@@ -29,13 +30,15 @@ const HUD_INTERVAL_MS = 100;
  * - 기록 = 이 세션에서 본 경주(RaceProvider.results) + 지나간 경주 자동 보충(결정적 시뮬레이션) + Mock 기록. 다음 경주 번호는 그 다음 번호.
  * - 무대(stage): LIVE 창(출발 뒤 10분)이고 그 경주 결과가 아직 없으면 RUNNING, 있으면 FINISHED. 그 밖에는 다음 경주를 기다리는 WAIT
  *   (쿠폰을 걸었거나 SOON 이면 무대를 보여 준다). 출발 RACE_GATE_CLOSE_MS 전부터는 마감이라 걸 수 없고 관람만 한다.
- * - 쿠폰 차감 · 서비스 호출은 여기서 하고, Provider 는 내가 건 말 · 끝난 경주만 들고 있다.
+ * - 쿠폰 차감 · 서비스 호출은 여기서 하고, 내가 건 말은 UserProvider(races) · 끝난 경주는 RaceProvider 가 들고 있다.
+ * - 정산(결과 → 쿠폰 돌려주기)은 루트의 RaceSettlement 가 어느 페이지에서든 한다. 여기는 정산된 내 경주의 결과 모달을 한 번 띄운다.
  */
 export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
   const session = useRaceSession();
-  const { coupons, spendCoupon } = useUser();
+  const { coupons, spendCoupon, races, joinRace } = useUser();
   const now = useNow();
   const placing = useRef(false);
+  const betOf = (no: number): RaceEntry | null => races.find((r) => r.raceNo === no) ?? null;
 
   // 지나간 경주 보충 — "확실히 끝난 마지막 출발 시각"이 바뀔 때만 다시 계산한다(1초 시계가 흘러도 메모 유지)
   const baseLatestAt = useMemo(() => latestRaceAt(baseHistory), [baseHistory]);
@@ -51,33 +54,36 @@ export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
     const liveAt = schedule.live?.at ?? null;
     const liveResult = liveAt === null ? null : (history.find((r) => Date.parse(r.date) === liveAt) ?? null);
     if (liveAt !== null && liveResult) {
-      stage = { kind: "FINISHED", raceNo: liveResult.raceNo, startedAt: liveAt, bet: session.bets[liveResult.raceNo] ?? null, result: liveResult, gateClosed: true };
+      stage = { kind: "FINISHED", raceNo: liveResult.raceNo, startedAt: liveAt, bet: betOf(liveResult.raceNo), result: liveResult, gateClosed: true };
     } else if (liveAt !== null) {
-      stage = { kind: "RUNNING", raceNo, startedAt: liveAt, bet: session.bets[raceNo] ?? null, result: null, gateClosed: true };
+      stage = { kind: "RUNNING", raceNo, startedAt: liveAt, bet: betOf(raceNo), result: null, gateClosed: true };
     } else {
       const startedAt = schedule.next.at;
-      const bet = session.bets[raceNo] ?? null;
+      const bet = betOf(raceNo);
       const gateClosed = now >= startedAt - RACE_GATE_CLOSE_MS;
       if (bet || schedule.phase === "SOON") stage = { kind: "WAIT", raceNo, startedAt, bet, result: null, gateClosed };
     }
   }
 
-  const myBet = session.bets[raceNo] ?? null;
+  const myBet = betOf(raceNo);
   // 걸 수 없는 때: 이미 걸었음 · 마감(출발 10초 전 ~ 경주 끝) · 쿠폰 부족. 시계를 읽기 전(정적 셸)에는 열린 것으로 둔다
   const gateClosed = stage !== null && stage.raceNo === raceNo && (stage.kind === "RUNNING" || stage.gateClosed);
   const lock: BetLock = gateClosed ? "GATE_CLOSED" : coupons < RACE_ENTRY_COUPONS ? "NO_COUPON" : null;
   const canBet = myBet === null && lock === null;
 
-  /** 확인창의 [사용하기] — placeBet → 쿠폰 1장 차감(내역 기록) → 내가 건 말로 기록 */
+  /** 확인창의 [사용하기] — placeBet → 쿠폰 1장 차감(내역 기록) → 내 레이스 기록에 남김 */
   async function confirmBet(horse: Horse): Promise<BetOutcome> {
     if (placing.current) return "BUSY";
-    if (myBet || gateClosed) return "CLOSED";
+    // 걸 수 있는 경주는 언제나 아직 출발하지 않은 다음 경주(schedule.next) — LIVE 동안에도 그다음 경주다
+    if (myBet || gateClosed || !schedule) return "CLOSED";
     if (coupons < RACE_ENTRY_COUPONS) return "NO_COUPON";
     placing.current = true;
     try {
-      const bet = await requestBet(raceNo, horse.id);
-      if (!spendCoupon("RACE_BET", `Race #${raceNo} · ${horse.id}번 ${horse.name.toUpperCase()} 참가`)) return "NO_COUPON";
-      session.placeBet(bet);
+      const bet = await requestBet(raceNo, new Date(schedule.next.at).toISOString(), horse.id);
+      // 게이트 번호는 아직 말 id 와 같다(8.2 "게이트 번호 규칙"이 생기면 그 경주의 번호로)
+      const gate = horse.id;
+      if (!spendCoupon("RACE_BET", `Race #${raceNo} · ${gate}번 ${horse.name.toUpperCase()} 참가`)) return "NO_COUPON";
+      joinRace(bet, gate);
       return "OK";
     } finally {
       placing.current = false;
@@ -86,9 +92,19 @@ export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
 
   /** 가장 최근에 끝난 경주(결과 섹션) */
   const lastResult = history[0] ?? null;
-  const betFor = (result: RaceResult): RaceBet | null => session.bets[result.raceNo] ?? null;
+  const betFor = (result: RaceResult): RaceEntry | null => betOf(result.raceNo);
 
-  return { stage, history, raceNo, coupons, myBet, canBet, lock, confirmBet, lastResult, betFor };
+  // 결과 모달 — 정산된 내 경주 중 아직 띄우지 않은 가장 최근 것. 경주당 한 번, 다른 페이지에 있었다면 /race 로 돌아왔을 때
+  const latestSettled = races.find((r) => r.settledAt !== null) ?? null;
+  const announcement =
+    latestSettled && latestSettled.raceNo > session.resultSeenUpTo
+      ? { entry: latestSettled, result: history.find((r) => r.raceNo === latestSettled.raceNo) ?? null }
+      : null;
+  const dismissAnnouncement = () => {
+    if (latestSettled) session.markResultSeen(latestSettled.raceNo);
+  };
+
+  return { stage, history, raceNo, coupons, myBet, canBet, lock, confirmBet, lastResult, betFor, announcement, dismissAnnouncement };
 }
 
 /** DOM(머리띠 · HUD · 카운트다운)이 쓰는 한 프레임의 스냅샷 — 캔버스가 쓰는 SceneFrame 에 순위 · 경과를 더한 것 */

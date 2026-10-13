@@ -1,5 +1,6 @@
 // 여러 페이지(Header · 메인 · /race · /my · /menu/[id] · /cart)가 함께 쓰는 타입.
 import type { MenuSize } from "@/app/(site)/menu/_types";
+import type { RaceBet } from "@/app/(site)/race/_types";
 
 /**
  * 쿠폰은 한 종류다 — 레이스 참가권이자, 모으면 메뉴로 바꾸는 적립 단위(BLUEPRINT 7 "쿠폰 규칙").
@@ -26,6 +27,17 @@ export interface Order {
   couponReward: number; // 이 주문으로 적립된 쿠폰 수
 }
 
+/**
+ * 내가 참여한 경주 한 건(내 레이스 기록) — 쿠폰을 건 순간 생기고, 경주가 끝나 정산되면 순위 · 돌려받은 쿠폰이 채워진다.
+ * 말은 id 로 가리킨다(게이트 번호는 경주마다 바뀔 수 있어 그 경주의 번호를 따로 남긴다 — BLUEPRINT 8.2 "게이트 번호 규칙").
+ */
+export interface RaceEntry extends RaceBet {
+  gate: number; // 그 경주의 게이트 번호 — "3번 MOCHA" 문구용
+  rank: number | null; // 내 말의 순위, 정산 전 null
+  payout: number; // 돌려받은 쿠폰(원금 포함) — 정산 전 · 4위 이하 0
+  settledAt: string | null; // ISO — 정산 시각, 정산 전 null
+}
+
 /** 마이페이지에 모이는 "내 것" — 페이지를 넘나들어 Context(UserProvider)에 둔다. */
 export interface UserState {
   coupons: number; // 보유 쿠폰
@@ -36,6 +48,9 @@ export interface UserState {
   toggleFavorite: (menuId: number) => void;
   orders: Order[]; // 주문 내역, 최신순
   addOrder: (order: Order) => void;
+  races: RaceEntry[]; // 내가 참여한 경주, 최신순
+  joinRace: (bet: RaceBet, gate: number) => boolean; // 쿠폰을 건 경주 기록 — 그 경주에 이미 걸었으면 false
+  settleRace: (raceNo: number, rank: number, payout: number) => boolean; // 순위 · 돌려받은 쿠폰 기록 — 이미 정산했으면 false(경주당 한 번)
 }
 
 /** 장바구니 한 줄 — 같은 메뉴·같은 사이즈는 한 줄로 합친다. */
