@@ -37,6 +37,12 @@ export function kstMinutes(now: number): number {
   return Math.floor((((shifted % DAY) + DAY) % DAY) / MINUTE);
 }
 
+/** now 의 KST 시각 "HH:MM" */
+export function formatKstTime(now: number): string {
+  const minutes = kstMinutes(now);
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+}
+
 export function addDays(ymd: string, days: number): string {
   return epochToYmd(ymdToEpoch(ymd) + days * DAY);
 }

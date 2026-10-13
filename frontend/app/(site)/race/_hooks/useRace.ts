@@ -6,6 +6,7 @@ import { useUser } from "@/components/UserProvider";
 import { getRaceSchedule, RACE_GATE_CLOSE_MS } from "@/lib/time";
 import { useNow } from "@/lib/useCountdown";
 import type { RaceEntry } from "@/types/common";
+import { raceHorsesAt } from "../_lib/horseStore";
 import { RACE_ENTRY_COUPONS } from "../_lib/payout";
 import { placeBet as requestBet } from "../_lib/raceService";
 import { backfillHistory, gatesFor, latestRaceAt, mergeHistory, nextRaceNo, settledRaceUntil } from "../_lib/records";
@@ -26,6 +27,22 @@ const TOAST_STALE_MS = 3000;
 const HUD_INTERVAL_MS = 100;
 
 /**
+ * 경주 기록 = 이 세션에서 본 경주(RaceProvider.results) + 지나간 경주 자동 보충(결정적 시뮬레이션) + Mock 기록, 최신순.
+ * /race(useRace)와 관리자 경주 관리(/admin/race)가 함께 쓴다. 시계(now)도 같이 돌려준다 — 마운트 전에는 null.
+ */
+export function useRaceHistory(baseHistory: RaceResult[]) {
+  const session = useRaceSession();
+  const now = useNow();
+  // 지나간 경주 보충 — "확실히 끝난 마지막 출발 시각"이 바뀔 때만 다시 계산한다(1초 시계가 흘러도 메모 유지).
+  // 출전마는 그 경주 당시의 것(raceHorsesAt) — 관리자가 성향을 바꿔도 이미 끝난 경주의 결과는 그대로다
+  const baseLatestAt = useMemo(() => latestRaceAt(baseHistory), [baseHistory]);
+  const settledUntil = now === null ? baseLatestAt : settledRaceUntil(baseLatestAt, now);
+  const backfilled = useMemo(() => backfillHistory(baseHistory, raceHorsesAt, settledUntil), [baseHistory, settledUntil]);
+  const history = useMemo(() => mergeHistory(session.results, backfilled, baseHistory), [session.results, backfilled, baseHistory]);
+  return { session, history, now };
+}
+
+/**
  * /race 진행 — 단계는 사용자의 버튼이 아니라 **경주 시각과 시계**로 정해진다(사용자 결정 2026-10-13: 모두 동시에 출발 · 종료).
  * - 기록 = 이 세션에서 본 경주(RaceProvider.results) + 지나간 경주 자동 보충(결정적 시뮬레이션) + Mock 기록. 다음 경주 번호는 그 다음 번호.
  * - 무대(stage): LIVE 창(출발 뒤 10분)이고 그 경주 결과가 아직 없으면 RUNNING, 있으면 FINISHED. 그 밖에는 다음 경주를 기다리는 WAIT
@@ -34,17 +51,10 @@ const HUD_INTERVAL_MS = 100;
  * - 정산(결과 → 쿠폰 돌려주기)은 루트의 RaceSettlement 가 어느 페이지에서든 한다. 여기는 정산된 내 경주의 결과 모달을 한 번 띄운다.
  */
 export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
-  const session = useRaceSession();
   const { coupons, spendCoupon, races, joinRace } = useUser();
-  const now = useNow();
+  const { session, history, now } = useRaceHistory(baseHistory);
   const placing = useRef(false);
   const betOf = (no: number): RaceEntry | null => races.find((r) => r.raceNo === no) ?? null;
-
-  // 지나간 경주 보충 — "확실히 끝난 마지막 출발 시각"이 바뀔 때만 다시 계산한다(1초 시계가 흘러도 메모 유지)
-  const baseLatestAt = useMemo(() => latestRaceAt(baseHistory), [baseHistory]);
-  const settledUntil = now === null ? baseLatestAt : settledRaceUntil(baseLatestAt, now);
-  const backfilled = useMemo(() => backfillHistory(baseHistory, horses, settledUntil), [baseHistory, horses, settledUntil]);
-  const history = useMemo(() => mergeHistory(session.results, backfilled, baseHistory), [session.results, backfilled, baseHistory]);
 
   const raceNo = nextRaceNo(history);
   const schedule = now === null ? null : getRaceSchedule(now);
@@ -239,7 +249,8 @@ export function useRaceRun(
         return;
       }
       let run = runRef.current;
-      if (!run || run.raceNo !== raceNo || run.startedAt !== startedAt) run = createRace(horses, raceNo, startedAt);
+      // 시뮬레이션에는 그 경주 당시의 출전마(말 id 순 · 성향)를 넘긴다 — 정산(getRaceResult) · 기록 보충과 같은 순위가 나오게
+      if (!run || run.raceNo !== raceNo || run.startedAt !== startedAt) run = createRace(raceHorsesAt(startedAt), raceNo, startedAt);
       const { run: next, events } = advanceTo(run, elapsed, nameOf);
       runRef.current = next;
 

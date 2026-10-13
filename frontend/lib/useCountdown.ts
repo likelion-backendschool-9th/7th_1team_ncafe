@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { kstDate } from "./kst";
 import { COUNTDOWN_PLACEHOLDER, formatCountdown, getRaceSchedule, type RacePhase, type RaceSchedule } from "./time";
 
 // 1초 시계 — 메인 히어로 · /race · Header 가 하나를 함께 구독한다(타이머도 하나).
@@ -41,6 +42,7 @@ function subscribe(listener: () => void) {
 
 const getNow = () => now;
 const getPhase = () => (now === null ? null : getRaceSchedule(now).phase);
+const getToday = () => (now === null ? null : kstDate(now));
 const getServerNow = () => null;
 
 /** 지금(epoch ms) — 마운트 전에는 null */
@@ -59,4 +61,9 @@ export function useRaceCountdown(): { schedule: RaceSchedule | null; countdown: 
 /** 단계만(UPCOMING · SOON · LIVE) — 값이 바뀔 때만 다시 그린다(Header 처럼 숫자가 필요 없는 곳) */
 export function useRacePhase(): RacePhase | null {
   return useSyncExternalStore(subscribe, getPhase, getServerNow);
+}
+
+/** 오늘(KST "YYYY-MM-DD")만 — 날짜가 바뀔 때만 다시 그린다(이벤트 진행 상태처럼 날짜 단위인 곳). 마운트 전에는 null */
+export function useKstToday(): string | null {
+  return useSyncExternalStore(subscribe, getToday, getServerNow);
 }

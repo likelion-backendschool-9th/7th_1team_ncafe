@@ -651,8 +651,17 @@
     flex: 1;
   }
 
+  /* 메뉴 4개(메뉴 · 카테고리 · 경주 · 이벤트) — 한 줄에 다 안 들어가면 다음 줄로, 이름은 한 줄로 */
   .navList {
     flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .navItem {
+    min-height: 40px;
+    gap: 8px;
+    padding: 6px 10px;
+    white-space: nowrap;
   }
 
   .navEn {
@@ -669,6 +678,10 @@
 }
 
 @media (max-width: 767px) {
+  .sidebar nav {
+    flex-basis: 100%;
+  }
+
   .toolField,
   .toolField:first-child {
     min-width: 0;

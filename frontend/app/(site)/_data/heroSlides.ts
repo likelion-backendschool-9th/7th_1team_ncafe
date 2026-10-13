@@ -1,4 +1,5 @@
 import nextRacePhoto from "@/public/images/hero/next-race.jpg";
+import { BASE_RACE_TIMES } from "@/lib/raceSchedule";
 import { formatRaceTimes } from "@/lib/time";
 import type { HeroSlide } from "../_types";
 
@@ -8,11 +9,11 @@ import type { HeroSlide } from "../_types";
 export const HERO_SLIDES: HeroSlide[] = [
   {
     id: "next-race",
-    // tab.title · headline 은 시계를 읽기 전(정적 셸)에만 보인다
+    // tab.title · headline 은 시계를 읽기 전(정적 셸)에만 보인다 — 그래서 관리자 변경 전의 기본 시간표로 충분하다
     tab: { label: "DAILY RACE", title: "NEXT RACE" },
     eyebrow: "DAILY CAFE RACE",
     title: "NEXT RACE",
-    headline: `매일 ${formatRaceTimes()} 출발`,
+    headline: `매일 ${formatRaceTimes(BASE_RACE_TIMES)} 출발`,
     description: "쿠폰 한 장으로 7마리 말 중 하나를 응원하고, 3위 안에 들면 추가 쿠폰을 받아 가세요.",
     raceClock: true,
     cta: { label: "RACE 페이지 보기", href: "/race" },

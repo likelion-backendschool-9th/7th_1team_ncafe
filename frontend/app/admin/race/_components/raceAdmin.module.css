@@ -1,0 +1,511 @@
+/* /admin/race — 경주 관리. 공용 표 · 폼 · 스위치는 admin.module.css, 여기는 이 화면에만 있는 블록 */
+
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.subnav a {
+  padding: 6px 14px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+.subnav a:hover {
+  border-color: var(--brand-700);
+  color: var(--text-strong);
+}
+
+.syncNote {
+  margin-bottom: 32px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 48px;
+  scroll-margin-top: 16px;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--brand-900);
+}
+
+.sectionDesc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.subTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+/* ===== 현황 카드 ===== */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 132px;
+  padding: 16px 18px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.cardLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.cardValue {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.cardSub {
+  font-size: 0.85rem;
+  color: var(--text-body);
+}
+
+.cardMuted {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.cardPlaceholder {
+  background: var(--cream-100);
+}
+
+/* 경주 상태 알약 — 색 + 글자 */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.state_FINISHED {
+  background: var(--brand-100);
+  color: var(--text-muted);
+}
+
+.state_RUNNING {
+  background: var(--red-600);
+  color: #fff;
+}
+
+.state_CLOSED {
+  background: var(--brand-900);
+  color: #fff;
+}
+
+.state_SOON {
+  border-color: var(--brand-900);
+  color: var(--brand-900);
+}
+
+.state_UPCOMING {
+  border-color: var(--brown-300);
+  color: var(--text-muted);
+}
+
+.rowNext td {
+  background: var(--gold-100);
+}
+
+/* 게이트 번호 점(대표색) + 이름 */
+.horseTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gateDot {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.podium {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+/* ===== 시간표 편집 ===== */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  background: var(--cream-100);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 14px;
+  border: 1.5px solid var(--brand-700);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.chipNew {
+  border-style: dashed;
+  background: var(--gold-100);
+}
+
+.chipTag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--brown-500);
+}
+
+.chipRemove {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.chipRemove:hover {
+  background: var(--red-100);
+  color: var(--red-600);
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.timeInput {
+  width: 150px;
+}
+
+.diff {
+  font-size: 0.85rem;
+  color: var(--text-body);
+}
+
+.diff strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.editorFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--cream-300);
+}
+
+.editorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ===== 출전마 ===== */
+.horseThumb {
+  width: 72px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.swatchDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+
+.hex {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.traitTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-100);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.blurb {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 300px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.blurb strong {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.ranks {
+  display: inline-flex;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 24px;
+  padding-inline: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--cream-200);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.rankWin {
+  background: var(--gold-500);
+  color: #fff;
+}
+
+/* 출전마 폼 */
+.imageOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.imageOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border: 1.5px solid var(--cream-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.imageOption:has(input:checked) {
+  border-color: var(--brand-700);
+  background: var(--brand-100);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.imageOption:has(input:focus-visible) {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 2px;
+}
+
+.imageOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imageOption img {
+  width: 72px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.colorPicker {
+  flex: none;
+  width: 48px;
+  height: 42px;
+  padding: 2px;
+  border: 1.5px solid var(--brown-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.traitOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.traitOption {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: pointer;
+}
+
+.traitOption:has(input:checked) {
+  border-color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.traitOption input {
+  margin-top: 3px;
+  accent-color: var(--brand-700);
+}
+
+.traitText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.traitText strong {
+  font-size: 0.88rem;
+  color: var(--text-strong);
+}
+
+.formNote {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-100);
+  font-size: 0.82rem;
+  color: var(--text-body);
+}
+
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ===== 기록 ===== */
+.rest {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.moreRow {
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    min-height: 0;
+  }
+
+  .blurb {
+    max-width: none;
+    text-align: right;
+  }
+
+  .podium {
+    justify-content: flex-end;
+  }
+
+  .editorActions,
+  .editorActions > * {
+    flex: 1 1 auto;
+  }
+}

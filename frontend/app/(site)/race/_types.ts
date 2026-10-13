@@ -17,6 +17,9 @@ export interface Horse {
 }
 // 최근 성적은 말 데이터에 두지 않고 경주 기록(RaceResult)에서 계산한다 — _lib/records.ts
 
+/** 관리자 출전마 수정 폼 값(/admin/race) — 말 id 는 바꾸지 않는다(7마리 고정) */
+export type HorseInput = Omit<Horse, "id">;
+
 /**
  * 한 경주의 게이트 표 — 말 id → 그 경주의 게이트 번호(1~7). BLUEPRINT 8.2 "게이트 번호 규칙"(팀 협의 2026-10-13):
  * 지난 경주에 들어온 순서대로 1번부터. 화면 표시 전용이다 — 시뮬레이션에 넘기는 말 순서(말 id 순)와는 상관없다.

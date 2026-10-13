@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatRaceTimes } from "@/lib/time";
+import RaceTimesText from "./RaceTimesText";
 import styles from "./layout.module.css";
 
 const FOOTER_NAV = [
@@ -32,7 +32,7 @@ export default function Footer() {
           <div>
             <dt>DAILY RACE</dt>
             <dd>
-              {formatRaceTimes()} — <Link href="/race">출전표 보기</Link>
+              <RaceTimesText /> — <Link href="/race">출전표 보기</Link>
             </dd>
           </div>
         </dl>

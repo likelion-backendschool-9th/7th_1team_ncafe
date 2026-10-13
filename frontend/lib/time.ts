@@ -1,25 +1,11 @@
-// 경주 일정 — 메인 히어로 · /race · Header · Footer · /event 가 함께 쓰는 순수 함수.
+// 경주 일정 — 메인 히어로 · /race · Header · Footer · /event · /admin/race 가 함께 쓰는 순수 함수.
 // 모든 계산은 "지금"(epoch ms)을 인자로 받는다. 현재 시각을 읽는 일은 lib/useCountdown.ts 가 브라우저에서만 한다
 // (Cache Components 는 클라이언트 컴포넌트도 빌드 때 미리 렌더하므로, 렌더 중에 시각을 읽으면 빌드 오류가 난다).
 // 카페가 서울에 있으므로 경주 시각은 브라우저 시간대와 상관없이 한국 시간(KST, UTC+9 · 서머타임 없음) 기준이다.
-// 백엔드 연결 시 getRaceSchedule 의 입력(RACE_TIMES)을 GET /api/races/next 결과로 바꾼다.
-
-const DEFAULT_RACE_TIMES = ["12:30", "18:00"];
-
-/** "12:30,18:00" 같은 문자열 → 검증 · 정렬된 시각 목록. 형식이 하나라도 틀리면 null(기본값 사용) */
-function parseRaceTimes(value: string | undefined): string[] | null {
-  if (!value) return null;
-  const times = value.split(",").map((t) => t.trim()).filter(Boolean);
-  if (times.length === 0 || !times.every((t) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(t))) return null;
-  return [...new Set(times.map((t) => t.padStart(5, "0")))].sort();
-}
-
-/**
- * 매일 열리는 경주 시각(KST, "HH:MM", 이른 순).
- * 테스트 · 발표 때는 빌드 환경변수 NEXT_PUBLIC_RACE_TIMES="12:30,18:00,15:20" 로 바꾼다(메인 · Header · Footer · /race 모두 따라간다).
- * 모든 사용자가 같은 시각에 같은 경주를 보므로(사용자 결정 2026-10-13) 실행 중에 사용자마다 바꾸는 기능은 두지 않는다.
- */
-export const RACE_TIMES: readonly string[] = parseRaceTimes(process.env.NEXT_PUBLIC_RACE_TIMES) ?? DEFAULT_RACE_TIMES;
+// 경주 시각은 lib/raceSchedule.ts 의 시간표(기본값 NEXT_PUBLIC_RACE_TIMES + 관리자 변경 이력)에서 온다 — 경주마다 "그 경주 시각에
+// 유효했던 시간표"로 열리는지 판단하므로, 시간표를 바꿔도 이미 출발한 경주는 그대로다.
+// 백엔드 연결 시 시간표를 GET /api/races/schedule 결과로 바꾼다.
+import { candidateRaceTimes, raceTimesAt } from "./raceSchedule";
 
 /** 시작 전 이만큼은 SOON(곧 출발) */
 export const RACE_SOON_MS = 10 * 60 * 1000;
@@ -49,7 +35,7 @@ export interface RaceSchedule {
 }
 
 /** now 가 속한 KST 날짜의 00:00(epoch ms) */
-function kstMidnight(now: number): number {
+export function kstMidnight(now: number): number {
   const shifted = now + KST_OFFSET;
   return shifted - (((shifted % DAY) + DAY) % DAY) - KST_OFFSET;
 }
@@ -59,9 +45,16 @@ function minutesOf(time: string): number {
   return h * 60 + m;
 }
 
+/** 그날(KST 0시 = dayStart)에 실제로 열리는 경주 — 후보 시각 중 "그 시각에 유효한 시간표"에 든 것만, 이른 순 */
+function startsOn(dayStart: number): { at: number; time: string }[] {
+  return candidateRaceTimes()
+    .map((time) => ({ at: dayStart + minutesOf(time) * MINUTE, time }))
+    .filter((s) => raceTimesAt(s.at).includes(s.time));
+}
+
 /**
  * 오늘 · 내일의 경주 시각을 이른 순으로.
- * 경주 시각이 23:50 이후가 아니라면 LIVE 구간이 자정을 넘지 않으므로 어제 경주는 볼 필요가 없다.
+ * 경주 시각은 23:50 전까지만 둘 수 있어(관리자 검증) LIVE 구간이 자정을 넘지 않으므로 어제 경주는 볼 필요가 없다.
  */
 function slotsAround(now: number): RaceSlot[] {
   const today = kstMidnight(now);
@@ -69,9 +62,7 @@ function slotsAround(now: number): RaceSlot[] {
     { start: today, day: "TODAY" as const },
     { start: today + DAY, day: "TOMORROW" as const },
   ];
-  return days.flatMap(({ start, day }) =>
-    RACE_TIMES.map((time) => ({ at: start + minutesOf(time) * MINUTE, time, day })),
-  );
+  return days.flatMap(({ start, day }) => startsOn(start).map((s) => ({ ...s, day })));
 }
 
 /** 아직 시작하지 않은 가장 가까운 경주 — 오늘 경주가 다 지났으면 내일 첫 경주 */
@@ -91,12 +82,20 @@ export function getRaceStartsBetween(afterMs: number, untilMs: number): number[]
   if (!(untilMs > afterMs)) return [];
   const starts: number[] = [];
   for (let day = kstMidnight(afterMs); day <= untilMs; day += DAY) {
-    for (const time of RACE_TIMES) {
-      const at = day + minutesOf(time) * MINUTE;
+    for (const { at } of startsOn(day)) {
       if (at > afterMs && at <= untilMs) starts.push(at);
     }
   }
   return starts;
+}
+
+/**
+ * 관리자 변경(시간표 · 출전마 성향)이 적용되기 시작하는 시각 — 지금. 다만 다음 경주가 이미 마감(출발 RACE_GATE_CLOSE_MS 전)이라
+ * 출발이 확정됐으면 그 경주가 출발한 직후부터(카운트다운 중인 경주가 사라지거나 다른 성향으로 다시 계산되지 않게).
+ */
+export function changeEffectiveFrom(now: number): number {
+  const next = getNextRaceTime(now);
+  return now >= next.at - RACE_GATE_CLOSE_MS ? next.at + 1 : now;
 }
 
 export function getRaceSchedule(now: number): RaceSchedule {
@@ -131,9 +130,12 @@ export function formatRaceSlot(slot: RaceSlot): string {
   return `${slot.day === "TODAY" ? "오늘" : "내일"} ${slot.time}`;
 }
 
-/** "12:30 · 18:00" — Footer · 이벤트 안내용 */
-export function formatRaceTimes(): string {
-  return RACE_TIMES.join(" · ");
+/**
+ * "12:30 · 18:00" — Footer · 이벤트 안내용. 시간표는 부르는 쪽이 넘긴다: 화면에서는 useRaceTimes()(하이드레이션 동안 기본값),
+ * 정적 문구에서는 BASE_RACE_TIMES. 렌더 중에 저장소를 직접 읽으면 정적 셸과 첫 렌더가 달라진다.
+ */
+export function formatRaceTimes(times: readonly string[]): string {
+  return times.join(" · ");
 }
 
 /** 경주 출발 시각 표시 — "10/13 18:00"(KST). /race 경주 기록 · /my 내 레이스 기록 공용 */

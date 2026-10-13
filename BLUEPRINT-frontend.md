@@ -20,8 +20,8 @@
 | 애니메이션 | 레이스 경기 화면: **PixiJS v8(WebGL) 캔버스** + `requestAnimationFrame`(사용자 결정 2026-10-13). 나머지: CSS transition/keyframes |
 | 백엔드 | 연결하지 않음 (추후 Spring Boot) |
 | 핵심 페이지 | **`/race`**, **`/seat`** — 가장 높은 완성도 |
-| 관리자 페이지 | `/admin/menus`(메뉴 관리), `/admin/categories`(카테고리 관리) — 인증 없이 Mock 으로 동작 |
-| 구현 순서 | 기능 단위 15단계 TODO (12절) |
+| 관리자 페이지 | `/admin/menus`(메뉴 관리), `/admin/categories`(카테고리 관리), `/admin/race`(경주 관리), `/admin/event`(이벤트 관리 · `/admin/event/[id]` 상세) — 인증 없이 Mock 으로 동작. 경주 · 이벤트 변경은 localStorage 에 남아 같은 브라우저의 손님 화면에 반영(사용자 결정 2026-10-14) |
+| 구현 순서 | 기능 단위 15단계 TODO + 16단계(경주 · 이벤트 관리) (12절) |
 
 **컨셉 한 줄:** "빈티지 경마장을 테마로 한 감성 카페". 카지노·도박 사이트처럼 보이면 실패다.
 
@@ -68,14 +68,16 @@ frontend/
 │  │  │  │  ├─ RaceHistory.tsx    # RECENT RACES — 출전표 아래 최근 5경기 1~3위, 내가 건 경주는 MY PICK
 │  │  │  │  └─ race.module.css    # /race 스타일(전광판부터 7~9단계에서 이어 붙임)
 │  │  │  ├─ _hooks/
-│  │  │  │  └─ useRace.ts         # useRace(기록 합치기 · 경주 번호 · 쿠폰 걸기 · 결과 모달 알림) + useRaceRun(rAF 루프 — 캔버스 매 프레임 · DOM 10Hz · 토스트 큐)
+│  │  │  │  ├─ useRace.ts         # useRaceHistory(기록 합치기 — /admin/race 도 씀) + useRace(경주 번호 · 쿠폰 걸기 · 결과 모달 알림) + useRaceRun(rAF 루프 — 캔버스 매 프레임 · DOM 10Hz · 토스트 큐)
+│  │  │  │  └─ useRaceHorses.ts   # (16단계) 출전마 구독 — page 가 받은 출전마에 관리자 변경(horseStore)을 겹친다(RaceBoard · /my MyRaces · /admin/race)
 │  │  │  ├─ _lib/
 │  │  │  │  ├─ simulation.ts      # 순수 함수: createRace · step · advanceTo(속도 · 성향 · 이벤트 · 순위 · 18초 안전장치) · seededShuffle — UI 의존 없음
 │  │  │  │  ├─ messages.ts        # 이벤트 메시지 템플릿
 │  │  │  │  ├─ trackScene.ts      # PixiJS 장면(잔디 · 울타리 · 말 · 결승선 · 먼지) + 카메라(cameraFor) — React 와 무관
 │  │  │  │  ├─ payout.ts          # RACE_ENTRY_COUPONS · RACE_PAYOUT · payoutFor · payoutTable · payoutSummary · payoutBreakdown · payoutLabel
-│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충) · mergeHistory · gatesFor · gatesAfter · byGate(게이트 번호) · rankLabel · TRAIT_LABEL · textOn
-│  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet, getRaceResult)
+│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충 — 그 경주 당시 출전마) · raceStartAt(경주 번호 → 출발 시각) · mergeHistory · gatesFor · gatesAfter · byGate(게이트 번호) · rankLabel · TRAIT_LABEL · textOn
+│  │  │  │  ├─ horseStore.ts      # (16단계) 출전마 저장소 — 기본값 + 관리자 변경 버전(localStorage) · latestHorses(표시) · raceHorsesAt(시뮬레이션) · saveHorses
+│  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet, getRaceResult(raceNo)) + 관리자(updateHorse, getRaceTimes, updateRaceTimes)
 │  │  │  ├─ _data/
 │  │  │  │  ├─ horses.ts          # 7마리(이미지 · 조끼 색)
 │  │  │  │  └─ raceHistory.ts     # Race #8~#12, 경주마다 7마리 전체 순위
@@ -154,16 +156,23 @@ frontend/
 │  │  │  └─ _lib/
 │  │  │     └─ orderService.ts    # placeOrder(lines) → Order(장바구니 사본 · 합계 · 적립 쿠폰) — 목업 주문
 │  │  │
-│  │  ├─ event/                   # /event  진행 중인 이벤트 (내 쿠폰은 /my)
-│  │  │  ├─ page.tsx              # "use cache" — 모두에게 같은 내용
+│  │  ├─ event/                   # /event  진행 중 · 노출 허가 이벤트 (내 쿠폰은 /my)
+│  │  │  ├─ page.tsx              # "use cache" 제목 + EventList(클라이언트 — 오늘 날짜 · 관리자 변경을 따른다)
+│  │  │  ├─ [id]/page.tsx         # (16단계) /event/[id] 상세 — generateStaticParams(기본 이벤트) + Suspense 안에서 params → EventDetail
 │  │  │  ├─ _components/
-│  │  │  │  ├─ EventCard.tsx      # 가로 경마 티켓(STUB: 일련번호 · 기간 · 시각 | 이름 · 설명 · 버튼)
+│  │  │  │  ├─ EventList.tsx      # (16단계) 목록 — 진행 중 → 예정 → 종료, 시계 전에는 빈 자리
+│  │  │  │  ├─ EventCard.tsx      # 가로 경마 티켓(STUB: 일련번호 · 운영 안내 · 시각 · 상태 | 이름(상세 링크) · 기간 · 설명 · [자세히 보기] · 버튼) + EventStatusChip
+│  │  │  │  ├─ EventDetail.tsx    # (16단계) 상세 — 큰 티켓 머리 + 참여 방법 · 유의 사항 + 버튼, 볼 수 없으면 CLOSED 안내
 │  │  │  │  └─ event.module.css
+│  │  │  ├─ _hooks/
+│  │  │  │  └─ useEvents.ts       # (16단계) 이벤트 저장소 구독
 │  │  │  ├─ _lib/
-│  │  │  │  └─ eventService.ts    # getEvents
+│  │  │  │  ├─ eventStatus.ts     # (16단계) 순수 함수: autoStatus · eventStatus(수동 우선) · isShownOnSite · sortForSite · formatEventPeriod · statusHint(D-day) · statusReason · visibilityReason · eventTimeText · parseEventId
+│  │  │  │  ├─ eventStore.ts      # (16단계) 이벤트 저장소 — 기본값 또는 관리자가 바꾼 목록(localStorage)
+│  │  │  │  └─ eventService.ts    # getEvents · getEvent + 관리자(createEvent · updateEvent · deleteEvent · updateEventVisibility · updateEventStatus · resetEvents)
 │  │  │  ├─ _data/
 │  │  │  │  └─ events.ts
-│  │  │  └─ _types.ts             # CafeEvent
+│  │  │  └─ _types.ts             # CafeEvent, CafeEventInput, EventStatus, EventTimeMode
 │  │  │
 │  │  └─ my/                      # /my  마이페이지 (로그인 없이 Mock 사용자 1명)
 │  │     ├─ page.tsx              # "use cache" — 프로필 + 찜 후보 메뉴(메뉴 Service) + 출전마(레이스 Service) 조립, 섹션 세로 나열
@@ -190,7 +199,7 @@ frontend/
 │     ├─ layout.tsx               # 관리자 전용 레이아웃(사이드 내비 + "MOCK ADMIN" 안내 띠)
 │     ├─ page.tsx                 # /admin → /admin/menus 로 이동
 │     ├─ _components/
-│     │  ├─ AdminNav.tsx          # 메뉴 관리 · 카테고리 관리
+│     │  ├─ AdminNav.tsx          # 메뉴 관리 · 카테고리 관리 · 경주 관리 · 이벤트 관리
 │     │  ├─ ConfirmDialog.tsx     # 삭제 확인 등 관리자 공용 확인창(Modal 기반)
 │     │  ├─ AdminToast.tsx        # 저장·삭제 결과 알림 + useToast()
 │     │  └─ admin.module.css      # 관리자 화면 공용 스타일(표·폼·모바일 카드 목록)
@@ -203,15 +212,46 @@ frontend/
 │     │  │  └─ useMenuAdmin.ts    # 목록 State + 등록/수정/삭제/상태 변경
 │     │  └─ _lib/
 │     │     └─ validateMenu.ts    # 폼 검증 순수 함수
-│     └─ categories/              # /admin/categories  카테고리 관리
-│        ├─ page.tsx
+│     ├─ categories/              # /admin/categories  카테고리 관리
+│     │  ├─ page.tsx
+│     │  ├─ _components/
+│     │  │  ├─ CategoryList.tsx   # 카테고리 목록(순서 이동·노출 토글·메뉴 수) + 폼·확인창 조립
+│     │  │  └─ CategoryForm.tsx   # 추가/이름 수정 폼
+│     │  ├─ _hooks/
+│     │  │  └─ useCategoryAdmin.ts
+│     │  └─ _lib/
+│     │     └─ validateCategory.ts
+│     ├─ race/                    # /admin/race  경주 관리(16단계, 8.11)
+│     │  ├─ page.tsx              # getHorses · getRaceHistory → RaceAdmin
+│     │  ├─ _components/
+│     │  │  ├─ RaceAdmin.tsx      # 조립(client) — 현황 · 시간표 / 출전마 / 경주 기록 구역 + 바로가기 + 토스트
+│     │  │  ├─ RaceStatusPanel.tsx# 카드 4개(다음 경주 · 지금 · 최근 결과 · 오늘) + 오늘 · 내일 경주표
+│     │  │  ├─ ScheduleEditor.tsx # 시각 칩(× 빼기) + 시각 추가 → [시간표 저장](바꾼 내용이 있을 때만)
+│     │  │  ├─ HorseAdminTable.tsx# 출전마 7마리 표 + 수정 모달
+│     │  │  ├─ HorseForm.tsx      # 이름 · 색 · 이미지(7장 중) · 주행 성향(설명 포함) · 성격 · 설명 + 기본값으로 채우기
+│     │  │  ├─ RaceHistoryTable.tsx # 지난 경주 1~7위(그 경주 당시 게이트 번호) · 검색 · 10개씩 더 보기
+│     │  │  ├─ HorseTag.tsx       # 게이트 번호 점(조끼 색) + 이름
+│     │  │  └─ raceAdmin.module.css
+│     │  ├─ _hooks/
+│     │  │  ├─ useScheduleEditor.ts # 고친 시간표(draft) · 추가 · 빼기 · 검증 · 저장
+│     │  │  └─ useHorseAdmin.ts   # 수정 폼 · 검증 · 저장
+│     │  └─ _lib/
+│     │     ├─ validateSchedule.ts # 시간표 검증(1~6개 · 20분 간격 · 23:50 전 · 경계 간격)
+│     │     ├─ validateHorse.ts
+│     │     └─ timetable.ts       # 오늘 · 내일 경주표(번호 · 상태 · 결과)
+│     └─ event/                   # /admin/event  이벤트 관리(16단계, 8.12)
+│        ├─ page.tsx              # EventAdminList
+│        ├─ [id]/page.tsx         # /admin/event/[id] — generateStaticParams + Suspense → EventAdminDetail
 │        ├─ _components/
-│        │  ├─ CategoryList.tsx   # 카테고리 목록(순서 이동·노출 토글·메뉴 수) + 폼·확인창 조립
-│        │  └─ CategoryForm.tsx   # 추가/이름 수정 폼
+│        │  ├─ EventAdminList.tsx # 검색 · 상태 · 손님 화면 필터 + 표(노출 허가 스위치) + 폼 · 삭제 · 기본값 되돌리기
+│        │  ├─ EventAdminDetail.tsx # 진행 상태(자동/직접 지정) · 손님 화면 노출 패널 + 정보 표 + 수정 · 삭제
+│        │  ├─ EventForm.tsx      # 등록/수정 폼(모달)
+│        │  ├─ EventBadges.tsx    # 상태 알약 + 자동/수동 + D-day · 손님 화면 보임/숨김
+│        │  └─ eventAdmin.module.css
 │        ├─ _hooks/
-│        │  └─ useCategoryAdmin.ts
+│        │  └─ useEventEditor.ts  # 폼 · 저장 · 삭제 · 상태 지정 · 노출 허가 + 토스트(목록 · 상세 공용)
 │        └─ _lib/
-│           └─ validateCategory.ts
+│           └─ validateEvent.ts
 │
 ├─ components/                    # 2개 이상 페이지가 쓰는 공용 컴포넌트
 │  ├─ BrandLogo.tsx               # manhattaN cafe 워드마크(인라인 SVG, currentColor) — 한 줄형 / 적층형, slashOpacity
@@ -227,14 +267,18 @@ frontend/
 │  ├─ RaceProvider.tsx            # 레이스 진행 Context(이 세션에서 확정된 경주 결과 · 결과 모달을 띄운 경주 번호 · 진행 중 시뮬레이션 ref) + useRaceSession() 훅
 │  ├─ RaceSettlement.tsx          # 화면 없는 정산기 — 내가 건 경주의 결과를 받아(getRaceResult, 동적 import) 어느 페이지에서든 쿠폰을 돌려준다
 │  ├─ QuantityStepper.tsx         # 수량 − / + (/menu/[id] 담기 · /cart 공용)
+│  ├─ RaceTimesText.tsx           # (16단계) 지금 공지된 경주 시각 "12:30 · 18:00" — Footer 안의 클라이언트 조각(useRaceTimes)
 │  ├─ layout.module.css           # Header · Footer · 사이트 골격 · 안내 상자(404 · SCRATCHED) — ComingSoon 은 10단계에서 마지막 페이지(/seat)를 채우며 지웠다
 │  └─ ui.module.css               # Modal · TicketBadge · Scoreboard · HorseAvatar · QuantityStepper
 │
 ├─ lib/                           # 2개 이상 페이지가 쓰는 공용 로직
 │  ├─ cart.ts                     # 장바구니 순수 함수(담기 합치기 · 수량 1~20 · 총 수량 · 합계)
-│  ├─ time.ts                     # 순수 함수: RACE_TIMES(KST) · 다음/진행 중 경주 · SOON/LIVE 단계 · 카운트다운 포맷 · formatRaceDate(/race · /my 공용)
-│  ├─ kst.ts                      # 순수 함수: KST 날짜("YYYY-MM-DD") · 분 · 요일 · formatYmdKo("2026.10.17(토)") — /seat · /my 공용
-│  └─ useCountdown.ts             # 공용 1초 시계(useSyncExternalStore) — useNow · useRaceCountdown · useRacePhase
+│  ├─ time.ts                     # 순수 함수: 다음/진행 중 경주(시간표 — raceSchedule) · SOON/LIVE 단계 · 카운트다운 포맷 · formatRaceDate · changeEffectiveFrom(관리자 변경 적용 시각)
+│  ├─ raceSchedule.ts             # (16단계) 경주 시간표 — BASE_RACE_TIMES(NEXT_PUBLIC_RACE_TIMES) + 관리자 변경 버전(localStorage) · raceTimesAt · announcedRaceTimes
+│  ├─ localStore.ts               # (16단계) localStorage JSON 외부 저장소(createLocalStore) — 관리자 Mock 의 "서버" 자리, useSyncExternalStore 로 구독
+│  ├─ useRaceTimes.ts             # (16단계) 시간표 구독 훅(하이드레이션 동안 기본값)
+│  ├─ kst.ts                      # 순수 함수: KST 날짜("YYYY-MM-DD") · 분 · 요일 · formatYmdKo("2026.10.17(토)") · formatKstTime — /seat · /my · /event · 관리자 공용
+│  └─ useCountdown.ts             # 공용 1초 시계(useSyncExternalStore) — useNow · useRaceCountdown · useRacePhase · useKstToday
 │
 ├─ types/
 │  └─ common.ts                   # CouponReason, CouponLog, Order, RaceEntry, UserState, CartLine, CartItem, CartState 등 공용 타입
@@ -400,10 +444,10 @@ frontend/
 
 | 파일 | 타입 |
 |---|---|
-| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `Gates`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
+| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `HorseInput`(관리자 수정 폼), `Gates`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
 | `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `Chair`, `FloorFixture`, `FloorSection`, `FloorPlan`, `Branch`, `TimeBlock`, `BlockState`, `SlotAvailability`, `SeatSlot`, `ChairStatusMap`, `ReservationRequest`, `WaitlistRequest` |
 | `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
-| `app/(site)/event/_types.ts` | `CafeEvent` |
+| `app/(site)/event/_types.ts` | `EventStatus`, `EventTimeMode`, `CafeEvent`, `CafeEventInput` |
 | `app/(site)/my/_types.ts` | `UserProfile` |
 | `types/common.ts` | `CouponReason`, `CouponLog`, `Order`, `RaceEntry`, `SeatReservation`(`SeatReservationKind`), `UserState` (Header·메인·/race·/menu/[id]·/cart·/seat·/my 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
 
@@ -529,15 +573,27 @@ export type MenuInput = Omit<Menu, "id">;           // 등록·수정 폼 값
 export type CategoryInput = Pick<Category, "name" | "engName" | "visible">;
 
 // ===== app/(site)/event/_types.ts =====
+// 16단계(사용자 결정 2026-10-14): 기간(시작일 · 종료일) · 상태(날짜 자동 + 관리자 지정 우선) · 노출 허가 · 상세(참여 방법 · 유의 사항)를 더했다.
+export type EventStatus = "ONGOING" | "UPCOMING" | "ENDED";   // 진행 중 · 예정 · 종료
+export type EventTimeMode = "NONE" | "TEXT" | "RACE";          // 시각 칸 — 없음 · 직접 입력 · 경주 시간표 따라가기
+
 export interface CafeEvent {
   id: number;
   title: string;           // "DAILY RACE"
-  period: string;          // "매일" · "상시" · "첫 방문"
-  time?: string;           // "12:30 · 18:00"
-  description: string;
+  period: string;          // 운영 안내(짧게) — "매일" · "상시" · "첫 방문"
+  timeMode: EventTimeMode;
+  time: string;            // timeMode "TEXT" 일 때의 문구 — "평일 15:00"
+  description: string;     // 카드 한 줄 설명
+  steps: string[];         // 상세 — 참여 방법
+  notes: string[];         // 상세 — 유의 사항
+  startDate: string | null;          // KST "YYYY-MM-DD" — null 이면 이미 시작
+  endDate: string | null;            // 그날까지 진행 — null 이면 상시
+  statusOverride: EventStatus | null; // 관리자가 직접 지정한 상태 — null 이면 날짜로 자동
+  visible: boolean;        // 노출 허가 — 켜면 진행 중이 아니어도 /event 에 보인다(진행 중은 늘 보인다)
   ctaLabel?: string;       // "Race 참여하기"
   ctaHref?: string;        // "/race"
 }
+export type CafeEventInput = Omit<CafeEvent, "id">;
 
 // ===== app/(site)/my/_types.ts =====
 export interface UserProfile {   // 내 정보 — 로그인이 없으므로 Mock 사용자 1명
@@ -644,7 +700,7 @@ export interface CartState {
 | `app/(site)/menu/_data/categories.ts` | 카테고리 (커피 · 논커피 · 티 · 디저트) |
 | `app/(site)/event/_data/events.ts` | 이벤트 |
 | `app/(site)/my/_data/profile.ts` | 내 정보 Mock(`MOCK_PROFILE` — 럭키 포니 · No.0007 · 2026-10-01 가입) |
-| `lib/time.ts` | `RACE_TIMES` (메인·/race·/event 공용이라 최상위) |
+| `lib/raceSchedule.ts` | `BASE_RACE_TIMES` + 관리자 시간표 버전(메인·/race·/event·관리자 공용이라 최상위) |
 | `components/UserProvider.tsx` | 쿠폰 초기값 `INITIAL_COUPONS = 5` |
 
 ### 5.1 horses.ts — 7마리
@@ -694,10 +750,10 @@ Race #8 ~ #12 의 과거 결과(최신이 앞, `ranking` 7개 전체 저장, REC
 
 ### 5.6 events.ts · 공용 값
 
-- events: `DAILY RACE`(매일 12:30 · 18:00 → /race), `ORDER STAMP`(상시, 주문 1회 쿠폰 1장 → /menu), `WELCOME TICKET`(첫 방문 쿠폰 5장 → /my). 화면에서 실제로 동작하지 않는 혜택(메뉴 할인 등)은 넣지 않는다.
+- events: `DAILY RACE`(매일 · 시각은 경주 시간표 따라가기 → /race), `ORDER STAMP`(상시, 주문 1회 쿠폰 1장 → /menu), `WELCOME TICKET`(첫 방문 쿠폰 5장 → /my) — 셋 다 날짜 없음(상시 → 진행 중). 관리자 화면의 예정 · 종료 예시로 `AUTUMN DERBY WEEK`(10.24~11.01 → 예정) · `GRAND OPENING CUP`(10.01~10.07 → 종료)를 두되 **노출 허가를 꺼 손님 화면에는 보이지 않는다**. 화면에서 실제로 동작하지 않는 혜택(메뉴 할인 등)은 손님에게 보이는 이벤트에 넣지 않는다.
 - 쿠폰 초기값: `UserProvider` 의 `INITIAL_COUPONS = 5`. 주문 적립은 `ORDER_COUPON_REWARD = 1`(`orderService.ts`), 레이스 보상은 `RACE_PAYOUT`(`race/_lib/payout.ts`) — 수량 조율은 이 상수들만 고친다.
-- 레이스 시각: `RACE_TIMES = ["12:30", "18:00"]` 처럼 배열로 두고 `lib/time.ts` 가 "지금 이후 가장 가까운 시각"을 계산한다(오늘 다 지났으면 내일 첫 경주). 카페가 서울에 있으므로 브라우저 시간대와 상관없이 **KST(UTC+9)** 기준이다. 메인 히어로 · Footer · `/event` 의 시각 문구도 모두 `formatRaceTimes()` 로 이 배열에서 만든다.
-  - 테스트 · 발표 때는 빌드 환경변수 `NEXT_PUBLIC_RACE_TIMES="12:30,18:00,15:20"` 로 바꾼다(형식이 틀리면 기본값). 경주는 이 시각에 **모든 사용자가 동시에** 출발하므로 실행 중에 사용자마다 바꾸는 기능은 두지 않는다(사용자 결정 2026-10-13).
+- 레이스 시각: 기본 시간표 `BASE_RACE_TIMES = ["12:30", "18:00"]`(`lib/raceSchedule.ts`)에 관리자(/admin/race)가 바꾼 **시간표 버전**(`{ from, times }` — from 뒤에 출발하는 경주부터)이 쌓인다. `lib/time.ts` 는 경주마다 "그 경주 시각에 유효했던 시간표"로 열리는지 판단해 "지금 이후 가장 가까운 시각"을 계산한다(오늘 다 지났으면 내일 첫 경주). 그래서 시간표를 바꿔도 이미 출발한 경주 · 기록 · 경주 번호는 그대로다. 카페가 서울에 있으므로 브라우저 시간대와 상관없이 **KST(UTC+9)** 기준이다. 시각 문구는 `formatRaceTimes(times)` — 화면은 `useRaceTimes()`(하이드레이션 동안 기본값), 정적 문구(히어로 headline)는 `BASE_RACE_TIMES`.
+  - 테스트 · 발표 때는 빌드 환경변수 `NEXT_PUBLIC_RACE_TIMES="12:30,18:00,15:20"` 로 기본 시간표를 바꾸거나(형식이 틀리면 12:30 · 18:00), `/admin/race` 에서 바꾼다(같은 브라우저에만 저장 — 16단계). 경주는 이 시각에 **모든 사용자가 동시에** 출발한다(사용자 결정 2026-10-13) — 백엔드가 붙으면 관리자 변경이 서버를 거쳐 모두에게 같아진다.
   - 출발 10초 전(`RACE_GATE_CLOSE_MS`)부터 마감 — 그 뒤 들어온 사람은 관람만 한다.
 - 경주 단계: 시작 10분 전(`RACE_SOON_MS`)부터 `SOON`, 시작 후 10분(`RACE_LIVE_MS`)은 `LIVE`, 나머지는 `UPCOMING`. LIVE 동안의 "다음 경주"는 그다음 경주(18:00 LIVE 면 내일 12:30).
 
@@ -732,19 +788,22 @@ export async function reserveChairs(req: ReservationRequest): Promise<SeatReserv
 
 | 파일 | 함수 | 추후 API (예상) |
 |---|---|---|
-| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(raceNo, startsAt, horseId)` → `RaceBet`, `getRaceResult(raceNo, startsAt)` → `RaceResult \| null`(확정 전 null — Mock 은 출발 + `RACE_SETTLE_MS` 뒤 결정적 시뮬레이션) | GET /api/horses, GET /api/races/history, POST /api/races/{raceNo}/bets, GET /api/races/{raceNo}/result |
+| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(raceNo, startsAt, horseId)` → `RaceBet`, `getRaceResult(raceNo)` → `RaceResult \| null`(확정 전 null — Mock 은 시간표에서 "N번째 경주"의 출발 시각을 찾아 출발 + `RACE_SETTLE_MS` 뒤 결정적 시뮬레이션. 16단계에서 startsAt 인자를 뺐다 — 걸어 둔 경주의 시각이 바뀌어도 같은 번호의 결과를 받는다) | GET /api/horses, GET /api/races/history, POST /api/races/{raceNo}/bets, GET /api/races/{raceNo}/result |
+| 〃 (관리자, 16단계) | `updateHorse(id, input)` → `{ horse, from }`, `getRaceTimes()`, `updateRaceTimes(times)` → 시간표 버전 — 둘 다 `changeEffectiveFrom(now)` 부터 적용 | PUT /api/admin/horses/{id}, GET /api/races/schedule, PUT /api/admin/races/schedule |
 | `app/(site)/seat/_lib/seatService.ts` | `getBranches()`, `getSeats()`, `getFloorPlan()`, `getTimeBlocks()`, `getChairStatuses(slot, now)` → `ChairStatusMap`, `getSlotAvailability(branchId, date, now)` → 시간대별 잔여석, `reserveChairs(req)` → `SeatReservation`, `joinWaitlist(req)` → `SeatReservation`(WAITING), `cancelReservation(id)`, `getSeatSummary(now)`(메인 대시보드 — 본점 · 지금 시간대), (13단계) `updateSeatStatus(slot, chairId, status)` | GET /api/branches, GET /api/seats, GET /api/seats/floor-plan, GET /api/seats/status?branch&date&start, GET /api/seats/availability?branch&date, POST /api/seats/reservations, POST /api/seats/waitlist, DELETE /api/seats/reservations/{id}, PATCH /api/admin/seats/{id} |
 | `app/(site)/menu/_lib/menuService.ts` | `getMenus(categoryId?)`, `getTodayWinnerMenu()`, `getCategories()`, `getMenuImageOptions()` | GET /api/menus, GET /api/categories, (이미지 업로드 API 생기면 교체) |
 | 〃 (관리자) | `createMenu(input)`, `updateMenu(id, input)`, `deleteMenu(id)`, `updateMenuStatus(id, status)` | POST /api/admin/menus, PUT·DELETE /api/admin/menus/{id}, PATCH /api/admin/menus/{id}/status |
 | 〃 (관리자) | `createCategory(input, order)`, `updateCategory(id, input, order)`, `deleteCategory(id)`, `reorderCategories(ids)` | POST /api/admin/categories, PUT·DELETE /api/admin/categories/{id}, PUT /api/admin/categories/order |
 | `app/(site)/cart/_lib/orderService.ts` | `placeOrder(lines)` → `Order` | POST /api/orders (주문 내역 저장 · 쿠폰 적립은 서버가 처리) |
-| `app/(site)/event/_lib/eventService.ts` | `getEvents()` | GET /api/events |
+| `app/(site)/event/_lib/eventService.ts` | `getEvents()`, `getEvent(id)` | GET /api/events, GET /api/events/{id} |
+| 〃 (관리자, 16단계) | `createEvent(input)`, `updateEvent(id, input)`, `deleteEvent(id)`, `updateEventVisibility(id, visible)`, `updateEventStatus(id, statusOverride)`, `resetEvents()`(Mock 전용) | POST /api/admin/events, PUT·DELETE /api/admin/events/{id}, PATCH /api/admin/events/{id}/visibility · /status |
 | `app/(site)/my/_lib/myService.ts` | `getProfile()` | GET /api/my/profile |
-| `lib/time.ts` | `getRaceSchedule(now)` · `getNextRaceTime(now)` · `getLiveRaceTime(now)` · `getRaceStartsBetween(after, until)` (순수 함수, 입력은 `RACE_TIMES`) | GET /api/races/next (응답의 경주 시각을 `RACE_TIMES` 대신 넣는다) |
+| `lib/time.ts` | `getRaceSchedule(now)` · `getNextRaceTime(now)` · `getLiveRaceTime(now)` · `getRaceStartsBetween(after, until)` · `changeEffectiveFrom(now)` (순수 함수, 입력은 `lib/raceSchedule.ts` 의 시간표 버전) | GET /api/races/schedule (시간표 버전 목록을 저장소 대신 넣는다) |
 
 - 메인(`/`)의 `_data/` 에는 히어로 슬라이드 문구(`heroSlides.ts`)만 둔다. 좌석 수·인기 메뉴 같은 대시보드 값은 위 Service 들을 import 해서 모은다.
 - 관리자 페이지(`/admin/*`)도 자기 `_data/` 가 없다. 메뉴·카테고리는 `app/(site)/menu/_lib/menuService.ts` 하나로만 읽고 쓴다.
-- **Mock 단계의 한계**: 관리자 쓰기 함수는 성공만 돌려주고, 변경은 관리자 화면의 React State 에만 반영된다. 새로고침하면 초기화되고 `/menu` 에는 반영되지 않는다. API 를 연결하면 두 화면이 같은 데이터를 보게 된다.
+- **Mock 단계의 한계**: 메뉴 · 카테고리 관리자 쓰기 함수는 성공만 돌려주고, 변경은 관리자 화면의 React State 에만 반영된다. 새로고침하면 초기화되고 `/menu` 에는 반영되지 않는다. API 를 연결하면 두 화면이 같은 데이터를 보게 된다.
+- **경주 · 이벤트 관리(16단계, 사용자 결정 2026-10-14)는 다르다** — 같은 브라우저의 손님 화면에도 보이도록 localStorage 저장소(`lib/localStore.ts` 의 `createLocalStore`)에 쓴다: 시간표(`lib/raceSchedule.ts`), 출전마(`race/_lib/horseStore.ts`), 이벤트(`event/_lib/eventStore.ts`). Service 가 읽고 쓰고, 클라이언트 화면은 훅(`useRaceTimes` · `useRaceHorses` · `useEvents`)으로 구독한다 — `useSyncExternalStore` 라 하이드레이션 동안은 기본값(정적 셸과 같음), 직후 저장값으로 바뀌고 다른 탭도 storage 이벤트로 따라간다. 다른 브라우저 · 다른 사용자에게는 보이지 않는다(서버가 붙어야 모두 같아진다). 백엔드가 붙으면 저장소 세 개를 지우고 훅이 Service 를 불러오게 바꾼다.
 - 내 쿠폰 수와 증감 내역(`GET /api/my/coupons`, `GET /api/my/coupons/history`), 찜(`GET /api/my/favorites`, 토글은 `PUT·DELETE /api/my/favorites/{menuId}`), 주문 내역(`GET /api/my/orders`), 내 레이스 기록(`GET /api/my/races`)은 `UserProvider` 가 초기화할 때 불러오는 구조로 확장한다.
 
 ---
@@ -808,7 +867,7 @@ interface UserState {
 - 쿠폰 차감 · 서비스 호출은 `race/_hooks/useRace.ts` 가, 정산은 `RaceSettlement` 가 하고, Provider 는 값 보관만 맡는다.
 
 **정산 — `components/RaceSettlement.tsx`(9단계, 사용자 결정 2026-10-13: 어느 페이지에 있든 경주가 끝나면 정산)**: 화면 없는 컴포넌트로, `app/layout.tsx` 에서 `RaceProvider` 안쪽에 둔다. 서버가 할 일을 루트에서 대신한다.
-1. **결과 받기**: 정산 전인 내 경주가 출발하면 결과가 확정될 때까지 1초마다 `raceService.getRaceResult(raceNo, startsAt)` 를 묻고(확정 전 null — 출발 + `RACE_SETTLE_MS` 19.5초) 받으면 `recordResult`. `/race` 에서 끝까지 본 경주는 `useRaceRun` 이 더 일찍(도착 + 1.5초) 기록한다. 두 경로 모두 같은 결정적 시뮬레이션이라 순위가 같다. `raceService`(시뮬레이션 포함)는 **동적 import** 라 다른 페이지의 첫 번들에는 들어가지 않는다.
+1. **결과 받기**: 정산 전인 내 경주가 출발하면 결과가 확정될 때까지 1초마다 `raceService.getRaceResult(raceNo)` 를 묻고(확정 전 null — 출발 + `RACE_SETTLE_MS` 19.5초. 16단계부터 경주 번호로만 묻는다 — 관리자가 시간표를 바꿔도 같은 번호의 실제 경주 결과) 받으면 `recordResult`. `/race` 에서 끝까지 본 경주는 `useRaceRun` 이 더 일찍(도착 + 1.5초) 기록한다. 두 경로 모두 같은 결정적 시뮬레이션이라 순위가 같다. `raceService`(시뮬레이션 포함)는 **동적 import** 라 다른 페이지의 첫 번들에는 들어가지 않는다.
 2. **정산**: `results` 에 결과가 있는 내 경주가 정산 전이면 순위 → `payoutFor(rank)` → `settleRace(raceNo, rank, payout)` 가 **true 일 때만** `earnCoupons(payout, "RACE_PAYOUT", payoutLabel(…))`(4위 이하는 0장이라 적립 없음 — 차감은 이미 내역에 있다). `settleRace` 가 ref 로 경주당 한 번만 통과시키므로 결과가 두 경로로 들어와도 · 다른 페이지를 오가도 두 번 지급되지 않는다.
 3. **알림**: 결과 모달은 `/race` 가 띄운다 — 정산된 내 경주 중 `resultSeenUpTo` 보다 뒤인 가장 최근 것. 경기를 보고 있었으면 끝나자마자, 다른 페이지에 있었으면 `/race` 로 돌아왔을 때 한 번. 닫으면 `markResultSeen`.
 - 진행 중 시뮬레이션(`RaceRun` — 출발 시각 · 난수 상태 · 말마다 진행도)은 매 프레임 바뀌므로 State 가 아니라 **ref**(`runRef`)에 둔다. Context 소비자를 매 프레임 다시 그리지 않고, 페이지가 숨겨졌다 돌아오거나 다시 마운트돼도 여기서 이어 간다(경주가 바뀌면 새로 만든다). 그리기용 스냅샷은 `useRaceRun` 의 로컬 State.
@@ -1182,12 +1241,22 @@ recommendSeats(seats, statuses, filter, people): { picks: Recommendation[]; fall
 
 진행 중인 카페 이벤트를 보는 곳이다. **내 쿠폰은 여기서 보여주지 않는다**(`/my` — 8.10).
 
-- `EventCard` 목록: `DAILY RACE 18:00 — 쿠폰 1장으로 참여하고 1~3위면 원금과 함께 추가 쿠폰을 받아보세요. [Race 참여하기 → /race]`, `주문 적립 — 주문 한 번에 쿠폰 1장` 등.
-- 진행 중인 이벤트가 없으면 빈 상태 일러스트(빈 마구간 + "다음 이벤트에서 만나요").
+- **보이는 이벤트(사용자 결정 2026-10-14)**: 오늘(KST) **진행 중**이거나 운영자가 **노출 허가**한 이벤트(`isShownOnSite`). 상시 이벤트(날짜 없음)는 늘 진행 중이다. 순서는 진행 중(목록 순서) → 예정(시작이 가까운 순) → 종료(최근에 끝난 순).
+- 상태 = 관리자가 지정한 상태(`statusOverride`) 또는 날짜 자동(`autoStatus` — 시작일 전 예정, 종료일 다음 날부터 종료, 그 밖 진행 중).
+- `EventCard` 목록(`EventList`, 클라이언트): STUB `EVENT No.01` · 운영 안내 알약 · 시각(경주 시간표 따라가기면 관리자 시간표) · 상태 알약(● 진행 중 + D-n · ◷ 예정 D-n · ■ 종료 — 색 + 기호 + 글자) ┊ 이름(상세 링크) · 기간("2026.10.24(토) ~ 11.01(일)" · "상시") · 설명 · [자세히 보기] [이동 버튼]. 종료는 흐리게 하고 이동 버튼을 뺀다.
+- 진행 상태가 오늘 날짜에 달려 있어 시계를 읽기 전(정적 셸)에는 빈 티켓 자리 3개만 그린다. 제목은 `"use cache"` 정적 셸.
+- 보이는 이벤트가 없으면 빈 상태("진행 중인 이벤트가 없어요 · 다음 이벤트에서 만나요").
+
+#### `/event/[id]` — 이벤트 상세 (16단계)
+
+- 목록 티켓을 크게 펼친 머리(STUB | `RACE EVENT` · 이름 · 기간 · 설명 · 이동 버튼) + **참여 방법**(번호 원) · **유의 사항**(점 목록) 두 상자(≤960px 위아래) + [← 이벤트 목록] [이동 버튼]. 위에 `이벤트 › 이름` 위치 표시.
+- 손님 화면에 보이는 이벤트만 연다. 없는 id · 예정/종료인데 노출 허가가 없는 이벤트는 `CLOSED` 안내 상자("지금은 볼 수 없는 이벤트예요" + [진행 중인 이벤트 보기]) — 메뉴의 SCRATCHED 와 같은 틀.
+- 기본 이벤트 id 는 `generateStaticParams` 로 셸을 미리 만들고, 관리자가 새로 등록한 id 는 첫 요청 때. params 는 Suspense 안에서만 읽는다(`/menu/[id]` 와 같은 이유). 내용은 클라이언트(`EventDetail`)가 저장소 · 오늘 날짜로 그린다.
 
 ### 8.6 `/admin` — 관리자 공통
 
-- 사용자 사이트와 분리된 관리자 레이아웃: 왼쪽 사이드 내비(메뉴 관리 · 카테고리 관리) + 상단 "MOCK ADMIN — 변경 내용은 새로고침 시 초기화됩니다" 띠.
+- 사용자 사이트와 분리된 관리자 레이아웃: 왼쪽 사이드 내비(메뉴 관리 · 카테고리 관리 · 경주 관리 · 이벤트 관리 — ≤960px 는 위 띠, 메뉴가 넘치면 다음 줄로) + 상단 "MOCK ADMIN — 서버에 저장되지 않습니다. 메뉴 · 카테고리 변경은 새로고침하면 초기화되고, 경주 · 이벤트 변경은 이 브라우저에만 저장됩니다" 띠.
+- 관리자 화면은 손님 화면 컴포넌트(티켓 카드 등)를 미리보기로 가져오지 않는다 — 관리하기 편한 표 · 정보 패널로 따로 만든다(사용자 결정 2026-10-14). 손님 화면은 링크로 연다. 순수 로직(`_lib/` · Service)은 같이 쓴다.
 - 컨셉 톤은 유지하되(짙은 회색 사이드바·크림, 사이드바 상단에 한 줄형 `BrandLogo` + `ADMIN OFFICE`) 장식은 줄이고 표·폼 중심의 업무 화면으로 만든다. 마스코트·전광판 장식은 쓰지 않는다.
 - 이번 단계는 로그인이 없으므로 `/admin` 은 누구나 들어갈 수 있다. 사용자 Header 에는 링크를 두지 않는다(주소로 직접 진입).
 - 삭제처럼 되돌릴 수 없는 동작은 `ConfirmDialog` 로 한 번 더 묻는다.
@@ -1296,6 +1365,49 @@ MY SEATS  좌석 예약 내역                                   [준비 중]
 - 섹션은 `scroll-margin-top` 으로 #앵커 이동 시 헤더에 가리지 않는다.
 - 프로필 · 메뉴 목록 · 출전마는 모두에게 같아 page 에 `"use cache"`, 쿠폰 · 찜 · 주문 · 레이스 기록은 클라이언트 컴포넌트가 `useUser()` 로 읽는다. 시각은 클라이언트에서 만든 값이라 하이드레이션이 어긋나지 않는다.
 
+### 8.11 `/admin/race` — 경주 관리 (16단계, 사용자 결정 2026-10-14)
+
+```
+경주 관리                                         [현황 · 시간표] [출전마] [경주 기록]  ← 바로가기
+┌ NEXT RACE ─┐┌ LIVE ──────┐┌ LAST RESULT ┐┌ TODAY ─────────┐
+│ Race #15   ││ 없음 / #14 ││ Race #14     ││ 2경주            │
+│ 오늘 12:30 ││ 경주 중    ││ 1위 (4)CARAMEL││ 종료 0 · 남음 2   │
+│ 09:57:51   ││            ││ 10/13 18:00  ││ 매일 12:30 · 18:00│
+└────────────┘└────────────┘└──────────────┘└─────────────────┘
+오늘 · 내일 경주표   날짜 | 출발 | 경주 | 상태(종료 · 경주 중 · 마감 · 곧 출발 · 예정) | 결과 1~3위   ← 다음 경주 줄은 금색 바탕
+┌ 경주 시간표 ─────────────────────────────── [기본 시간표(12:30 · 18:00)로] ┐
+│ [12:30 ×] [18:00 ×] [15:20 NEW ×]   시각 추가 [--:--] [+ 추가]            │
+│ 변경: 추가 15:20 — 아직 저장하지 않았어요.            [되돌리기] [시간표 저장] │
+└──────────────────────────────────────────────────────────────────────────┘
+출전마   이미지 | 이름 | 조끼 색 | 주행 성향 | 성격 · 설명 | 최근 성적 | [수정]
+경주 기록  검색(경주 번호 · 1~3위 말 이름) → 경주 | 출발 | 1위 | 2위 | 3위 | 4~7위   [더 보기]
+```
+
+- **현황**: `/race` 와 같은 기록(`useRaceHistory` — 이 세션에서 본 경주 + 지나간 경주 보충 + Mock)과 시간표로 계산한다(`_lib/timetable.ts`). 끝난 경주는 기록의 번호 · 결과, 아직인 경주는 다음 번호부터 차례로. 게이트 번호는 그 경주 당시 번호(`gatesFor`). 1초 시계(`useNow`)로 카운트다운 · 상태가 바뀐다.
+- **시간표 편집**: 고친 목록(draft)을 따로 들고 있다가 [시간표 저장] → `updateRaceTimes`. 바꾼 내용이 있을 때만 [되돌리기] [시간표 저장]이 보인다(누를 수 없는 버튼을 두지 않는다). 검증(`validateRaceTimes`): 1~6개 · HH:MM · 중복 없음 · 23:50 전(LIVE 창이 자정을 넘지 않게) · 경주 사이 20분 이상(자정 넘어 이어지는 간격 포함 — LIVE 창 10분이 겹치면 무대가 앞 경주에 머문다) · 경계 간격(방금 출발했거나 곧 출발하는 경주와 새 시간표의 첫 경주 사이도 20분).
+- **적용 시점(`changeEffectiveFrom`)**: 저장한 순간 뒤에 출발하는 경주부터. 다음 경주가 이미 마감(출발 10초 전)이면 그 경주가 출발한 직후부터 — 카운트다운 중인 경주가 사라지거나 다른 성향으로 다시 계산되지 않게. 이미 출발한 경주 · 기록 · 경주 번호는 바뀌지 않는다(지나간 경주 보충이 시간표 순서로 번호를 매기므로 과거를 바꾸면 번호가 밀린다). 지난 시각을 추가해도 오늘 그 경주가 생기지 않는다.
+- **걸어 둔 경주**: 경주 번호는 "N번째 경주"라 시간표가 바뀌면 같은 번호의 경주 시각이 달라질 수 있다. 정산은 `getRaceResult(raceNo)` 가 시간표에서 그 번호의 실제 출발 시각을 찾아 받으므로 어긋나지 않는다(`RaceEntry.startsAt` 표시는 걸 때 값 그대로).
+- **출전마 수정**: 7마리 고정(추가 · 삭제 없음, id 그대로). 폼 — 영문 이름(대문자로 보임 · 중복 금지) · 한글 이름 · 조끼 색(색 고르기 + #RRGGBB) · 색 이름 · 이미지(출전마 7장 중 — 트랙 장면이 같은 이미지를 쓴다) · 주행 성향(5가지, 경주에서 어떻게 달리는지 설명) · 성격 · 설명 + [기본값으로 채우기]. 성향을 바꾸면 "다음 경주부터 반영" 안내. 저장은 **버전**으로 쌓여(`horseStore`) 시뮬레이션은 그 경주 당시의 성향(`raceHorsesAt`) — 트랙(`useRaceRun`) · 정산 · 보충이 같은 순위를 낸다. 이름 · 색 · 이미지는 최근 버전(지난 기록에도 지금 이름).
+- **경주 기록**: 읽기 전용, 10개씩 더 보기. 검색은 경주 번호(`13` · `#13`) 또는 1~3위 말 이름(영문 · 한글).
+- 반영: 같은 브라우저의 `/race`(출전표 · 전광판 · 트랙) · 메인 히어로 시계 · Header SOON/LIVE · Footer · `/event` 의 DAILY RACE 시각 · `/my` 내 레이스 기록. 다른 탭은 storage 이벤트로 바로, 일정 계산은 1초 안에 따라간다.
+
+### 8.12 `/admin/event` · `/admin/event/[id]` — 이벤트 관리 (16단계, 사용자 결정 2026-10-14)
+
+```
+이벤트 관리                                                     [+ 이벤트 등록]
+전체 5개 · 진행 중 3개 · 손님 화면에 보이는 이벤트 3개
+검색 [이름 · 설명 · 운영 안내]   상태 [전체 ▼]   손님 화면 [전체 ▼]
+No. | 이벤트(이름 → 상세 · 운영 안내 · 시각) | 기간 | 상태(알약 · 자동/수동 · D-n) | 손님 화면([ON/OFF] 노출 허가 · ● 보임/○ 숨김) | 상세 수정 삭제
+                                                                       [기본 이벤트로 되돌리기]
+```
+
+- 메뉴 관리처럼 등록 · 수정(모달 폼) · 삭제(확인창). 표에서 노출 허가를 바로 켜고 끈다. 숨겨진 이벤트 줄은 흐리게. 상태가 오늘 날짜에 달려 있어 시계를 읽은 뒤에 그린다.
+- **상태**: 날짜 자동 + 관리자 지정 우선. 자동 — 시작일 전 예정 · 종료일이 지나면 종료(종료일 당일까지 진행 중) · 날짜가 없으면 진행 중(상시). 지정하면 날짜보다 우선(예: 조기 종료).
+- **노출**: 손님 화면 = 진행 중 ∪ 노출 허가. 노출 허가는 예정 이벤트를 미리 알리거나 종료 이벤트를 남겨 둘 때 켠다.
+- **폼**: 이벤트 이름(중복 금지 · 30자) · 운영 안내(10자) · 시작일 · 종료일(각각 [비우기] — 비우면 이미 시작 / 상시, 종료일 ≥ 시작일) · 진행 상태(자동(지금 무엇인지) · 진행 중 · 예정 · 종료) · 노출 허가 · 시각 표시(없음 · 직접 입력 · 경주 시간표 따라가기) · 설명(필수 · 120자) · 참여 방법 · 유의 사항(한 줄에 하나 · 6줄 · 줄당 80자) · 버튼 문구 + 이동할 페이지(사이트 페이지 고르기 또는 / 로 시작하는 직접 입력, 둘 다 있거나 둘 다 없거나).
+- **상세(`/admin/event/[id]`)**: `← 이벤트 관리 / 이름` · `EVENT No.04` · 이름 · 상태 · 손님 화면 표시 + [손님 화면에서 보기 ↗](보일 때만, 새 탭) [수정] [삭제]. 두 패널 — **진행 상태**(이유 문구 `statusReason` + 자동 · 진행 중 · 예정 · 종료 붙은 라디오 칸, 고르면 바로 저장) · **손님 화면 노출**(이유 문구 `visibilityReason` + 노출 허가 스위치). 아래 정보 표(기간 · 운영 안내 · 시각 표시 · 설명 · 참여 방법 · 유의 사항 · 이동 버튼). 삭제하면 목록으로. 없는 id 는 "이벤트를 찾을 수 없습니다" + 목록 링크.
+- [기본 이벤트로 되돌리기]: Mock 전용 — 확인창 뒤 저장값을 지운다(`resetEvents`).
+
 ---
 
 ## 9. 반응형 기준
@@ -1317,6 +1429,7 @@ MY SEATS  좌석 예약 내역                                   [준비 중]
 DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 · 실제 쿠폰 발급 · 실제 좌석 예약 API · WebSocket 실시간 통신.
 → 모두 Mock Data + React State 로 "동작하는 것처럼" 보여준다. 현금·실제 금전 배팅은 어떤 형태로도 구현하지 않는다.
 → 관리자 페이지도 인증 없이 열린다. 접근 제어는 로그인 기능을 붙일 때 함께 넣는다.
+→ 경주 · 이벤트 관리 변경은 그 브라우저의 localStorage 에만 남는다(다른 사람 · 다른 기기에는 보이지 않음). 출전마 추가 · 삭제, 보상 수량(`RACE_PAYOUT`) 변경, 이벤트 순서 직접 바꾸기, 이벤트 이미지는 하지 않는다.
 → 장바구니는 담기·수량·삭제·합계와 목업 "주문하기"(주문 내역 기록 · 쿠폰 +1 · 장바구니 비우기)까지만 한다. 결제는 없고, 장바구니 · 주문 내역 · 찜 · 내 레이스 기록은 저장하지 않는다(새로고침 시 비워짐 — 걸어 둔 경주도 함께 사라진다).
 → 마이페이지의 내 정보 수정, 주문 취소 · 다시 담기는 하지 않는다.
 → 쿠폰을 메뉴로 바꾸는 교환(몇 장 → 어떤 메뉴)은 하지 않는다. 컨셉만 7절에 적어 두고, `/my` 에 "준비 중" 안내만 둔다.
@@ -1335,6 +1448,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - `lib/` 에 `API_BASE = process.env.NEXT_PUBLIC_API_BASE` 와 공용 fetch 헬퍼(`lib/api.ts`)를 추가하고, 각 라우트의 `*Service.ts` 가 그것을 쓰도록 교체한다. 교체가 끝나면 `_data/` 폴더는 지운다.
 - 좌석 실시간 반영은 처음엔 polling(`setInterval` 로 `getSeats()` 재호출) → 이후 WebSocket/SSE 로 확장. 컴포넌트는 `seats` 배열만 받으므로 바뀌지 않는다.
 - 레이스 결과는 최종적으로 서버가 결정해야 한다. 지금은 경주 번호 + 출발 시각으로 시드한 결정적 시뮬레이션이라 모든 클라이언트가 같은 결과를 내지만, 서버가 붙으면 (1) 서버가 경주마다 시드(또는 `ranking` + 이벤트 타임라인)를 내려주고 프론트는 그것을 **재생**하며, (2) 지나간 경주 자동 보충(`backfillHistory`)은 `GET /api/races/history` 로 대체한다. 시계 어긋남이 문제가 되면 서버 시각을 한 번 받아 보정한다.
+- 관리자 경주 · 이벤트 저장소(`lib/raceSchedule.ts` · `race/_lib/horseStore.ts` · `event/_lib/eventStore.ts` · `lib/localStore.ts`)는 지운다. 시간표 · 출전마는 서버도 **버전(적용 시각)**으로 남겨야 지난 경주 기록 · 번호가 바뀌지 않는다 — 서버가 경주를 만들 때 그 시각의 시간표 · 출전마로 확정해 두면 프론트의 `raceTimesAt` · `raceHorsesAt` 은 필요 없어진다. 훅(`useRaceTimes` · `useRaceHorses` · `useEvents`)은 Service 를 불러오는 훅으로 바꾸고, 관리자 저장 뒤에는 `revalidateTag` 로 `/race` · `/event` 캐시를 갱신한다.
 - 쿠폰 차감·정산도 그때 서버로 옮긴다. `placeBet` 이 서버에서 1장을 빼고, 결과 확정 시 서버가 `RACE_PAYOUT` 만큼 돌려준 뒤, 프론트는 `UserProvider` 를 서버 값으로 다시 불러온다. 그러면 `RaceSettlement` 는 `earnCoupons` 대신 "결과가 나오면 쿠폰 · 내 레이스 기록을 다시 불러오기"만 하고(1초 polling → 이후 SSE/WebSocket), 결과 모달 알림 구조(`resultSeenUpTo`)는 그대로 쓴다. 참여 횟수 제한을 더 두기로 하면 그것도 서버에서 건다.
 
 ---
@@ -1363,6 +1477,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 | 13 | 좌석 상태 관리 (개발용) | 10 |
 | 14 | 메인 대시보드 | 4, 5, 6, 10 |
 | 15 | 반응형 · 접근성 · 컨셉 QA | 전체 |
+| 16 | (관리자) 경주 관리 · 이벤트 관리 + `/event/[id]` | 5, 9, 2 |
 
 ---
 
@@ -1807,3 +1922,30 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 | 쿠폰 | Race Ticket |
 
 사이트에 처음 들어온 사람이 "아, 경마장 테마 카페구나"라고 바로 느끼면 성공이고, "도박 사이트인가?"라는 생각이 들면 실패다.
+
+---
+
+### 16단계 — (관리자) 경주 관리 · 이벤트 관리 ✅ 2026-10-14
+
+경주 · 이벤트를 관리자 화면에서 바꾸고, 같은 브라우저의 손님 화면에 바로 보이게 한다(사용자 결정 2026-10-14). 설계: 6절 "Mock 단계의 한계", 8.5, 8.11, 8.12.
+
+**구현**
+- [x] `lib/localStore.ts` — localStorage JSON 외부 저장소(서버 렌더 · 하이드레이션 = 기본값, storage 이벤트로 다른 탭 동기화)
+- [x] `lib/raceSchedule.ts` + `lib/useRaceTimes.ts` — 시간표 버전 · `raceTimesAt` · `announcedRaceTimes`, `lib/time.ts` 가 시간표로 일정 계산 · `changeEffectiveFrom`
+- [x] `race/_lib/horseStore.ts` + `race/_hooks/useRaceHorses.ts` — 출전마 버전, 시뮬레이션은 그 경주 당시 출전마(`useRaceRun` · `backfillHistory` · `getRaceResult`)
+- [x] `getRaceResult(raceNo)` — 시간표에서 N번째 경주의 출발 시각을 찾는다(`records.raceStartAt`), `RaceSettlement` 갱신
+- [x] Footer(`RaceTimesText`) · `/race` 전광판 · 히어로 문구가 `formatRaceTimes(times)` 로 시간표를 받는다
+- [x] 이벤트 타입 확장(기간 · 상태 · 노출 허가 · 시각 표시 · 참여 방법 · 유의 사항) + `eventStatus.ts` · `eventStore.ts` · `useEvents.ts` · Service 쓰기 함수
+- [x] `/event` 목록(`EventList`) · `/event/[id]` 상세(`EventDetail`, CLOSED 안내)
+- [x] `/admin/race` — 현황 카드 · 오늘/내일 경주표 · 시간표 편집 · 출전마 표 + 수정 폼 · 경주 기록 검색
+- [x] `/admin/event` · `/admin/event/[id]` — 목록(필터 · 노출 허가 스위치) · 등록/수정 폼 · 삭제 · 상태 지정 · 기본 이벤트로 되돌리기
+- [x] `AdminNav` 4개 메뉴(≤960px 줄바꿈) · MOCK ADMIN 띠 문구
+
+**완료 확인**
+- [x] 출전마 이름 · 성향을 바꾸면 `/race` 카드에 바로 보이고, 지난 경주 순위는 그대로다(순수 함수 테스트)
+- [x] 시간표에 시각을 추가하면 `/race` 다음 경주 · Footer · `/event` DAILY RACE 시각이 바뀌고, 열려 있던 다른 탭도 따라간다. 이미 출발한 경주 · 번호는 그대로, 마감 뒤 변경은 그 경주 다음부터(순수 함수 테스트)
+- [x] 너무 가까운 시각(20분 미만)은 저장되지 않는다
+- [x] 예정 이벤트의 노출 허가를 켜면 `/event` 에 "예정 D-n" 으로 보인다. 상태를 '종료'로 지정하면 `/event/[id]` 가 CLOSED, 자동으로 되돌리면 다시 보인다
+- [x] 이벤트 등록 · 삭제가 새로고침 뒤에도 유지된다(같은 브라우저)
+- [x] 390px 에서 관리자 · 이벤트 화면에 가로 넘침이 없다
+- [x] `npm run build` · `npx eslint .` · `npx tsc --noEmit` 통과, 콘솔 오류 · 하이드레이션 경고 없음

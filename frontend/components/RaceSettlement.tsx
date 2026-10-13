@@ -32,7 +32,8 @@ export default function RaceSettlement() {
       const { getRaceResult } = await import("@/app/(site)/race/_lib/raceService");
       for (const entry of waiting) {
         if (Date.now() < Date.parse(entry.startsAt)) continue;
-        const result = await getRaceResult(entry.raceNo, entry.startsAt);
+        // 경주 번호로 묻는다 — 관리자가 시간표를 바꿔 그 경주의 시각이 달라져도 같은 번호의 실제 결과가 온다
+        const result = await getRaceResult(entry.raceNo);
         if (cancelled) return;
         if (result) recordResult(result);
       }

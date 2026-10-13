@@ -5,7 +5,7 @@ import { RACE_SETTLE_MS, seededShuffle, seedFor, simulateRace } from "./simulati
 
 /** 다음 경주 번호 — 기록의 가장 큰 번호 + 1 (기록이 없으면 1) */
 export function nextRaceNo(history: RaceResult[]): number {
-  return history.reduce((max, r) => Math.max(max, r.raceNo), 0) + 1;
+  return maxRaceNo(history) + 1;
 }
 
 /** 지나간 경주를 한 번에 몇 개까지 돌릴지 — 그보다 오래된 경주는 번호만 건너뛴다(최근 성적 · 다음 번호에는 영향 없음) */
@@ -25,20 +25,39 @@ export function settledRaceUntil(afterMs: number, now: number): number {
 /**
  * 지나간 경주 기록 보충(사용자 결정 2026-10-13 "자동 기록") — Mock 기록의 마지막 경주 뒤부터 untilMs(포함)까지의
  * 출발 시각마다 결정적 시뮬레이션을 돌려 결과를 만든다. 누가 언제 들어와도 경주 번호 · 출전표 최근 성적이 같아진다.
+ * horsesAt 은 그 경주 당시의 출전마(말 id 순 — 관리자가 바꾼 성향은 바꾼 뒤의 경주부터, horseStore.raceHorsesAt).
  * untilMs 는 settledRaceUntil 로 구한다(새 경주가 끝날 때만 바뀌어 메모가 유지된다). 백엔드가 붙으면 서버 기록이 이 역할을 맡는다. 결과는 최신순.
  */
-export function backfillHistory(base: RaceResult[], horses: Horse[], untilMs: number): RaceResult[] {
+export function backfillHistory(base: RaceResult[], horsesAt: (at: number) => Horse[], untilMs: number): RaceResult[] {
   const lastAt = latestRaceAt(base);
   const starts = getRaceStartsBetween(lastAt, untilMs);
-  const baseNo = base.reduce((max, r) => Math.max(max, r.raceNo), 0);
+  const baseNo = maxRaceNo(base);
   const skip = Math.max(0, starts.length - BACKFILL_LIMIT);
   const filled: RaceResult[] = [];
   starts.forEach((at, i) => {
     if (i < skip) return;
     const raceNo = baseNo + i + 1;
-    filled.unshift({ raceNo, date: new Date(at).toISOString(), ranking: simulateRace(horses, raceNo, at).ranking });
+    filled.unshift({ raceNo, date: new Date(at).toISOString(), ranking: simulateRace(horsesAt(at), raceNo, at).ranking });
   });
   return filled;
+}
+
+function maxRaceNo(history: RaceResult[]): number {
+  return history.reduce((max, r) => Math.max(max, r.raceNo), 0);
+}
+
+/**
+ * 경주 raceNo 의 출발 시각(epoch ms) — Mock 기록에 있으면 그 시각, 그 뒤의 경주는 시간표 순서대로 번호가 붙는다(backfillHistory 와 같은 규칙).
+ * untilMs 까지 출발한 경주만 찾는다(없으면 null). 시간표가 바뀌어도 "N번째 경주"로 찾으므로, 건 경주의 결과를 경주 번호로 받을 수 있다.
+ */
+export function raceStartAt(base: RaceResult[], raceNo: number, untilMs: number): number | null {
+  const baseNo = maxRaceNo(base);
+  if (raceNo <= baseNo) {
+    const record = base.find((r) => r.raceNo === raceNo);
+    return record ? Date.parse(record.date) : null;
+  }
+  const starts = getRaceStartsBetween(latestRaceAt(base), untilMs);
+  return starts[raceNo - baseNo - 1] ?? null;
 }
 
 /** 여러 출처의 기록을 번호로 합친다(앞쪽 출처 우선) — 최신순 */

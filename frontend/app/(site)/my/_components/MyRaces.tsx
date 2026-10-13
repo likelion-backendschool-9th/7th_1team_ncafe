@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUser } from "@/components/UserProvider";
 import { formatRaceDate } from "@/lib/time";
 import type { RaceEntry } from "@/types/common";
+import { useRaceHorses } from "../../race/_hooks/useRaceHorses";
 import type { Horse } from "../../race/_types";
 import { useShowMore } from "../_hooks/useShowMore";
 import { SectionEmpty, SectionHead, ShowMoreButton } from "./MySection";
@@ -15,9 +16,10 @@ const PREVIEW = 5;
 /**
  * 내 레이스 기록 — 쿠폰을 건 경주, 최신순. 처음엔 최근 5경주, "전체 보기"로 나머지를 펼친다.
  * 한 줄 = 경주 STUB(번호 · 출발 시각) ┊ 고른 말 · 돌려받은 쿠폰 ┊ 순위. 정산은 경주가 끝나면 어느 페이지에서든 되므로
- * 결과 전에는 "결과 대기"로 보이다가 바로 바뀐다. 말 정보는 page 가 레이스 Service 에서 받아 넘긴다.
+ * 결과 전에는 "결과 대기"로 보이다가 바로 바뀐다. 말 정보는 page 가 레이스 Service 에서 받아 넘기고, 관리자 변경을 겹친다(useRaceHorses).
  */
-export default function MyRaces({ horses }: { horses: Horse[] }) {
+export default function MyRaces({ horses: serverHorses }: { horses: Horse[] }) {
+  const horses = useRaceHorses(serverHorses);
   const { races } = useUser();
   const { visible, expanded, hasMore, total, toggle } = useShowMore(races, PREVIEW);
 

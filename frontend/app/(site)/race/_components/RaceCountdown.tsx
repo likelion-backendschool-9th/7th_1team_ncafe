@@ -5,6 +5,7 @@ import Scoreboard from "@/components/Scoreboard";
 import { useUser } from "@/components/UserProvider";
 import { formatCountdownSpoken, formatRaceSlot, formatRaceTimes } from "@/lib/time";
 import { useRaceCountdown } from "@/lib/useCountdown";
+import { useRaceTimes } from "@/lib/useRaceTimes";
 import styles from "./race.module.css";
 
 /**
@@ -16,6 +17,7 @@ import styles from "./race.module.css";
 export default function RaceCountdown() {
   const { schedule, countdown } = useRaceCountdown();
   const { coupons } = useUser();
+  const raceTimes = useRaceTimes();
   const live = schedule?.live ?? null;
 
   return (
@@ -23,7 +25,7 @@ export default function RaceCountdown() {
       <div className={styles.boardCell}>
         <span className={styles.boardLabel}>{live ? "NOW RACING" : "NEXT RACE"}</span>
         <span className={styles.boardValue}>
-          <strong>{live ? live.time : schedule ? formatRaceSlot(schedule.next) : formatRaceTimes()}</strong>
+          <strong>{live ? live.time : schedule ? formatRaceSlot(schedule.next) : formatRaceTimes(raceTimes)}</strong>
           <RacePhaseBadge phase={schedule?.phase ?? null} />
         </span>
       </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useLayoutEffect, useState } from "react";
 import { ORDER_COUPON_REWARD } from "../../cart/_lib/orderService";
 import { useRace } from "../_hooks/useRace";
+import { useRaceHorses } from "../_hooks/useRaceHorses";
 import { byGate, recentRanks } from "../_lib/records";
 import type { Horse, RaceResult as Result } from "../_types";
 import BetConfirmModal from "./BetConfirmModal";
@@ -23,8 +24,10 @@ const LINEUP_TITLE_ID = "lineup-title";
  * 출발 10초 전부터 끝날 때까지는 걸 수 없다(관람). 끝나면 트랙과 출전표 사이에 순위가 보이고 다음 경주 출전표가 열린다.
  * 쿠폰 정산은 루트의 RaceSettlement 가 하고, 정산된 내 경주는 결과 모달로 한 번 알려 준다.
  * 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매기고(8.2 "게이트 번호 규칙") 출전표 카드도 그 순서로 놓는다.
+ * 출전마 정보는 관리자 변경(같은 브라우저)을 겹친 값이다(useRaceHorses).
  */
-export default function RaceBoard({ horses, history: baseHistory }: { horses: Horse[]; history: Result[] }) {
+export default function RaceBoard({ horses: serverHorses, history: baseHistory }: { horses: Horse[]; history: Result[] }) {
+  const horses = useRaceHorses(serverHorses);
   const {
     stage,
     history,
