@@ -2,12 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import TicketBadge from "@/components/TicketBadge";
 import { ticketSerial, type MenuDetailData } from "../_lib/menuBoard";
+import AddToCart from "./AddToCart";
 import MenuCard from "./MenuCard";
 import boardStyles from "./menu.module.css";
 import styles from "./menuDetail.module.css";
 
 /**
- * 메뉴 상세 — 메뉴판 티켓을 크게 펼친 모양(일러스트 · 이름 ···· 가격 · 설명 · 정보 · STUB).
+ * 메뉴 상세 — 메뉴판 티켓을 크게 펼친 모양(일러스트 · 이름 ···· 가격 · 설명 · 정보 · 주문 · STUB).
+ * 사이즈가 있는 음료는 이름 옆 가격 대신 주문 영역(AddToCart)의 사이즈 버튼에 사이즈별 가격을 보여 준다.
  * 아래에는 같은 카테고리의 다른 메뉴를 메뉴판과 같은 티켓 카드로 보여 준다.
  * "메뉴판으로" 는 /menu 링크다 — 메뉴판에서 왔다면 탭·검색어가 그대로 남아 있다(MenuBoard 주석).
  */
@@ -47,11 +49,15 @@ export default function MenuDetail({ menu, category, related }: MenuDetailData) 
             <h1 id="menu-title" className={styles.name}>
               {menu.name}
             </h1>
-            <span className={styles.dots} aria-hidden />
-            <p className={styles.price}>
-              {menu.price.toLocaleString("ko-KR")}
-              <span className={styles.won}>원</span>
-            </p>
+            {!menu.sizePrices && (
+              <>
+                <span className={styles.dots} aria-hidden />
+                <p className={styles.price}>
+                  {menu.price.toLocaleString("ko-KR")}
+                  <span className={styles.won}>원</span>
+                </p>
+              </>
+            )}
           </div>
           <p className={styles.eng}>{menu.engName}</p>
           <p className={styles.desc}>{menu.description}</p>
@@ -72,11 +78,7 @@ export default function MenuDetail({ menu, category, related }: MenuDetailData) 
             </div>
           </dl>
 
-          <div className={styles.actions}>
-            <Link href="/menu" className="btn btn-outline">
-              <span aria-hidden>←</span> 메뉴판으로
-            </Link>
-          </div>
+          <AddToCart menu={menu} />
         </div>
 
         <div className={styles.stub} aria-hidden>
@@ -126,8 +128,10 @@ export function MenuDetailSkeleton() {
           <span className={`${styles.bone} ${styles.boneShort}`} />
           <span className={`${styles.bone} ${styles.boneLong}`} />
           <span className={`${styles.bone} ${styles.boneFacts}`} />
+          <span className={`${styles.bone} ${styles.boneOrder}`} />
           <div className={styles.actions}>
             <span className={`${styles.bone} ${styles.boneButton}`} />
+            <span className={`${styles.bone} ${styles.boneButton} ${styles.boneButtonWide}`} />
           </div>
         </div>
         <div className={styles.stub} />

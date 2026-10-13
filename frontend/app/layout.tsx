@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CartProvider } from "@/components/CartProvider";
 import { UserProvider } from "@/components/UserProvider";
 import "./globals.css";
 
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <link rel="stylesheet" href={PRETENDARD_CSS} />
       </head>
       <body>
-        <UserProvider>{children}</UserProvider>
+        <UserProvider>
+          <CartProvider>{children}</CartProvider>
+        </UserProvider>
       </body>
     </html>
   );

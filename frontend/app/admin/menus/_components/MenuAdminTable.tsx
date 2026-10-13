@@ -139,7 +139,14 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
                 </td>
                 <td data-label="카테고리">{categoryName.get(m.categoryId) ?? "(삭제된 카테고리)"}</td>
                 <td data-label="가격" className={`${styles.num} font-board`}>
-                  {m.price.toLocaleString("ko-KR")}원
+                  {m.sizePrices ? (
+                    <>
+                      {m.sizePrices.S.toLocaleString("ko-KR")}~{m.sizePrices.XL.toLocaleString("ko-KR")}원
+                      <span className={styles.priceSizes}>S–XL</span>
+                    </>
+                  ) : (
+                    `${m.price.toLocaleString("ko-KR")}원`
+                  )}
                 </td>
                 <td data-label="배지">{m.badge ? <TicketBadge tone={m.badge} /> : <span className={styles.dash}>—</span>}</td>
                 <td data-label="상태">

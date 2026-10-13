@@ -562,6 +562,39 @@
   height: 16px;
 }
 
+/* 목록의 사이즈 메뉴 가격(4,000~5,500원) 아래 작은 표시 */
+.priceSizes {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* 메뉴 가격 — 사이즈별 4칸(S·M·L·XL) 또는 1칸 */
+.sizePriceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.sizePriceField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sizePriceLabel {
+  flex: none;
+  min-width: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.priceSingle {
+  max-width: calc(50% - 10px);
+}
+
 /* ===== 결과 알림 ===== */
 .toastSlot {
   position: fixed;
@@ -644,6 +677,14 @@
 
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .sizePriceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .priceSingle {
+    max-width: none;
   }
 
   .toast {

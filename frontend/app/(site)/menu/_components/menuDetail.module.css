@@ -178,11 +178,143 @@
   color: var(--red-600);
 }
 
+/* ----- 주문 — 사이즈 · 수량 · 합계 · 버튼(AddToCart). 본문이 남으면 티켓 바닥에 붙는다. ----- */
+.order {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: auto;
+  padding-top: 28px;
+}
+
+.orderLabel {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+/* 사이즈 — 4칸 라디오. 칸마다 사이즈 가격이 적혀 있다(메뉴판 카드의 4칸 가격표를 크게). */
+.sizeOptions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sizeOption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.sizeOption:hover {
+  border-color: var(--brand-400);
+}
+
+.sizeOption:has(input:focus-visible) {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 2px;
+}
+
+/* 선택 표시는 고를 수 있을 때만 — 품절(disabled)이면 모든 칸이 같은 모양 */
+.sizeOption:has(input:checked:enabled) {
+  border-color: var(--brand-900);
+  background: var(--brand-900);
+  color: #fff;
+}
+
+.sizeName {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.sizePrice {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.sizeOption:has(input:checked:enabled) .sizePrice {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* 품절 — 가격은 보여 주되 고를 수 없게 */
+.sizePicker:disabled .sizeOption {
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.sizePicker:disabled .sizePrice {
+  color: var(--text-faint);
+}
+
+.orderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.orderTotal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.orderTotal strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
 .actions {
   display: flex;
   gap: 10px;
-  margin-top: auto;
-  padding-top: 28px;
+}
+
+.addButton {
+  flex: 1;
+}
+
+.notice {
+  margin-top: -8px;
+  font-size: 0.9rem;
+  color: var(--text-strong);
+}
+
+/* 알림이 없을 때도 role="status" 는 DOM 에 남겨 둔다(그래야 읽어 준다) — 빈 줄의 gap 만 없앤다 */
+.notice:empty {
+  margin-top: -22px;
+}
+
+.noticeLink {
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 절취선 너머 STUB — 세로 글씨 */
@@ -292,9 +424,24 @@
   background: var(--bg-muted);
 }
 
+.boneOrder {
+  width: 100%;
+  height: 150px;
+  margin-top: 28px;
+  background: var(--bg-muted);
+}
+
+.boneOrder + .actions {
+  margin-top: 22px;
+}
+
 .boneButton {
   width: 132px;
   height: 46px;
+}
+
+.boneButtonWide {
+  flex: 1;
 }
 
 @keyframes bonePulse {
@@ -347,6 +494,18 @@
   .actions :global(.btn),
   .boneButton {
     flex: 1;
+  }
+
+  .sizeOptions {
+    gap: 6px;
+  }
+
+  .sizeOption {
+    padding: 10px 4px;
+  }
+
+  .sizePrice {
+    font-size: 0.82rem;
   }
 
   .stub {

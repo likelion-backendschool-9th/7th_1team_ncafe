@@ -34,7 +34,7 @@
 ```
 frontend/
 ├─ app/
-│  ├─ layout.tsx                  # 루트: <html>, 폰트, UserProvider (Header/Footer 없음)
+│  ├─ layout.tsx                  # 루트: <html>, 폰트, UserProvider · CartProvider (Header/Footer 없음)
 │  ├─ globals.css                 # 디자인 토큰(CSS 변수) + 리셋 + 공통 유틸
 │  ├─ not-found.tsx               # 404 "OFF TRACK"
 │  │
@@ -105,16 +105,24 @@ frontend/
 │  │  │  │  ├─ MenuBoard.tsx      # 검색창 + 탭 + 티켓 그리드 (client, 검색어·탭 State)
 │  │  │  │  ├─ MenuSearch.tsx     # 검색창(Esc · × 로 지우기)
 │  │  │  │  ├─ MenuCategory.tsx   # 카테고리 탭
-│  │  │  │  ├─ MenuCard.tsx       # 티켓 스타일 메뉴 카드 (누르면 상세)
-│  │  │  │  └─ MenuDetail.tsx     # 상세 — 크게 펼친 티켓 + 같은 카테고리 메뉴
+│  │  │  │  ├─ MenuCard.tsx       # 티켓 스타일 메뉴 카드 (누르면 상세) — 가격은 STUB 안(음료 S·M·L·XL, 디저트 ONE SIZE)
+│  │  │  │  ├─ MenuDetail.tsx     # 상세 — 크게 펼친 티켓 + 같은 카테고리 메뉴
+│  │  │  │  └─ AddToCart.tsx      # 상세의 주문 영역(client) — 사이즈(가격 포함) · 수량 · 합계 · 장바구니 담기
 │  │  │  ├─ _lib/
 │  │  │  │  ├─ menuBoard.ts       # 순수 함수: 메뉴판 선정(selectBoard) · 상세 선정(selectDetail) · 일련번호
 │  │  │  │  ├─ menuSearch.ts      # 순수 함수: 검색 매칭(부분 일치 + 한글 초성)
+│  │  │  │  ├─ menuSize.ts        # MENU_SIZES(S·M·L·XL 순서) · priceOf(menu, size)
 │  │  │  │  └─ menuService.ts     # 메뉴·카테고리 조회 + 관리자 CRUD (메뉴 도메인의 유일한 데이터 창구)
 │  │  │  ├─ _data/
-│  │  │  │  ├─ menus.ts           # 메뉴 + 관리자 폼용 이미지 목록(MENU_IMAGES)
+│  │  │  │  ├─ menus.ts           # 메뉴(음료는 sizePrices) + 관리자 폼용 이미지 목록(MENU_IMAGES)
 │  │  │  │  └─ categories.ts
-│  │  │  └─ _types.ts             # Menu, MenuStatus, MenuBadge, Category, MenuInput, CategoryInput
+│  │  │  └─ _types.ts             # Menu, MenuStatus, MenuBadge, MenuSize, SizePrices, Category, MenuInput, CategoryInput
+│  │  │
+│  │  ├─ cart/                    # /cart 장바구니 (Header 아이콘에서 진입)
+│  │  │  ├─ page.tsx
+│  │  │  └─ _components/
+│  │  │     ├─ CartView.tsx       # 담은 메뉴 목록(사이즈별 줄 · 수량 · 삭제) + 주문 요약 (client, useCart)
+│  │  │     └─ cart.module.css
 │  │  │
 │  │  └─ event/                   # /event
 │  │     ├─ page.tsx
@@ -156,23 +164,26 @@ frontend/
 │
 ├─ components/                    # 2개 이상 페이지가 쓰는 공용 컴포넌트
 │  ├─ BrandLogo.tsx               # manhattaN cafe 워드마크(인라인 SVG, currentColor) — 한 줄형 / 적층형, slashOpacity
-│  ├─ Header.tsx                  # 로고(BrandLogo) + HOME/MENU/SEAT/RACE/EVENT + 내 쿠폰 수
+│  ├─ Header.tsx                  # 로고(BrandLogo) + HOME/MENU/SEAT/RACE/EVENT + 내 쿠폰 수 + 장바구니(수량)
 │  ├─ Footer.tsx
 │  ├─ Modal.tsx                   # 공용 모달(포커스 트랩, ESC 닫기, 배경 클릭 닫기, 모바일 Bottom Sheet)
 │  ├─ TicketBadge.tsx             # BEST / WINNER / NEW / MY PICK 경마 티켓 배지
 │  ├─ Scoreboard.tsx              # 전광판 스타일 숫자 박스(카운트다운·좌석 수 공용)
 │  ├─ HorseAvatar.tsx             # 말 마스코트(SVG, 대표색 주입) — 메인 Hero · /race 공용
 │  ├─ UserProvider.tsx            # 쿠폰 수 공유 Context + useUser() 훅
+│  ├─ CartProvider.tsx            # 장바구니 Context + useCart() 훅 (Header · /menu/[id] · /cart)
+│  ├─ QuantityStepper.tsx         # 수량 − / + (/menu/[id] 담기 · /cart 공용)
 │  ├─ ComingSoon.tsx              # 아직 구현 전인 사용자 페이지의 임시 화면 (전 페이지 구현 후 삭제)
 │  ├─ layout.module.css           # Header · Footer · 사이트 골격
-│  └─ ui.module.css               # Modal · TicketBadge · Scoreboard · HorseAvatar
+│  └─ ui.module.css               # Modal · TicketBadge · Scoreboard · HorseAvatar · QuantityStepper
 │
 ├─ lib/                           # 2개 이상 페이지가 쓰는 공용 로직
+│  ├─ cart.ts                     # 장바구니 순수 함수(담기 합치기 · 수량 1~20 · 총 수량 · 합계)
 │  ├─ time.ts                     # RACE_TIMES, 다음 경주 시각 계산, 카운트다운 포맷
 │  └─ useCountdown.ts             # 메인 Hero · /race 공용 카운트다운 훅
 │
 ├─ types/
-│  └─ common.ts                   # Coupon, UserState 등 공용 타입
+│  └─ common.ts                   # Coupon, UserState, CartLine, CartItem, CartState 등 공용 타입
 │
 └─ public/
    └─ images/
@@ -311,6 +322,7 @@ frontend/
   - 가운데 사선은 `slashOpacity` 로 투명도를 정한다. 기본 0.2(원본), 어두운 관리자 사이드바만 0.3
 - 중: `HOME · MENU · SEAT · RACE · EVENT` — 회색 → 현재 경로는 검정 + 짙은 회색 2px 밑줄. 한글 부제는 PC 에서 스크린리더용, 모바일 메뉴에서 표시
 - 우: 티켓 아이콘 + `5장` 내 쿠폰 칩(UserContext 구독) — 클릭 시 `/event`
+- 우: 쇼핑백 아이콘 장바구니(CartContext 구독) — 담은 **총 수량**을 아이콘 오른쪽 위 숫자로(0 이면 숨김, 100 이상은 `99+`), 클릭 시 `/cart`. 라벨은 "장바구니 N개"
 - 모바일(≤860px): 햄버거 → 전체 화면 흰 메뉴
 - RACE 메뉴 옆에 경주가 임박하면 작은 빨간 `LIVE` 점(선택)
 
@@ -328,9 +340,9 @@ frontend/
 |---|---|
 | `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RacePhase`, `RaceResult`, `RaceEventMessage` |
 | `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `FloorFixture` |
-| `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `Menu`, `MenuInput`, `CategoryInput` |
+| `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
 | `app/(site)/event/_types.ts` | `CafeEvent` |
-| `types/common.ts` | `Coupon`, `UserState` (Header·메인·/race·/event 공용) |
+| `types/common.ts` | `Coupon`, `UserState` (Header·메인·/race·/event 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
 
 ```ts
 // ===== app/(site)/race/_types.ts =====
@@ -401,13 +413,16 @@ export interface Category {
 
 export type MenuStatus = "ON_SALE" | "SOLD_OUT" | "HIDDEN";
 export type MenuBadge = "BEST" | "WINNER" | "NEW";
+export type MenuSize = "S" | "M" | "L" | "XL";   // 순서는 _lib/menuSize.ts 의 MENU_SIZES
+export type SizePrices = Record<MenuSize, number>;
 
 export interface Menu {
   id: number;
   categoryId: number;
   name: string;            // 한글명
   engName: string;
-  price: number;
+  price: number;           // 대표 가격 — 사이즈가 없으면 그 가격, 있으면 S 가격과 같다(시작가)
+  sizePrices: SizePrices | null; // 사이즈별 가격(음료, 메뉴마다 직접 입력). null 이면 단일 가격(디저트)
   description: string;
   image: string;           // /images/menus/xxx.svg
   badge?: MenuBadge;
@@ -441,6 +456,28 @@ export interface UserState {
   rewards: Coupon[];
   spendCoupon: () => boolean;
   addReward: (c: Coupon) => void;
+}
+
+export interface CartLine {      // 같은 메뉴·같은 사이즈는 한 줄
+  key: string;                   // "1:M", 사이즈 없는 메뉴는 "13:-" (lib/cart.ts 의 lineKey)
+  menuId: number;
+  size: MenuSize | null;         // null = 사이즈 없는 메뉴
+  name: string;
+  engName: string;
+  image: string;
+  unitPrice: number;             // 담을 때의 그 사이즈 가격 — 주문 API 가 생기면 서버가 다시 계산
+  quantity: number;              // 1 ~ CART_MAX_QUANTITY(20)
+}
+export type CartItem = Omit<CartLine, "key" | "quantity">;
+
+export interface CartState {
+  lines: CartLine[];
+  count: number;                 // 총 수량(Header 숫자)
+  total: number;                 // 합계 금액
+  add: (item: CartItem, quantity: number) => void;
+  setQuantity: (key: string, quantity: number) => void;
+  remove: (key: string) => void;
+  clear: () => void;
 }
 ```
 
@@ -497,6 +534,7 @@ WINDOW(상단 벽 전체), COUNTER(우측 중단), ENTRANCE(좌하단), RESTROOM
 카테고리 4개 × 3~4개. 인기 메뉴에 `badge: "BEST"`, 오늘의 1위 메뉴에 `"WINNER"`.
 "오늘의 인기 메뉴"(메인 대시보드)는 `badge === "WINNER"` 인 메뉴로 정한다.
 관리자 화면 확인용으로 `SOLD_OUT` 1개, `HIDDEN` 1개를 섞어 둔다.
+음료(커피·논커피·티)는 `sizePrices: { S, M, L, XL }` 를 메뉴마다 직접 적고 `price` 는 S 가격과 같게 둔다. 디저트는 `sizePrices: null`(단일 가격).
 
 categories.ts: `{ id: 1, name: "커피", engName: "Coffee", order: 1, visible: true }` … 4개.
 
@@ -570,6 +608,11 @@ interface UserState {
 - Header(쿠폰 수), 메인 대시보드, `/race`, `/event` 가 같은 값을 본다.
 - 새로고침 시 초기화되어도 무방(프로토타입). 원하면 `localStorage` 동기화를 옵션으로.
 - 좌석 상태는 `/seat` 페이지 State 로 충분하다(다른 페이지는 요약 숫자만 service 에서 읽는다).
+
+**장바구니 — `components/CartProvider.tsx`**: `app/layout.tsx` 에서 `UserProvider` 안쪽을 감싸고 `useCart()` 로 꺼낸다(타입 `CartState`).
+- Header(총 수량), `/menu/[id]`(담기), `/cart`(목록·수량·삭제·합계)가 같은 값을 본다.
+- 계산은 `lib/cart.ts` 순수 함수로만 한다 — 같은 메뉴·사이즈는 한 줄로 합치고, 한 줄 수량은 1~20.
+- React State 에만 둔다(사용자 결정): 사이트 안에서 이동해도 남지만 새로고침하면 비워진다. `/cart` 의 정적 셸에는 빈 장바구니가 들어간다.
 
 ---
 
@@ -819,17 +862,18 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 
 ### 8.4 `/menu` — 경마 티켓 스타일 메뉴판
 
-- 상단: `TODAY'S LINE-UP` / `MENU BOARD`. 클래식 카페 메뉴판 느낌은 세리프 대신 점선 리더(`아메리카노 ........ 4,500원`)로 낸다(2.2 — Pretendard 하나).
+- 상단: `TODAY'S LINE-UP` / `MENU BOARD`. 클래식 카페 메뉴판 느낌은 세리프 대신 티켓 모양(절취선 · STUB · 일련번호)으로 낸다(2.2 — Pretendard 하나). 점선 리더(`당근 케이크 ........ 6,500원`)는 상세의 사이즈 없는 메뉴에만 쓴다.
 - `MenuCategory` 탭: `getCategories()` 결과 중 `visible` 인 것만 `order` 순으로 (전체 탭 포함, 탭마다 메뉴 수). 기본 데이터는 Coffee / Non Coffee / Tea / Dessert. 선택은 클라이언트 State 로만 두고 URL 쿼리 `?category=` 동기화는 하지 않았다 — `cacheComponents` 에서 쿼리를 읽으면 페이지가 정적 셸에서 빠지기 때문(필요해지면 `useSearchParams` + Suspense 로 추가).
 - `status: "HIDDEN"` 메뉴는 보이지 않고, `"SOLD_OUT"` 은 카드에 "품절" 스탬프 + 흐리게.
-- `MenuCard` = 티켓: 좌측 이미지, 우측 이름(한/영)·가격·설명, 절취선 너머 작은 "STUB" 에 일련번호. 인기 메뉴는 `BEST`, 1위 메뉴는 금색 `WINNER` 배지(TicketBadge). 카드 어디를 눌러도 상세(`/menu/[id]`)로 간다(이름 링크 + `::after` 로 카드 전체를 덮음).
+- `MenuCard` = 티켓: 좌측 이미지, 우측 이름(한/영)·설명, 절취선 너머 STUB(폭 92px, 모든 카드 동일). 가격은 모두 STUB 안에 있다 — 맨 위에 `STUB` / 그 아래 줄 `No.0001`(일련번호)을 **왼쪽 정렬로 위에 고정**하고 그 아래에 구분선(머리글의 border-bottom). 가격은 **STUB 바닥에 붙인다** — 음료는 **S · M · L · XL 가격을 한 줄씩**, 사이즈가 없는 디저트는 **`ONE SIZE` 아래에 가격**(가운데 정렬). 카드가 길어지면 머리글과 가격 사이가 벌어진다(`<dl>`, 스크린리더는 "S 사이즈 4,000원" 으로 읽고 STUB · 일련번호만 `aria-hidden`). 카드에는 점선 리더가 없다(상세의 디저트 가격에만 남아 있다). 메인 `TODAY'S LINEUP` 카드는 사이즈 메뉴를 `4,000원~`(S 가격부터)으로 보여 준다. 인기 메뉴는 `BEST`, 1위 메뉴는 금색 `WINNER` 배지(TicketBadge). 카드 어디를 눌러도 상세(`/menu/[id]`)로 간다(이름 링크 + `::after` 로 카드 전체를 덮음).
 - 그리드: PC 3열 / 태블릿 2열 / 모바일 1열.
 - **검색**(`MenuSearch`): 제목 오른쪽(모바일은 제목 아래) 검색창, 칠 때마다 바로 거른다. 선택한 탭과 함께 적용되고 탭 개수도 검색 결과 기준. 매칭(`_lib/menuSearch.ts`): 이름은 부분 일치 + 한글 초성(`ㅇㅁㄹ` → 아메리카노), 영문명·설명은 부분 일치, 카테고리명은 앞부분 일치("커피" 가 "논커피" 에 걸리지 않게). 공백·대소문자 무시, 입력 중인 마지막 글자는 덜 조합된 상태도 받아 준다(`칼`·`카람` → 카라멜). 결과 0건이면 "전체에서 보기"(다른 탭에 결과가 있을 때) 또는 "검색어 지우기". 검색어도 탭처럼 URL(`?q=`)에 남기지 않는다.
 - 상세에 갔다가 "메뉴판으로" 돌아오면 검색어·탭이 그대로다 — `cacheComponents` 가 이전 페이지를 `<Activity>` 로 숨겨 두기 때문(최근 3개 라우트).
 
 #### `/menu/[id]` — 메뉴 상세
 
-- 메뉴판 티켓을 크게 펼친 모양: 일러스트 · `WINNER/BEST/NEW` 배지 · 이름 `........` 가격(점선 리더) · 영문명 · 설명 · 정보(카테고리, 판매 상태) · "메뉴판으로" 버튼 · STUB 일련번호. 모바일은 세로로 쌓고 STUB 을 아래로 보낸다.
+- 메뉴판 티켓을 크게 펼친 모양: 일러스트 · `WINNER/BEST/NEW` 배지 · 이름 `........` 가격(점선 리더, 사이즈 메뉴는 이름만) · 영문명 · 설명 · 정보(카테고리, 판매 상태) · 주문 영역 · STUB 일련번호. 모바일은 세로로 쌓고 STUB 을 아래로 보낸다.
+- **주문 영역(`AddToCart`, client)**: 사이즈 4칸 라디오(칸마다 사이즈 가격 — 사이즈별 가격표 역할, 기본 S) → 수량 스테퍼(1~20) + 합계 → `[← 메뉴판으로] [장바구니 담기]` → 담은 뒤 "장바구니에 아메리카노 M 3개를 담았어요. 장바구니 보기 ›"(`role="status"`). 디저트는 사이즈 없이 수량부터. 이미 담은 메뉴·사이즈면 수량을 더하고, 20개를 넘으면 남은 만큼만 담고 알려 준다. 품절이면 가격은 보이되 사이즈·수량·담기가 모두 막힌다.
 - 위에 현재 위치(`메뉴판 › 커피`), 아래에 **같은 카테고리의 다른 메뉴** 최대 3개(메뉴판 순서, `MenuCard` 재사용).
 - 메뉴판에 보이는 메뉴만 연다(`selectDetail`). HIDDEN · 숨김 카테고리 · 없는 id 는 `notFound()` → 같은 폴더의 `not-found.tsx`("SCRATCHED"). 품절은 열리고 스탬프 + 빨간 "품절" 상태로 보인다.
 - 빌드 때 `generateStaticParams` 로 메뉴판의 메뉴를 모두 미리 만들고, 데이터는 `"use cache"` 로 id 별 캐시(메뉴판과 같은 `cacheLife("hours")`). 목록에 없던 id 는 첫 요청 때 렌더된다. 이때 정적 셸이 먼저 나가므로 없는 메뉴의 응답 코드는 404 가 아니라 200 + `noindex` 다(Next 문서의 스트리밍 동작).
@@ -863,8 +907,9 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 
 - 목록: 검색(이름·영문명), 카테고리 필터, 상태 필터. 결과 0건이면 빈 상태 문구.
 - 상태(판매중 / 품절 / 숨김)는 목록에서 바로 바꿀 수 있다(`updateMenuStatus`).
-- 등록/수정 폼(모달): 카테고리(select, `getCategories()`), 이름, 영문명, 가격, 설명, 이미지 경로, 배지(없음/BEST/WINNER/NEW), 상태.
-- 검증(`validateMenu`): 이름·영문명 필수, 가격은 0 이상 정수(100원 단위), 설명 100자 이내, WINNER 배지는 하나의 메뉴에만 둘 수 있다(다른 메뉴에 이미 있으면 안내).
+- 등록/수정 폼(모달): 이름, 영문명, 카테고리(select, `getCategories()`), 배지(없음/BEST/WINNER/NEW), 가격, 설명, 이미지 경로, 상태.
+- 가격: "사이즈별 가격 (S · M · L · XL)" 체크(새 메뉴는 켜짐)를 켜면 4칸, 끄면 1칸. 저장 시 사이즈 메뉴의 `price` 는 S 가격으로 채운다. 체크를 껐다 켜도 입력은 남고, 빈 쪽은 다른 쪽 값(단일 가격 ↔ S)으로 채워 준다. 목록의 가격 칸은 사이즈 메뉴를 `4,000~5,500원 / S–XL` 로 보여 준다.
+- 검증(`validateMenu`): 이름·영문명 필수, 가격(사이즈 메뉴는 4칸 각각)은 0 이상 정수(100원 단위), 큰 사이즈가 작은 사이즈보다 쌀 수 없다, 설명 100자 이내, WINNER 배지는 하나의 메뉴에만 둘 수 있다(다른 메뉴에 이미 있으면 안내).
 - 삭제: ConfirmDialog → `deleteMenu` → 목록에서 제거.
 - 모바일: 표는 가로 스크롤 대신 카드 목록으로 바꿔 보여 준다.
 
@@ -883,6 +928,24 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 - 노출 토글: OFF 면 `/menu` 탭에서 숨겨진다.
 - 추가/수정 폼: 이름·영문명 필수, 이름 중복 금지(`validateCategory`).
 - 삭제: 메뉴가 1개 이상 속해 있으면 삭제 버튼 대신 "메뉴를 먼저 옮기거나 삭제해 주세요" 안내. 0개면 ConfirmDialog 후 삭제.
+
+### 8.9 `/cart` — 장바구니
+
+```
+┌ 담은 메뉴 3 ──────────────────── 전체 삭제 ┐  ┌ 주문 요약 ─────────┐
+│ ☕ 아메리카노 (M)   [− 3 +]   13,500원  ×   │  │ 총 수량        5개 │
+│    Americano · 4,500원                    │  │ - - - - - - - - - │
+│ ☕ 아메리카노 (XL)  [− 1 +]    5,500원  ×   │  │ 합계     25,500원 │
+│ 🍰 당근 케이크      [− 1 +]    6,500원  ×   │  │ [주문하기](준비 중) │
+└───────────────────────────────────────────┘  │ [메뉴 더 담기]     │
+                                               └───────────────────┘
+```
+
+- Header 장바구니 아이콘에서 들어온다. 제목 `MY ORDER / CART`. 데이터는 `useCart()` 하나.
+- 한 줄 = 메뉴 + 사이즈(같은 메뉴도 사이즈가 다르면 다른 줄): 일러스트 · 이름(상세 링크) + 사이즈 칩 · 영문명 · 단가 · 수량 스테퍼 · 금액 · 삭제(×). 모바일은 `일러스트 | 이름 · ×` / `수량 · 금액` 두 줄.
+- 요약(PC 오른쪽 sticky, ≤960px 아래): 총 수량 · 합계(위에 티켓 절취선 점선) · "주문하기"(준비 중으로 비활성) · "메뉴 더 담기".
+- "전체 삭제" 는 같은 자리에서 "모두 삭제할까요? 삭제 / 취소" 로 한 번 더 묻는다(빨강은 위험 동작 전용). 줄 삭제 · 전체 삭제 뒤에는 포커스를 목록 제목(비면 빈 상태 제목)으로 옮긴다.
+- 비어 있으면 "장바구니가 비어 있어요" + "메뉴판 보러 가기".
 
 ---
 
@@ -905,6 +968,7 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 · 실제 쿠폰 발급 · 실제 좌석 예약 API · WebSocket 실시간 통신.
 → 모두 Mock Data + React State 로 "동작하는 것처럼" 보여준다. 현금·실제 금전 배팅은 어떤 형태로도 구현하지 않는다.
 → 관리자 페이지도 인증 없이 열린다. 접근 제어는 로그인 기능을 붙일 때 함께 넣는다.
+→ 장바구니는 담기·수량·삭제·합계까지만 한다. "주문하기" 는 준비 중으로 막아 두고, 장바구니는 저장하지 않는다(새로고침 시 비워짐).
 
 ---
 
@@ -933,6 +997,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 | 2 | (관리자) 메뉴 관리 | 1 |
 | 3 | (관리자) 카테고리 관리 | 2 |
 | 4 | 메뉴 조회 | 2, 3 |
+| 4-1 | 메뉴 사이즈 & 장바구니 | 2, 4 |
 | 5 | 쿠폰 지갑 & 이벤트 | 1 |
 | 6 | 경주 일정 & 카운트다운 | 1 |
 | 7 | 말 출전표 & 쿠폰 사용 | 5, 6 |
@@ -1034,7 +1099,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] `menuService.ts` — `getTodayWinnerMenu` (2단계에서 미리 만들어 둠, 14단계 대시보드가 쓴다)
 - [x] `_lib/menuBoard.ts` — `selectBoard`(노출 카테고리 `order` 순 · HIDDEN/숨김 카테고리 메뉴 제외) · `ticketSerial`
 - [x] `MenuCategory.tsx` — 노출 카테고리 탭(`order` 순) + 전체 탭, 개수 표시, ←/→ · Home/End 키보드 이동
-- [x] `MenuCard.tsx` — 티켓 카드(이미지 · 한/영 이름 · 가격 점선 리더 · 설명 · STUB 일련번호)
+- [x] `MenuCard.tsx` — 티켓 카드(이미지 · 한/영 이름 · 가격 점선 리더 · 설명 · STUB 일련번호) — 4-1단계에서 가격을 STUB 안으로 옮김
 - [x] BEST / WINNER / NEW 배지, 품절 스탬프
 - [x] `MenuBoard.tsx`(client, 탭 State) + `app/(site)/menu/page.tsx` 조립(`"use cache"` 로 정적 셸)
 - [x] `_lib/menuSearch.ts` + `MenuSearch.tsx` — 메뉴판 검색(부분 일치 + 한글 초성, 탭과 함께 적용, 빈 상태 안내)
@@ -1049,6 +1114,32 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] 이름 · 영문명 · 설명 · 초성으로 찾을 수 있고, 탭 개수가 검색 결과에 맞게 바뀐다
 - [x] 카드를 누르면 상세가 열리고, "메뉴판으로" 돌아오면 검색어·탭이 그대로다
 - [x] HIDDEN 메뉴 · 없는 id 의 상세 주소는 "SCRATCHED" 화면이 뜬다
+
+---
+
+### 4-1단계 — 메뉴 사이즈 & 장바구니 (`/cart`)
+
+음료에 S · M · L · XL 사이즈별 가격을 두고, 상세에서 사이즈를 골라 장바구니에 담는다. 설계: 3(Header), 7, 8.4, 8.7, 8.9.
+
+**구현**
+- [x] `_types.ts` — `MenuSize`, `SizePrices`, `Menu.sizePrices` / `_data/menus.ts` — 음료 12개 사이즈별 가격, 디저트 `null`
+- [x] `_lib/menuSize.ts` — `MENU_SIZES` · `priceOf`
+- [x] `MenuCard.tsx` — STUB 에 `STUB` / `No.0001` + 음료는 사이즈별 가격 4줄, 디저트는 `ONE SIZE` 가격 / `MenuLineup` — 사이즈 메뉴는 `4,000원~`
+- [x] `types/common.ts` — `CartLine` · `CartItem` · `CartState` / `lib/cart.ts` — 담기 합치기 · 수량 1~20 · 총 수량 · 합계
+- [x] `components/CartProvider.tsx`(`useCart`) — 루트 레이아웃에서 감싼다 / `components/QuantityStepper.tsx`
+- [x] `Header.tsx` — 장바구니 아이콘 + 총 수량 숫자 → `/cart`
+- [x] `AddToCart.tsx` — 상세의 사이즈(가격 포함) · 수량 · 합계 · 담기 · 담은 뒤 알림
+- [x] `app/(site)/cart/page.tsx` + `CartView.tsx` — 목록 · 수량 · 줄 삭제 · 전체 삭제(한 번 더 확인) · 요약 · 빈 상태
+- [x] 관리자 `MenuForm` · `validateMenu` · `MenuAdminTable` — 사이즈별 가격 4칸 입력 · 검증 · 목록 표시
+
+**완료 확인**
+- [x] 메뉴판 카드와 상세에서 음료의 S · M · L · XL 가격이 보이고, 디저트는 가격 하나만 보인다
+- [x] 상세에서 사이즈 · 수량을 고르면 합계가 바뀌고, 담으면 Header 숫자가 총 수량만큼 늘어난다
+- [x] 같은 메뉴 · 같은 사이즈를 다시 담으면 한 줄의 수량이 늘고, 사이즈가 다르면 줄이 따로 생긴다
+- [x] Header 아이콘을 누르면 `/cart` 로 가고, 수량 변경 · 삭제가 합계와 Header 숫자에 바로 반영된다
+- [x] 품절 메뉴는 가격만 보이고 담을 수 없다
+- [x] 관리자 폼에서 사이즈별 가격을 켜고 끌 수 있고, 큰 사이즈가 더 싸면 저장되지 않는다
+- [x] PC · 모바일(390px)에서 메뉴판 · 상세 · 장바구니 확인
 
 ---
 

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useId, useState, type FormEvent } from "react";
-import type { Category, Menu, MenuBadge, MenuInput, MenuStatus } from "@/app/(site)/menu/_types";
+import { MENU_SIZES } from "@/app/(site)/menu/_lib/menuSize";
+import type { Category, Menu, MenuBadge, MenuInput, MenuSize, MenuStatus, SizePrices } from "@/app/(site)/menu/_types";
 import styles from "../../_components/admin.module.css";
 import { MENU_LIMITS, type MenuErrors } from "../_lib/validateMenu";
 
@@ -29,24 +30,35 @@ interface MenuFormProps {
   onCancel: () => void;
 }
 
-/** 폼 입력값 — 가격은 입력 중 문자열로 들고 있다가 제출 시 숫자로 바꾼다. */
+/**
+ * 폼 입력값 — 가격은 입력 중 문자열로 들고 있다가 제출 시 숫자로 바꾼다.
+ * sized 면 사이즈별 가격 4칸을, 아니면 가격 1칸을 쓴다. 둘 다 들고 있어서 체크를 껐다 켜도 입력이 남는다.
+ */
 interface Draft {
   categoryId: string;
   name: string;
   engName: string;
+  sized: boolean;
   price: string;
+  sizePrices: Record<MenuSize, string>;
   description: string;
   image: string;
   badge: MenuBadge | "";
   status: MenuStatus;
 }
 
+const toText = (n: number | undefined) => (n === undefined ? "" : String(n));
+const toNumber = (s: string) => (s.trim() === "" ? Number.NaN : Number(s.replaceAll(",", "")));
+
 function toDraft(menu: Menu | null, categories: Category[], imageOptions: { path: string }[]): Draft {
+  const sp = menu?.sizePrices ?? undefined;
   return {
     categoryId: String(menu?.categoryId ?? categories[0]?.id ?? ""),
     name: menu?.name ?? "",
     engName: menu?.engName ?? "",
-    price: menu ? String(menu.price) : "",
+    sized: menu ? menu.sizePrices !== null : true, // 새 메뉴는 음료가 많아 사이즈를 켜 둔다
+    price: toText(menu?.price),
+    sizePrices: { S: toText(sp?.S), M: toText(sp?.M), L: toText(sp?.L), XL: toText(sp?.XL) },
     description: menu?.description ?? "",
     image: menu?.image ?? imageOptions[0]?.path ?? "",
     badge: menu?.badge ?? "",
@@ -55,12 +67,15 @@ function toDraft(menu: Menu | null, categories: Category[], imageOptions: { path
 }
 
 function toInput(d: Draft): MenuInput {
-  const price = d.price.trim() === "" ? Number.NaN : Number(d.price.replaceAll(",", ""));
+  const sizePrices: SizePrices | null = d.sized
+    ? { S: toNumber(d.sizePrices.S), M: toNumber(d.sizePrices.M), L: toNumber(d.sizePrices.L), XL: toNumber(d.sizePrices.XL) }
+    : null;
   return {
     categoryId: Number(d.categoryId),
     name: d.name,
     engName: d.engName,
-    price,
+    price: sizePrices ? sizePrices.S : toNumber(d.price), // 사이즈 메뉴의 대표 가격은 S 가격
+    sizePrices,
     description: d.description,
     image: d.image,
     badge: d.badge === "" ? undefined : d.badge,
@@ -74,6 +89,18 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
   const uid = useId();
   const id = (name: string) => `${uid}-${name}`;
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  const setSizePrice = (size: MenuSize, value: string) =>
+    setDraft((d) => ({ ...d, sizePrices: { ...d.sizePrices, [size]: value } }));
+
+  /** 사이즈를 켜고 끌 때 비어 있는 쪽을 다른 쪽 값으로 채워 준다(단일 가격 ↔ S 가격). */
+  function toggleSized(sized: boolean) {
+    setDraft((d) => ({
+      ...d,
+      sized,
+      price: !sized && d.price.trim() === "" ? d.sizePrices.S : d.price,
+      sizePrices: sized && d.sizePrices.S.trim() === "" ? { ...d.sizePrices, S: d.price } : d.sizePrices,
+    }));
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -132,18 +159,31 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
           </select>
         </Field>
 
-        <Field id={id("price")} label="가격 (원)" required error={errors.price} hint="100원 단위">
-          <input
-            id={id("price")}
+        <Field id={id("badge")} label="배지" error={errors.badge}>
+          <select
+            id={id("badge")}
             className={styles.input}
-            inputMode="numeric"
-            value={draft.price}
-            placeholder="4500"
-            onChange={(e) => set("price", e.target.value)}
-            aria-invalid={!!errors.price}
-            aria-describedby={errors.price ? `${id("price")}-err` : undefined}
-          />
+            value={draft.badge}
+            onChange={(e) => set("badge", e.target.value as MenuBadge | "")}
+            aria-invalid={!!errors.badge}
+            aria-describedby={errors.badge ? `${id("badge")}-err` : undefined}
+          >
+            {BADGE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </Field>
+
+        <PriceFields
+          idBase={id("price")}
+          draft={draft}
+          error={draft.sized ? errors.sizePrices : errors.price}
+          onToggleSized={toggleSized}
+          onPrice={(v) => set("price", v)}
+          onSizePrice={setSizePrice}
+        />
 
         <Field
           id={id("description")}
@@ -191,24 +231,7 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
           />
         </Field>
 
-        <Field id={id("badge")} label="배지" error={errors.badge}>
-          <select
-            id={id("badge")}
-            className={styles.input}
-            value={draft.badge}
-            onChange={(e) => set("badge", e.target.value as MenuBadge | "")}
-            aria-invalid={!!errors.badge}
-            aria-describedby={errors.badge ? `${id("badge")}-err` : undefined}
-          >
-            {BADGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <fieldset className={styles.field}>
+        <fieldset className={`${styles.field} ${styles.fieldWide}`}>
           <legend className={styles.label}>판매 상태</legend>
           <div className={styles.radioRow}>
             {STATUS_OPTIONS.map((o) => (
@@ -236,6 +259,83 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
         </button>
       </div>
     </form>
+  );
+}
+
+/** 가격 — "사이즈별 가격" 을 켜면 S · M · L · XL 4칸, 끄면 1칸(디저트처럼 사이즈가 없는 메뉴). */
+function PriceFields({
+  idBase,
+  draft,
+  error,
+  onToggleSized,
+  onPrice,
+  onSizePrice,
+}: {
+  idBase: string;
+  draft: Draft;
+  error?: string;
+  onToggleSized: (sized: boolean) => void;
+  onPrice: (value: string) => void;
+  onSizePrice: (size: MenuSize, value: string) => void;
+}) {
+  const noteId = `${idBase}-${error ? "err" : "hint"}`;
+
+  return (
+    <fieldset className={`${styles.field} ${styles.fieldWide}`}>
+      <legend className={styles.label}>
+        가격 (원)
+        <span className={styles.required} aria-label="필수">
+          *
+        </span>
+      </legend>
+      <label className={styles.checkLine}>
+        <input type="checkbox" checked={draft.sized} onChange={(e) => onToggleSized(e.target.checked)} />
+        사이즈별 가격 (S · M · L · XL)
+      </label>
+
+      {draft.sized ? (
+        <div className={styles.sizePriceGrid}>
+          {MENU_SIZES.map((size, i) => (
+            <label key={size} className={styles.sizePriceField}>
+              <span className={styles.sizePriceLabel}>
+                {size}
+                <span className="visually-hidden"> 가격</span>
+              </span>
+              <input
+                className={styles.input}
+                inputMode="numeric"
+                value={draft.sizePrices[size]}
+                placeholder={String(4000 + i * 500)}
+                onChange={(e) => onSizePrice(size, e.target.value)}
+                aria-invalid={!!error}
+                aria-describedby={noteId}
+              />
+            </label>
+          ))}
+        </div>
+      ) : (
+        <input
+          className={`${styles.input} ${styles.priceSingle}`}
+          aria-label="가격"
+          inputMode="numeric"
+          value={draft.price}
+          placeholder="4500"
+          onChange={(e) => onPrice(e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={noteId}
+        />
+      )}
+
+      {error ? (
+        <span id={noteId} className={styles.error}>
+          {error}
+        </span>
+      ) : (
+        <span id={noteId} className={styles.hint}>
+          {draft.sized ? "100원 단위 · 큰 사이즈일수록 같거나 비싸게" : "100원 단위 · 디저트처럼 사이즈가 없는 메뉴"}
+        </span>
+      )}
+    </fieldset>
   );
 }
 

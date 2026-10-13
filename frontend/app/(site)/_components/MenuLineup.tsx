@@ -74,7 +74,10 @@ function LineupCard({ menu, category }: { menu: Menu; category: string }) {
         <span className={styles.category}>{category}</span>
         <strong className={styles.name}>{menu.name}</strong>
         <span className={styles.eng}>{menu.engName}</span>
-        <span className={styles.price}>{menu.price.toLocaleString("ko-KR")}원</span>
+        {/* 사이즈가 있는 음료는 S 가격부터 — 사이즈별 가격은 메뉴판·상세에서 */}
+        <span className={styles.price}>
+          {menu.price.toLocaleString("ko-KR")}원{menu.sizePrices && "~"}
+        </span>
       </div>
     </Link>
   );

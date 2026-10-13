@@ -10,12 +10,17 @@ export interface Category {
 export type MenuStatus = "ON_SALE" | "SOLD_OUT" | "HIDDEN";
 export type MenuBadge = "BEST" | "WINNER" | "NEW";
 
+/** 음료 사이즈 — 순서는 _lib/menuSize.ts 의 MENU_SIZES */
+export type MenuSize = "S" | "M" | "L" | "XL";
+export type SizePrices = Record<MenuSize, number>;
+
 export interface Menu {
   id: number;
   categoryId: number;
   name: string; // 한글명
   engName: string;
-  price: number;
+  price: number; // 대표 가격 — 사이즈가 없으면 그 가격, 있으면 S 가격과 같다(시작가)
+  sizePrices: SizePrices | null; // 사이즈별 가격(음료). null 이면 사이즈 없이 단일 가격(디저트)
   description: string;
   image: string; // /images/menus/xxx.svg
   badge?: MenuBadge;

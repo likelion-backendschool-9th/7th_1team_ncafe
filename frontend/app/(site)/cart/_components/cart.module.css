@@ -1,0 +1,312 @@
+/* ===== /cart — 담은 메뉴 목록 + 주문 요약 ===== */
+
+/* PC: 목록 | 요약(스크롤해도 따라온다) · 좁으면 위아래 */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 40px;
+}
+
+/* ----- 목록 ----- */
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--text-strong);
+}
+
+.listTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.listCount {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.textButton {
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+
+.textButton:hover {
+  color: var(--text-strong);
+}
+
+/* 빨강은 위험 동작 전용 */
+.textButtonDanger,
+.textButtonDanger:hover {
+  font-weight: 700;
+  color: var(--red-600);
+}
+
+.clearConfirm {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--text-strong);
+}
+
+.clearConfirm > :first-of-type {
+  margin-left: 6px;
+}
+
+/* 한 줄: 일러스트 · 이름/사이즈/단가 · 수량 · 금액 · 삭제 */
+.row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto 104px 36px;
+  grid-template-areas: "thumb info qty total remove";
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.thumb {
+  grid-area: thumb;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+
+.thumbImg {
+  width: 72%;
+  height: auto;
+}
+
+.info {
+  grid-area: info;
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.name a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sizeTag {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.eng {
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.unitPrice {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.qty {
+  grid-area: qty;
+}
+
+.lineTotal {
+  grid-area: total;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+.won {
+  margin-left: 1px;
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+.remove {
+  grid-area: remove;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.remove:hover {
+  background: var(--bg-muted);
+  color: var(--text-strong);
+}
+
+/* ----- 주문 요약 — 합계 위 점선은 티켓 절취선 ----- */
+.summary {
+  position: sticky;
+  top: calc(var(--header-h) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 24px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+
+.summaryTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.summaryList > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 0.92rem;
+}
+
+.summaryList dt {
+  color: var(--text-muted);
+}
+
+.summaryList dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.summaryList .summaryTotal {
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--border-strong);
+}
+
+.summaryTotal dt {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.summaryTotal dd {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.summaryNote {
+  margin-top: -6px;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ----- 비어 있을 때 ----- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 72px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty :global(.btn) {
+  margin-top: 8px;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+/* ----- 반응형 ----- */
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+
+  .summary {
+    position: static;
+  }
+}
+
+/* 모바일: 일러스트 | 이름 · 삭제 / 수량 · 금액 */
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb info remove"
+      ". qty total";
+    align-items: start;
+    gap: 12px 14px;
+    padding: 16px 0;
+  }
+
+  .thumb {
+    width: 64px;
+    height: 64px;
+  }
+
+  .remove {
+    justify-self: end;
+    margin: -6px -6px 0 0;
+  }
+
+  .qty,
+  .lineTotal {
+    align-self: center;
+  }
+
+  .summary {
+    padding: 24px 20px 20px;
+  }
+}

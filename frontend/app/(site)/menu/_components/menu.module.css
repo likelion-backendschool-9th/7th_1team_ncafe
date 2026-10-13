@@ -201,7 +201,7 @@
 /* ----- 티켓 카드 -----
    STUB 경계(오른쪽에서 --stub 만큼)의 위·아래에 반원 홈을 마스크로 뚫는다. */
 .ticket {
-  --stub: 58px;
+  --stub: 92px; /* "XL 5,500원" 한 줄이 들어가는 폭 */
   --notch: 9px;
   position: relative;
   display: flex;
@@ -281,31 +281,12 @@
   margin-bottom: 6px;
 }
 
-/* 이름 ........ 가격 — 클래식 메뉴판의 점선 리더 */
-.leader {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+/* 이름 — 가격은 STUB 에 있다 */
+.title {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.35;
   color: var(--text-strong);
-}
-
-.name {
-  min-width: 0;
-}
-
-.dots {
-  flex: 1;
-  min-width: 14px;
-  border-bottom: 2px dotted var(--border-strong);
-  transform: translateY(-4px);
-}
-
-.price {
-  flex: none;
-  font-variant-numeric: tabular-nums;
 }
 
 .won {
@@ -327,31 +308,89 @@
   color: var(--text-body);
 }
 
-/* 절취선 너머 STUB — 세로 글씨 */
+/* 절취선 너머 STUB — 위에 STUB / No.0001 두 줄, 아래 가격(음료는 사이즈별, 디저트는 ONE SIZE).
+   모든 카드가 같은 폭이라 그리드에서 절취선이 나란히 선다. */
 .stub {
   flex: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  justify-content: flex-start; /* STUB / No.0001 은 카드 높이와 상관없이 위에 고정 */
+  gap: 8px;
   width: var(--stub);
+  padding: 16px 10px 16px 12px;
   border-left: 2px dashed var(--border-strong);
+}
+
+.stubHead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-strong);
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .stubLabel,
 .serial {
-  writing-mode: vertical-rl;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   letter-spacing: 0.2em;
   color: var(--text-faint);
 }
 
 .serial {
+  font-size: 0.7rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
+}
+
+/* 가격 — 음료는 "S ····· 4,000원" 처럼 한 줄씩 */
+/* 가격은 STUB 바닥에 붙는다(머리글은 위, 가격은 아래 — 카드가 길어지면 사이가 벌어진다) */
+.sizes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: auto 0 0;
+}
+
+.sizeRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* 디저트처럼 사이즈가 없으면 "ONE SIZE" 아래에 가격 */
+.oneSize {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.sizeRow dt,
+.oneSize dt {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--text-faint);
+}
+
+.sizeRow dd,
+.oneSize dd {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+.oneSize dd {
+  font-size: 1.02rem;
 }
 
 /* 품절 — 흐리게 + 빨간 스탬프(빨강은 품절·위험 전용) */

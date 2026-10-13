@@ -10,7 +10,7 @@
   flex: 1;
 }
 
-/* ===== Header — 화이트, 로고 좌측 · 내비 중앙 · 쿠폰 우측 ===== */
+/* ===== Header — 화이트, 로고 좌측 · 내비 중앙 · 쿠폰·장바구니 우측 ===== */
 .header {
   position: sticky;
   top: 0;
@@ -100,7 +100,7 @@
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* 내 쿠폰 칩 → /event */
@@ -135,6 +135,41 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-strong);
+}
+
+/* 장바구니 → /cart. 담은 총 수량을 아이콘 오른쪽 위 숫자로 */
+.cart {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--text-strong);
+  transition: background 0.15s;
+}
+
+.cart:hover,
+.cart[aria-current="page"] {
+  background: var(--bg-subtle);
+}
+
+.cartCount {
+  position: absolute;
+  top: 3px;
+  right: 1px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border: 2px solid var(--bg);
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .burger {
