@@ -11,13 +11,13 @@
 | 항목 | 결정 |
 |---|---|
 | 프레임워크 | Next.js (App Router) + TypeScript (strict) |
-| 스타일 | CSS Modules + 전역 CSS 변수(디자인 토큰). 화이트 베이스 · 그레이스케일 포인트. 외부 UI 라이브러리 없음 |
+| 스타일 | CSS Modules + 전역 CSS 변수(디자인 토큰). 화이트 베이스 · 그레이스케일 포인트. 외부 UI 라이브러리 없음(렌더링 엔진 `pixi.js` 는 `/race` 경기 화면 전용 · 동적 import) |
 | 브랜드 | `manhattaN cafe` (표기 그대로 — 대문자 N) · 워드마크 `components/BrandLogo.tsx` |
 | 폰트 | Pretendard(가변) 하나로 통일 — CDN 동적 서브셋 `<link>`. 세리프·전광판 전용 폰트 없음 |
 | 상태 | React State + Context(쿠폰·내 정보처럼 페이지를 넘나드는 값만) |
 | 폴더 구조 | 라우트 단위 Colocation (`app/<route>/_components·_hooks·_lib·_data·_types.ts`) |
 | 데이터 | `_data/*.ts` Mock → `_lib/*Service.ts` → 컴포넌트 (API 교체 지점은 Service 파일 하나) |
-| 애니메이션 | 레이스: `requestAnimationFrame` + `transform: translateX`. 나머지: CSS transition/keyframes |
+| 애니메이션 | 레이스 경기 화면: **PixiJS v8(WebGL) 캔버스** + `requestAnimationFrame`(사용자 결정 2026-10-13). 나머지: CSS transition/keyframes |
 | 백엔드 | 연결하지 않음 (추후 Spring Boot) |
 | 핵심 페이지 | **`/race`**, **`/seat`** — 가장 높은 완성도 |
 | 관리자 페이지 | `/admin/menus`(메뉴 관리), `/admin/categories`(카테고리 관리) — 인증 없이 Mock 으로 동작 |
@@ -43,6 +43,7 @@ frontend/
 │  │  ├─ page.tsx                 # /  메인 — Hero + MenuLineup 조립
 │  │  ├─ _components/             # 메인(/) 전용
 │  │  │  ├─ Hero.tsx              # 전폭 슬라이더 + 하단 탭 페이지네이션 (hero.module.css)
+│  │  │  ├─ HeroRaceClock.tsx     # NEXT RACE 슬라이드의 다음 경주 시각 · 카운트다운 · SOON/LIVE + 탭 제목
 │  │  │  ├─ MenuLineup.tsx        # TODAY'S LINEUP 4열 메뉴 그리드, "use cache" (menuLineup.module.css)
 │  │  │  └─ DashboardCard.tsx     # (14단계) 좌석/인기메뉴/쿠폰/다음경주 카드 (Link)
 │  │  ├─ _lib/
@@ -52,26 +53,32 @@ frontend/
 │  │  ├─ _types.ts                # HeroSlide
 │  │  │
 │  │  ├─ race/                    # /race  ★ 핵심
-│  │  │  ├─ page.tsx
+│  │  │  ├─ page.tsx              # "use cache" — 제목 → RaceCountdown → RaceBoard(출전마 · 지난 기록을 Service 에서)
 │  │  │  ├─ _components/
-│  │  │  │  ├─ HorseCard.tsx      # 출전표 카드
+│  │  │  │  ├─ RaceBoard.tsx      # 출전표 + 보상 안내 + 트랙 무대(READY 이후) + 확인창 조립 (client, useRace)
+│  │  │  │  ├─ HorseCard.tsx      # 출전표 카드(게이트 번호 · 이름 · 말 이미지 · 성향 · 최근 성적 · 선택 버튼)
+│  │  │  │  ├─ GateBadge.tsx      # 게이트 번호 원(대표색 = 조끼 색, 글자색은 대비 계산)
+│  │  │  │  ├─ PayoutGuide.tsx    # "쿠폰 1장으로 참여 · [1위 4장] [2위 3장] [3위 2장] 돌려받기"
 │  │  │  │  ├─ BetConfirmModal.tsx# "MOCHA에 쿠폰 1장을 사용하시겠습니까?"
-│  │  │  │  ├─ HorseTrack.tsx     # 트랙 전체(레인 7개 + START/FINISH)
-│  │  │  │  ├─ HorseRunner.tsx    # 레인 하나의 말
-│  │  │  │  ├─ RaceCountdown.tsx
-│  │  │  │  ├─ RaceEventMessage.tsx # 경기 중 이벤트 토스트
+│  │  │  │  ├─ HorseTrack.tsx     # 트랙 무대 — 머리띠(READY · [경주 시작] · LIVE · FINISH) + 경기 화면(PixiJS 캔버스, _lib/trackScene) + HUD(순위 · 남은 거리) + 카운트다운 · 토스트(DOM)
+│  │  │  │  ├─ RaceCountdown.tsx  # 상단 전광판(다음 경기 · 남은 시간 · 내 쿠폰)
+│  │  │  │  ├─ RaceEventMessage.tsx # 경기 중 이벤트 토스트(캔버스 위 DOM, 1.5초)
 │  │  │  │  ├─ RaceResultModal.tsx
-│  │  │  │  └─ RaceHistory.tsx    # RECENT RACES
+│  │  │  │  ├─ RaceHistory.tsx    # RECENT RACES
+│  │  │  │  └─ race.module.css    # /race 스타일(전광판부터 7~9단계에서 이어 붙임)
 │  │  │  ├─ _hooks/
-│  │  │  │  └─ useRace.ts         # 레이스 진행 상태 머신 + rAF 루프
+│  │  │  │  └─ useRace.ts         # useRace(기록 합치기 · 경주 번호 · 쿠폰 걸기 · 출발) + useRaceRun(rAF 루프 — 캔버스 매 프레임 · DOM 10Hz · 토스트 큐)
 │  │  │  ├─ _lib/
-│  │  │  │  ├─ simulation.ts      # 순수 함수: 속도·이벤트·순위 계산 (UI 의존 없음)
+│  │  │  │  ├─ simulation.ts      # 순수 함수: createRace · step · advanceTo(속도 · 성향 · 이벤트 · 순위 · 18초 안전장치) — UI 의존 없음
 │  │  │  │  ├─ messages.ts        # 이벤트 메시지 템플릿
+│  │  │  │  ├─ trackScene.ts      # PixiJS 장면(잔디 · 울타리 · 말 · 결승선 · 먼지) + 카메라(cameraFor) — React 와 무관
+│  │  │  │  ├─ payout.ts          # RACE_ENTRY_COUPONS · RACE_PAYOUT · payoutFor · payoutTable · payoutSummary
+│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks(기록 → 최근 성적) · TRAIT_LABEL · textOn
 │  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet)
 │  │  │  ├─ _data/
-│  │  │  │  ├─ horses.ts
-│  │  │  │  └─ raceHistory.ts
-│  │  │  └─ _types.ts             # Horse, RaceResult, RaceEventMessage ...
+│  │  │  │  ├─ horses.ts          # 7마리(이미지 · 조끼 색)
+│  │  │  │  └─ raceHistory.ts     # Race #8~#12, 경주마다 7마리 전체 순위
+│  │  │  └─ _types.ts             # Horse, RacePhase, RaceResult, RaceBet, RaceEventMessage ...
 │  │  │
 │  │  ├─ seat/                    # /seat  ★ 핵심
 │  │  │  ├─ page.tsx
@@ -107,6 +114,7 @@ frontend/
 │  │  │  │  ├─ MenuCategory.tsx   # 카테고리 탭
 │  │  │  │  ├─ MenuCard.tsx       # 티켓 스타일 메뉴 카드 (누르면 상세) — 가격은 STUB 안(음료 S·M·L·XL, 디저트 ONE SIZE)
 │  │  │  │  ├─ MenuDetail.tsx     # 상세 — 크게 펼친 티켓 + 같은 카테고리 메뉴
+│  │  │  │  ├─ FavoriteButton.tsx # 상세 전용 ♡ 찜하기 토글(client, useUser · aria-pressed)
 │  │  │  │  └─ AddToCart.tsx      # 상세의 주문 영역(client) — 사이즈(가격 포함) · 수량 · 합계 · 장바구니 담기
 │  │  │  ├─ _lib/
 │  │  │  │  ├─ menuBoard.ts       # 순수 함수: 메뉴판 선정(selectBoard) · 상세 선정(selectDetail) · 일련번호
@@ -120,20 +128,42 @@ frontend/
 │  │  │
 │  │  ├─ cart/                    # /cart 장바구니 (Header 아이콘에서 진입)
 │  │  │  ├─ page.tsx
-│  │  │  └─ _components/
-│  │  │     ├─ CartView.tsx       # 담은 메뉴 목록(사이즈별 줄 · 수량 · 삭제) + 주문 요약 (client, useCart)
-│  │  │     └─ cart.module.css
+│  │  │  ├─ _components/
+│  │  │  │  ├─ CartView.tsx       # 담은 메뉴 목록(사이즈별 줄 · 수량 · 삭제) + 주문 요약 · 주문하기(목업) (client, useCart)
+│  │  │  │  └─ cart.module.css
+│  │  │  └─ _lib/
+│  │  │     └─ orderService.ts    # placeOrder(lines) → Order(장바구니 사본 · 합계 · 적립 쿠폰) — 목업 주문
 │  │  │
-│  │  └─ event/                   # /event
-│  │     ├─ page.tsx
+│  │  ├─ event/                   # /event  진행 중인 이벤트 (내 쿠폰은 /my)
+│  │  │  ├─ page.tsx              # "use cache" — 모두에게 같은 내용
+│  │  │  ├─ _components/
+│  │  │  │  ├─ EventCard.tsx      # 가로 경마 티켓(STUB: 일련번호 · 기간 · 시각 | 이름 · 설명 · 버튼)
+│  │  │  │  └─ event.module.css
+│  │  │  ├─ _lib/
+│  │  │  │  └─ eventService.ts    # getEvents
+│  │  │  ├─ _data/
+│  │  │  │  └─ events.ts
+│  │  │  └─ _types.ts             # CafeEvent
+│  │  │
+│  │  └─ my/                      # /my  마이페이지 (로그인 없이 Mock 사용자 1명)
+│  │     ├─ page.tsx              # "use cache" — 프로필 + 찜 후보 메뉴(메뉴 Service) 조립, 섹션 세로 나열
 │  │     ├─ _components/
-│  │     │  ├─ CouponCard.tsx     # Race Ticket 스타일 쿠폰
-│  │     │  └─ EventCard.tsx
+│  │     │  ├─ MyOverview.tsx     # 내 정보(Mock 프로필) + 요약 전광판(쿠폰 · 찜 · 주문 수 → #앵커)
+│  │     │  ├─ OrderHistory.tsx   # 주문 내역 — 영수증 카드, 최근 3건 + 전체 보기
+│  │     │  ├─ FavoriteMenus.tsx  # 찜한 메뉴 — 정사각 썸네일 카드, 최근 4개 + 전체 보기
+│  │     │  ├─ MyCoupons.tsx      # 쿠폰 — 얻는 법 · 교환 준비 중 안내 + CouponHistory
+│  │     │  ├─ CouponHistory.tsx  # 쿠폰 적립·사용 내역 — Race Ticket 스타일 줄, 최근 5건 + 전체 보기
+│  │     │  ├─ PlannedSection.tsx # 준비 중 섹션 자리(내 레이스 기록 · 좌석 예약 내역)
+│  │     │  ├─ MySection.tsx      # SectionHead · SectionEmpty · ShowMoreButton
+│  │     │  └─ my.module.css
+│  │     ├─ _hooks/
+│  │     │  └─ useShowMore.ts     # 처음 N개 → 전체 보기 / 접기
 │  │     ├─ _lib/
-│  │     │  └─ eventService.ts    # getEvents
+│  │     │  ├─ myService.ts       # getProfile
+│  │     │  └─ format.ts          # 날짜 · 일련번호 · 금액 표시
 │  │     ├─ _data/
-│  │     │  └─ events.ts
-│  │     └─ _types.ts             # CafeEvent
+│  │     │  └─ profile.ts         # MOCK_PROFILE
+│  │     └─ _types.ts             # UserProfile
 │  │
 │  └─ admin/                      # /admin  관리자 (사용자 Header/Footer 없음, 이번 단계는 로그인 없이 진입)
 │     ├─ layout.tsx               # 관리자 전용 레이아웃(사이드 내비 + "MOCK ADMIN" 안내 띠)
@@ -164,14 +194,16 @@ frontend/
 │
 ├─ components/                    # 2개 이상 페이지가 쓰는 공용 컴포넌트
 │  ├─ BrandLogo.tsx               # manhattaN cafe 워드마크(인라인 SVG, currentColor) — 한 줄형 / 적층형, slashOpacity
-│  ├─ Header.tsx                  # 로고(BrandLogo) + HOME/MENU/SEAT/RACE/EVENT + 내 쿠폰 수 + 장바구니(수량)
+│  ├─ Header.tsx                  # 로고(BrandLogo) + HOME/MENU/SEAT/RACE/EVENT/MY + 내 쿠폰 수(→ /my#coupons) + 장바구니(수량)
 │  ├─ Footer.tsx
 │  ├─ Modal.tsx                   # 공용 모달(포커스 트랩, ESC 닫기, 배경 클릭 닫기, 모바일 Bottom Sheet)
 │  ├─ TicketBadge.tsx             # BEST / WINNER / NEW / MY PICK 경마 티켓 배지
-│  ├─ Scoreboard.tsx              # 전광판 스타일 숫자 박스(카운트다운·좌석 수 공용)
+│  ├─ Scoreboard.tsx              # 전광판 스타일 숫자 박스(카운트다운·좌석 수 공용, 어두운 배경용 onDark)
+│  ├─ RacePhaseBadge.tsx          # SOON(테두리) · LIVE(빨강 + 깜빡이는 점) 배지 — 메인 히어로 · /race 공용
 │  ├─ HorseAvatar.tsx             # 말 마스코트(SVG, 대표색 주입) — 메인 Hero · /race 공용
-│  ├─ UserProvider.tsx            # 쿠폰 수 공유 Context + useUser() 훅
+│  ├─ UserProvider.tsx            # "내 것" Context(쿠폰 · 쿠폰 내역 · 찜 · 주문 내역) + useUser() 훅
 │  ├─ CartProvider.tsx            # 장바구니 Context + useCart() 훅 (Header · /menu/[id] · /cart)
+│  ├─ RaceProvider.tsx            # 레이스 진행 Context(단계 · 내가 건 말 · 진행 중 시뮬레이션 ref · 도착 순서 · 이 세션의 경주 결과) + useRaceSession() 훅
 │  ├─ QuantityStepper.tsx         # 수량 − / + (/menu/[id] 담기 · /cart 공용)
 │  ├─ ComingSoon.tsx              # 아직 구현 전인 사용자 페이지의 임시 화면 (전 페이지 구현 후 삭제)
 │  ├─ layout.module.css           # Header · Footer · 사이트 골격
@@ -179,15 +211,22 @@ frontend/
 │
 ├─ lib/                           # 2개 이상 페이지가 쓰는 공용 로직
 │  ├─ cart.ts                     # 장바구니 순수 함수(담기 합치기 · 수량 1~20 · 총 수량 · 합계)
-│  ├─ time.ts                     # RACE_TIMES, 다음 경주 시각 계산, 카운트다운 포맷
-│  └─ useCountdown.ts             # 메인 Hero · /race 공용 카운트다운 훅
+│  ├─ time.ts                     # 순수 함수: RACE_TIMES(KST) · 다음/진행 중 경주 · SOON/LIVE 단계 · 카운트다운 포맷
+│  └─ useCountdown.ts             # 공용 1초 시계(useSyncExternalStore) — useNow · useRaceCountdown · useRacePhase
 │
 ├─ types/
-│  └─ common.ts                   # Coupon, UserState, CartLine, CartItem, CartState 등 공용 타입
+│  └─ common.ts                   # CouponReason, CouponLog, Order, UserState, CartLine, CartItem, CartState 등 공용 타입
+│
+├─ scripts/
+│  └─ split-horses.mjs            # 말에셋 시트 → public/images/horses/*.png (개발용, Next 의 sharp 사용)
+│
+├─ assets/
+│  └─ horse-sheet.png             # 말에셋.png 원본(1536×1024, 4열 × 3줄, 조끼 번호 1~12) — 배포되지 않음
 │
 └─ public/
    └─ images/
       ├─ hero/                    # 히어로 사진 (next-race.jpg) + CREDITS.md 출처·라이선스
+      ├─ horses/                  # 출전마 7장(thunder · latte · mocha · espresso · caramel · vanilla · cookie), 420×300 투명 PNG
       └─ menus/                   # 메뉴 일러스트 SVG 10종
 ```
 
@@ -299,7 +338,8 @@ frontend/
 
 - 사실적인 말 금지. **둥글고 귀여운 2–3등신 마스코트**를 인라인 SVG 한 장으로 만들고 `color` prop 으로 몸통/갈기 색을 바꾼다 (`HorseAvatar`).
 - 각 말에 번호 조끼(saddle cloth) + 카페 소품(컵, 쿠키 등) 하나씩으로 개성을 준다.
-- 트랙 위에서는 작은 사이즈 + 달리는 bobbing 애니메이션(`translateY` keyframes).
+- 트랙 위에서는 캔버스 스프라이트로 작게 + 상하 들썩임 · 먼지(8단계, PixiJS ticker — `prefers-reduced-motion` 이면 끔).
+- **출전마 7마리는 SVG 대신 이미지 에셋을 쓴다(2026-10-13 사용자 결정)**: `말에셋.png`(달리는 자세의 귀여운 말 12마리, 조끼 번호 1~12)를 `scripts/split-horses.mjs` 로 잘라 `public/images/horses/` 에 둔다. 이름에 어울리는 털색의 말을 골랐으므로 **이미지 조끼 숫자와 게이트 번호가 다를 수 있다**(사용자 결정). 대표색은 그 조끼 색. 자를 때 배경 잔여물(옅은 픽셀 · 40px 미만 점)을 지우고, 7장을 같은 420×300 캔버스에 가운데 · 바닥 맞춤으로 놓아 크기가 일정하다. `HorseAvatar`(SVG)는 마이페이지 프로필 · 준비 중 화면에만 남는다.
 
 ### 2.5 접근성·인터랙션 기본값
 
@@ -315,16 +355,16 @@ frontend/
 참고 구성: 카페게이트(로고 좌측 · 내비 중앙 · 전폭 히어로 · 가운데 정렬 푸터).
 
 ### Header
-- 화이트(반투명 + blur) sticky, 하단 1px 테두리. 높이 72px(PC·모바일 동일)
+- 화이트(반투명 + blur) sticky, 하단 1px 테두리. 높이 72px(PC·모바일 동일). 반투명 · blur 배경은 `.header::before` 에 둔다 — `.header` 에 `backdrop-filter` 를 직접 걸면 그 안의 `position: fixed` 모바일 메뉴의 기준이 헤더가 되어 메뉴가 보이지 않는다(2026-10-13 수정).
 - 좌: `manhattaN cafe` 워드마크(`BrandLogo`, 링크 라벨 "manhattaN cafe 홈"). 로고가 작아 보이지 않게 크기를 고정한다.
   - PC(861px 이상): 한 줄형(원본 파일명 `manhattan_cafe_logo_vertical.svg`, viewBox 108×18) — 폭 `clamp(168px, 15vw, 216px)`
   - 모바일(860px 이하): 3줄 적층형(`manhattan_cafe_logo.svg`, viewBox 50×40) — 높이 56px
   - 가운데 사선은 `slashOpacity` 로 투명도를 정한다. 기본 0.2(원본), 어두운 관리자 사이드바만 0.3
-- 중: `HOME · MENU · SEAT · RACE · EVENT` — 회색 → 현재 경로는 검정 + 짙은 회색 2px 밑줄. 한글 부제는 PC 에서 스크린리더용, 모바일 메뉴에서 표시
-- 우: 티켓 아이콘 + `5장` 내 쿠폰 칩(UserContext 구독) — 클릭 시 `/event`
+- 중: `HOME · MENU · SEAT · RACE · EVENT · MY` — 회색 → 현재 경로는 검정 + 짙은 회색 2px 밑줄. 한글 부제(MY = 마이페이지)는 PC 에서 스크린리더용, 모바일 메뉴에서 표시
+- 우: 티켓 아이콘 + `5장` 내 쿠폰 칩(UserContext 구독) — 클릭 시 마이페이지 쿠폰 섹션(`/my#coupons`)
 - 우: 쇼핑백 아이콘 장바구니(CartContext 구독) — 담은 **총 수량**을 아이콘 오른쪽 위 숫자로(0 이면 숨김, 100 이상은 `99+`), 클릭 시 `/cart`. 라벨은 "장바구니 N개"
 - 모바일(≤860px): 햄버거 → 전체 화면 흰 메뉴
-- RACE 메뉴 옆에 경주가 임박하면 작은 빨간 `LIVE` 점(선택)
+- RACE 메뉴의 경주 신호(사용자 결정 2026-10-13): 시작 10분 전부터 **SOON**(테두리만 있는 점), 시작 후 10분은 **LIVE**(빨간 점, 깜빡임). PC 는 글자 오른쪽 위의 작은 점이고 글자는 스크린리더용("LIVE — 경주 진행 중"), 모바일 메뉴는 `RACE [LIVE]` 글자 배지. `useRacePhase()` 로 단계가 바뀔 때만 다시 그린다.
 
 ### Footer
 - 옅은 회색(`--bg-muted`) 블록 + 상단 1px 테두리, 어두운 텍스트, 가운데 정렬: `manhattaN cafe` + 태그라인 → OPEN / ADDRESS / DAILY RACE → 메뉴 링크 줄
@@ -338,11 +378,12 @@ frontend/
 
 | 파일 | 타입 |
 |---|---|
-| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RacePhase`, `RaceResult`, `RaceEventMessage` |
+| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RacePhase`, `RaceResult`, `RaceBet`, `RaceEventMessage` |
 | `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `FloorFixture` |
 | `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
 | `app/(site)/event/_types.ts` | `CafeEvent` |
-| `types/common.ts` | `Coupon`, `UserState` (Header·메인·/race·/event 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
+| `app/(site)/my/_types.ts` | `UserProfile` |
+| `types/common.ts` | `CouponReason`, `CouponLog`, `Order`, `UserState` (Header·메인·/race·/menu/[id]·/cart·/my 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
 
 ```ts
 // ===== app/(site)/race/_types.ts =====
@@ -350,14 +391,18 @@ frontend/
 export type HorseTrait = "FAST_START" | "STEADY" | "LATE_SPURT" | "WILDCARD" | "BALANCED";
 
 export interface Horse {
-  id: number;              // 1~7 (= 게이트 번호)
-  name: string;            // "Thunder"
-  color: string;           // 대표 컬러 hex
+  id: number;              // 1~7 — 지금은 게이트 번호와 같다(게이트 번호는 지난 경주 도착 순서로 매기기로 협의, 8.2 "게이트 번호 규칙")
+  name: string;            // "Thunder" — 화면에는 대문자
+  nameKo: string;          // "썬더"
+  color: string;           // 대표색 hex = 이미지의 번호 조끼 색 — 번호 배지 · 내 말 레인 강조
+  colorName: string;       // "파랑"
+  image: string;           // "/images/horses/thunder.png"
   personality: string;     // "성격 급한 에너자이저"
   trait: HorseTrait;       // 시뮬레이션에 쓰이는 주행 성향
   description: string;     // "초반 스타트가 빠른 말"
-  recentResults: number[]; // [2, 1, 4] 최근 순위, 최신이 앞
 }
+// 최근 성적은 말 데이터에 두지 않고 경주 기록에서 계산한다(_lib/records.ts 의 recentRanks — 사용자 결정 2026-10-13).
+// 기록과 카드가 늘 맞고, 9단계에서 경주가 끝나면 성적도 바로 바뀐다.
 
 // ---- Race ----
 export type RacePhase = "BETTING" | "READY" | "RUNNING" | "FINISHED";
@@ -366,6 +411,12 @@ export interface RaceResult {
   raceNo: number;
   date: string;            // ISO
   ranking: number[];       // horseId 순서대로 1위~7위
+}
+
+export interface RaceBet {       // 내가 건 경주 — 쿠폰 1장을 이미 낸 상태
+  raceNo: number;
+  horseId: number;
+  placedAt: string;        // ISO
 }
 
 export interface RaceEventMessage {
@@ -436,26 +487,51 @@ export type CategoryInput = Pick<Category, "name" | "engName" | "visible">;
 export interface CafeEvent {
   id: number;
   title: string;           // "DAILY RACE"
-  time?: string;           // "18:00"
+  period: string;          // "매일" · "상시" · "첫 방문"
+  time?: string;           // "12:30 · 18:00"
   description: string;
   ctaLabel?: string;       // "Race 참여하기"
   ctaHref?: string;        // "/race"
 }
 
-// ===== types/common.ts =====
-export interface Coupon {
-  id: string;
-  kind: "RACE_TICKET" | "FREE_AMERICANO";
-  label: string;
-  issuedAt: string;
-  used: boolean;
+// ===== app/(site)/my/_types.ts =====
+export interface UserProfile {   // 내 정보 — 로그인이 없으므로 Mock 사용자 1명
+  nickname: string;        // "럭키 포니"
+  memberNo: number;        // 7 → "MEMBER No.0007"
+  joinedAt: string;        // "2026-10-01"
 }
 
-export interface UserState {
-  coupons: number;
-  rewards: Coupon[];
-  spendCoupon: () => boolean;
-  addReward: (c: Coupon) => void;
+// ===== types/common.ts =====
+// 쿠폰은 한 종류다 — 레이스 참가권이자, 모으면 메뉴로 바꾸는 적립 단위. 수량(coupons)과 증감 내역(couponHistory)만 둔다.
+export type CouponReason = "ORDER" | "RACE_BET" | "RACE_PAYOUT";   // 메뉴 교환이 생기면 "EXCHANGE" 추가
+
+export interface CouponLog {
+  id: string;
+  reason: CouponReason;
+  delta: number;           // +1(주문), −1(레이스 참가), +4/+3/+2(레이스 1~3위)
+  label: string;           // "주문 적립" · "Race #13 · 3번 MOCHA 참가" · "Race #13 · 1위 (원금 1 + 추가 3)"
+  at: string;              // ISO
+}
+
+export interface Order {         // 주문 한 건 — 주문하는 순간의 장바구니 사본(가격이 바뀌어도 내역은 그대로)
+  orderNo: number;
+  orderedAt: string;       // ISO
+  lines: CartLine[];
+  count: number;           // 총 수량
+  total: number;           // 합계 금액
+  summary: string;         // "아메리카노 외 2건"
+  couponReward: number;    // 이 주문으로 적립된 쿠폰 수
+}
+
+export interface UserState {     // "내 것" — 마이페이지에 모인다
+  coupons: number;                                                   // 보유 쿠폰
+  couponHistory: CouponLog[];                                        // 쿠폰 증감 내역, 최신순
+  spendCoupon: (reason: CouponReason, label: string) => boolean;     // 1장 차감 + 내역 기록, 0장이면 false
+  earnCoupons: (amount: number, reason: CouponReason, label: string) => void; // amount 장 적립 + 내역 기록
+  favorites: number[];                                               // 찜한 메뉴 id, 최근 찜한 순
+  toggleFavorite: (menuId: number) => void;
+  orders: Order[];                                                   // 주문 내역, 최신순
+  addOrder: (order: Order) => void;
 }
 
 export interface CartLine {      // 같은 메뉴·같은 사이즈는 한 줄
@@ -496,22 +572,23 @@ export interface CartState {
 | `app/(site)/menu/_data/menus.ts` | 메뉴 |
 | `app/(site)/menu/_data/categories.ts` | 카테고리 (커피 · 논커피 · 티 · 디저트) |
 | `app/(site)/event/_data/events.ts` | 이벤트 |
+| `app/(site)/my/_data/profile.ts` | 내 정보 Mock(`MOCK_PROFILE` — 럭키 포니 · No.0007 · 2026-10-01 가입) |
 | `lib/time.ts` | `RACE_TIMES` (메인·/race·/event 공용이라 최상위) |
 | `components/UserProvider.tsx` | 쿠폰 초기값 `INITIAL_COUPONS = 5` |
 
 ### 5.1 horses.ts — 7마리
 
-| No | 이름 | 대표색 | trait | 설명 | recentResults |
-|---|---|---|---|---|---|
-| 1 | Thunder | `#3b5ba5` 블루 | FAST_START | 초반 스타트가 빠른 말 | [3, 1, 5] |
-| 2 | Latte | `#d9b48f` 라떼 | STEADY | 안정적으로 달리는 말 | [2, 2, 3] |
-| 3 | Mocha | `#6b4226` 모카 | LATE_SPURT | 막판 스퍼트가 강한 말 | [2, 1, 4] |
-| 4 | Espresso | `#2b1d12` 다크 | FAST_START | 짧고 강하게, 지구력은 약함 | [5, 4, 1] |
-| 5 | Caramel | `#c98a3a` 캐러멜 | BALANCED | 무난한 올라운더 | [4, 3, 2] |
-| 6 | Vanilla | `#efe3c2` 바닐라 | STEADY | 느긋하지만 꾸준한 말 | [6, 5, 3] |
-| 7 | Cookie | `#a0522d` 쿠키 | WILDCARD | 변수가 많은 말 | [1, 7, 6] |
+| No | 이름 | 이미지(시트 조끼 번호 · 털색) | 대표색(조끼) | trait | 성격 | 최근 성적(계산값) |
+|---|---|---|---|---|---|---|
+| 1 | Thunder 썬더 | 3번 · 흑마 | `#245296` 파랑 | FAST_START(선행형) | 성격 급한 에너자이저 | 3 · 1 · 5 |
+| 2 | Latte 라떼 | 7번 · 크림 | `#359b9d` 청록 | STEADY(안정형) | 차분한 모범생 | 2 · 3 · 4 |
+| 3 | Mocha 모카 | 1번 · 갈색 | `#22633c` 초록 | LATE_SPURT(추입형) | 느긋하다 마지막에 폭발 | 4 · 2 · 3 |
+| 4 | Espresso 에스프레소 | 8번 · 짙은 갈색 | `#de550b` 주황 | FAST_START(선행형) | 짧고 굵은 승부사 | 6 · 7 · 1 |
+| 5 | Caramel 캐러멜 | 4번 · 금색 | `#f0b22d` 노랑 | BALANCED(균형형) | 뭐든 무난한 올라운더 | 5 · 4 · 2 |
+| 6 | Vanilla 바닐라 | 2번 · 흰색 | `#eb526e` 분홍 | STEADY(안정형) | 느긋한 산책가 | 7 · 5 · 6 |
+| 7 | Cookie 쿠키 | 5번 · 밤색 | `#e4362f` 빨강 | WILDCARD(변수형) | 기분파 장난꾸러기 | 1 · 6 · 7 |
 
-이름·설정 수정은 이 파일만 고치면 되도록 한다.
+이름·설정 수정은 이 파일만 고치면 되도록 한다. 표의 No 는 지금 코드의 고정 번호(`Horse.id`)다 — 게이트 번호는 지난 경주 도착 순서대로 매기기로 협의했다(8.2 "게이트 번호 규칙", 미구현). 대표색은 이미지에서 잰 조끼 색이고, 번호 배지 글자는 흰 글자 대비가 3:1 미만이면(노랑) 짙은 색이다(`textOn`). 이미지를 바꾸려면 `scripts/split-horses.mjs` 의 `PICKS` 를 고치고 다시 실행한다.
 
 ### 5.2 seats.ts — 총 30석 (지시서의 "12 / 30" 과 맞춤)
 
@@ -540,13 +617,14 @@ categories.ts: `{ id: 1, name: "커피", engName: "Coffee", order: 1, visible: t
 
 ### 5.5 raceHistory.ts
 
-Race #8 ~ #12 정도의 과거 결과 (`ranking` 7개 전체 저장, UI 는 1~3위만 노출).
+Race #8 ~ #12 의 과거 결과(최신이 앞, `ranking` 7개 전체 저장, RECENT RACES UI 는 1~3위만 노출). 출전표의 최근 성적 · 다음 경주 번호(#13)가 모두 이 기록에서 계산된다.
 
 ### 5.6 events.ts · 공용 값
 
-- events: `DAILY RACE 18:00`, `WINNER 메뉴 10% 할인`, `첫 방문 쿠폰` 등 2~4개.
-- 쿠폰 초기값: `UserProvider` 의 `INITIAL_COUPONS = 5`.
-- 레이스 시각: `RACE_TIMES = ["12:30", "18:00"]` 처럼 배열로 두고 `lib/time.ts` 가 "지금 이후 가장 가까운 시각"을 계산한다(오늘 다 지났으면 내일 첫 경주).
+- events: `DAILY RACE`(매일 12:30 · 18:00 → /race), `ORDER STAMP`(상시, 주문 1회 쿠폰 1장 → /menu), `WELCOME TICKET`(첫 방문 쿠폰 5장 → /my). 화면에서 실제로 동작하지 않는 혜택(메뉴 할인 등)은 넣지 않는다.
+- 쿠폰 초기값: `UserProvider` 의 `INITIAL_COUPONS = 5`. 주문 적립은 `ORDER_COUPON_REWARD = 1`(`orderService.ts`), 레이스 보상은 `RACE_PAYOUT`(`race/_lib/payout.ts`) — 수량 조율은 이 상수들만 고친다.
+- 레이스 시각: `RACE_TIMES = ["12:30", "18:00"]` 처럼 배열로 두고 `lib/time.ts` 가 "지금 이후 가장 가까운 시각"을 계산한다(오늘 다 지났으면 내일 첫 경주). 카페가 서울에 있으므로 브라우저 시간대와 상관없이 **KST(UTC+9)** 기준이다. 메인 히어로 · Footer · `/event` 의 시각 문구도 모두 `formatRaceTimes()` 로 이 배열에서 만든다.
+- 경주 단계: 시작 10분 전(`RACE_SOON_MS`)부터 `SOON`, 시작 후 10분(`RACE_LIVE_MS`)은 `LIVE`, 나머지는 `UPCOMING`. LIVE 동안의 "다음 경주"는 그다음 경주(18:00 LIVE 면 내일 12:30).
 
 ---
 
@@ -572,22 +650,24 @@ export async function reserveSeat(id: string): Promise<{ ok: true }> {
 ```
 
 - 모든 service 함수는 **`async` + `Promise` 반환**으로 통일한다. Mock 일 때도 비동기로 두어야 API 교체 시 호출부가 바뀌지 않는다.
-- 쓰기 동작(예약, 쿠폰 사용)도 service 함수로 둔다. 지금은 성공만 돌려주고, 상태 반영은 호출한 쪽의 React State 가 한다.
+- 쓰기 동작(예약, 쿠폰 걸기, 주문)도 service 함수로 둔다. 지금은 결과만 돌려주고, 상태 반영은 호출한 쪽의 React State 가 한다(쿠폰 증감은 `useUser()` 의 `spendCoupon` · `earnCoupons`, 주문 내역은 `addOrder`, 찜은 `toggleFavorite`).
 
 | 파일 | 함수 | 추후 API (예상) |
 |---|---|---|
-| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(horseId)` | GET /api/horses, GET /api/races/history, POST /api/races/{id}/bets |
+| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(raceNo, horseId)` → `RaceBet` | GET /api/horses, GET /api/races/history, POST /api/races/{raceNo}/bets |
 | `app/(site)/seat/_lib/seatService.ts` | `getSeats()`, `getSeatSummary()`, `getFloorFixtures()`, `reserveSeat(id)`, `updateSeatStatus(id, status)` | GET /api/seats, POST /api/seats/{id}/reservations, PATCH /api/admin/seats/{id} |
 | `app/(site)/menu/_lib/menuService.ts` | `getMenus(categoryId?)`, `getTodayWinnerMenu()`, `getCategories()`, `getMenuImageOptions()` | GET /api/menus, GET /api/categories, (이미지 업로드 API 생기면 교체) |
 | 〃 (관리자) | `createMenu(input)`, `updateMenu(id, input)`, `deleteMenu(id)`, `updateMenuStatus(id, status)` | POST /api/admin/menus, PUT·DELETE /api/admin/menus/{id}, PATCH /api/admin/menus/{id}/status |
 | 〃 (관리자) | `createCategory(input, order)`, `updateCategory(id, input, order)`, `deleteCategory(id)`, `reorderCategories(ids)` | POST /api/admin/categories, PUT·DELETE /api/admin/categories/{id}, PUT /api/admin/categories/order |
+| `app/(site)/cart/_lib/orderService.ts` | `placeOrder(lines)` → `Order` | POST /api/orders (주문 내역 저장 · 쿠폰 적립은 서버가 처리) |
 | `app/(site)/event/_lib/eventService.ts` | `getEvents()` | GET /api/events |
-| `lib/time.ts` | `getNextRaceTime()` | GET /api/races/next |
+| `app/(site)/my/_lib/myService.ts` | `getProfile()` | GET /api/my/profile |
+| `lib/time.ts` | `getRaceSchedule(now)` · `getNextRaceTime(now)` · `getLiveRaceTime(now)` (순수 함수, 입력은 `RACE_TIMES`) | GET /api/races/next (응답의 경주 시각을 `RACE_TIMES` 대신 넣는다) |
 
 - 메인(`/`)의 `_data/` 에는 히어로 슬라이드 문구(`heroSlides.ts`)만 둔다. 좌석 수·인기 메뉴 같은 대시보드 값은 위 Service 들을 import 해서 모은다.
 - 관리자 페이지(`/admin/*`)도 자기 `_data/` 가 없다. 메뉴·카테고리는 `app/(site)/menu/_lib/menuService.ts` 하나로만 읽고 쓴다.
 - **Mock 단계의 한계**: 관리자 쓰기 함수는 성공만 돌려주고, 변경은 관리자 화면의 React State 에만 반영된다. 새로고침하면 초기화되고 `/menu` 에는 반영되지 않는다. API 를 연결하면 두 화면이 같은 데이터를 보게 된다.
-- 내 쿠폰(`GET /api/my/coupons`)은 `UserProvider` 가 초기화할 때 불러오는 구조로 확장한다.
+- 내 쿠폰 수와 증감 내역(`GET /api/my/coupons`, `GET /api/my/coupons/history`), 찜(`GET /api/my/favorites`, 토글은 `PUT·DELETE /api/my/favorites/{menuId}`), 주문 내역(`GET /api/my/orders`)은 `UserProvider` 가 초기화할 때 불러오는 구조로 확장한다.
 
 ---
 
@@ -598,16 +678,48 @@ export async function reserveSeat(id: string): Promise<{ ok: true }> {
 
 ```ts
 interface UserState {
-  coupons: number;                       // 레이스 참가권 (초기 5)
-  rewards: Coupon[];                     // 레이스 우승 보상(무료 아메리카노 등)
-  spendCoupon: () => boolean;            // 0장이면 false
-  addReward: (c: Coupon) => void;
+  coupons: number;                       // 보유 쿠폰 (초기 5)
+  couponHistory: CouponLog[];            // 쿠폰 증감 내역, 최신순
+  spendCoupon: (reason, label) => boolean;          // 1장 차감, 0장이면 false
+  earnCoupons: (amount, reason, label) => void;     // amount 장 적립
+  favorites: number[];                   // 찜한 메뉴 id, 최근 찜한 순
+  toggleFavorite: (menuId) => void;
+  orders: Order[];                       // 주문 내역, 최신순
+  addOrder: (order) => void;
 }
 ```
 
-- Header(쿠폰 수), 메인 대시보드, `/race`, `/event` 가 같은 값을 본다.
+- "내 것"(쿠폰 · 찜 · 주문 내역)을 한 Context 에 둔다. 모두 마이페이지에 모이고, 로그인이 붙으면 같은 사용자 단위로 서버에서 불러오기 때문이다.
+- Header(쿠폰 수), 메인 대시보드, `/race`, `/menu/[id]`(찜), `/cart`(주문 적립 · 내역 기록), `/my` 가 같은 값을 본다.
+- 쿠폰 수가 바뀌는 곳은 `spendCoupon` · `earnCoupons` 두 함수뿐이고, 둘 다 `couponHistory` 맨 앞에 내역을 한 줄 남긴다.
 - 새로고침 시 초기화되어도 무방(프로토타입). 원하면 `localStorage` 동기화를 옵션으로.
+
+#### 쿠폰 규칙 (2026-10-13 결정)
+
+> 지시서·이전 설계의 "레이스 참가권 + 1위 보상 무료 아메리카노 쿠폰" 두 종류 구조를 버리고, README 컨셉에 맞춰 **쿠폰 한 종류**로 합쳤다.
+
+- **쿠폰 = 레이스 참가권 = 적립 단위.** 특정 메뉴 쿠폰이 아니다. 몇 장을 모으면 메뉴로 바꾸는 방식이다(교환 규칙·화면은 추후 — 10절).
+- **얻는 방법**
+  - 처음 5장(`INITIAL_COUPONS`)
+  - 주문 1회당 1장 — `/cart` 의 목업 "주문하기"(8.9). 담은 수량과 무관하게 주문 한 번에 1장
+  - 레이스 1~3위 (아래 표)
+- **레이스에 거는 방법**: 한 경주에 **1장 고정**, 보유량 상한 없음. 거는 순간 바로 1장 차감(`spendCoupon("RACE_BET", …)`), 결과가 나오면 돌려준다(`earnCoupons(n, "RACE_PAYOUT", …)`).
+
+  | 내 말 순위 | 결과 때 돌려받음 | 순증감 |
+  |---|---|---|
+  | 1위 | 원금 1 + 추가 3 = **4장** | +3 |
+  | 2위 | 원금 1 + 추가 2 = **3장** | +2 |
+  | 3위 | 원금 1 + 추가 1 = **2장** | +1 |
+  | 4~7위 | 0장 (원금만 잃음) | −1 |
+
+- 수량은 **우선값**이다. 게임을 구현해 본 뒤 조율하므로 `race/_lib/payout.ts` 의 `RACE_PAYOUT = { 1: 4, 2: 3, 3: 2 }`(원금 포함) 한 곳에서만 바꾼다. 참고로 지금 값은 무작위로 골라도 경주당 평균 +2/7 ≈ +0.29장이라 반복할수록 쌓인다.
+- 데모는 참여 횟수 제한 없음("다시 하기"로 바로 다음 경주). 경주 시각당 1회 같은 제한은 위 조율 때 함께 정한다.
 - 좌석 상태는 `/seat` 페이지 State 로 충분하다(다른 페이지는 요약 숫자만 service 에서 읽는다).
+
+**레이스 진행 — `components/RaceProvider.tsx`(7단계, 사용자 결정)**: `CartProvider` 안쪽을 감싸고 `useRaceSession()` 으로 꺼낸다. 값은 `phase`(BETTING · READY · RUNNING · FINISHED) · `bet`(내가 건 `RaceBet`) · `ranking`(이번 경주 도착 순서, FINISHED 에서 확정) · `results`(이 세션에 끝난 경주, 9단계) · `runRef`(진행 중 시뮬레이션 `RaceRun`, ref) · `enterGate(bet)`(BETTING → READY) · `startRace(run)`(READY → RUNNING) · `finishRace(ranking)`(RUNNING → FINISHED). 전환 함수는 현재 단계를 ref 로 확인해 같은 틱에 두 번 불려도 한 번만 바뀐다.
+- 왜 루트인가: `/race` 는 Activity 로 최근 3개 경로까지만 State 가 남는다. 페이지 State 에 두면 쿠폰을 건 뒤 다른 페이지를 3곳 이상 다녀왔을 때 **쿠폰만 빠지고 내 선택이 사라진다**. 루트에 두면 어느 페이지를 다녀와도 남는다(새로고침하면 초기화 — 쿠폰과 같은 수준).
+- 쿠폰 차감 · 서비스 호출은 `race/_hooks/useRace.ts` 가 하고, Provider 는 단계 전환만 맡는다. 9단계의 결과도 여기에 둔다.
+- 8단계: 진행 중 시뮬레이션(`RaceRun` — 출발 시각 · 말마다 진행도)은 매 프레임 바뀌므로 State 가 아니라 **ref**(`runRef`)에 둔다. Context 소비자를 매 프레임 다시 그리지 않고, 페이지가 숨겨졌다 돌아오거나 다시 마운트돼도 여기서 이어 간다. 그리기용 스냅샷은 `useRaceRun` 의 로컬 State.
 
 **장바구니 — `components/CartProvider.tsx`**: `app/layout.tsx` 에서 `UserProvider` 안쪽을 감싸고 `useCart()` 로 꺼낸다(타입 `CartState`).
 - Header(총 수량), `/menu/[id]`(담기), `/cart`(목록·수량·삭제·합계)가 같은 값을 본다.
@@ -626,11 +738,12 @@ interface UserState {
 ┌──────────────────── HERO (전폭, 사진 + 어두운 그라데이션) ───────────────────┐
 │  DAILY CAFE RACE                                                           │
 │  NEXT RACE                                           [ 경주마 사진 ]        │
-│  첫 번째 레이스를 준비하고 있어요                                              │
-│  출전표와 카운트다운이 곧 공개됩니다 …                                          │
-│  [ RACE 페이지 보기 ]  ( COMING SOON )                                       │
+│  오늘 18:00 출발 (SOON)                         ← LIVE 면 [● LIVE] NOW RACING │
+│  RACE STARTS IN [0][1]:[2][4]:[3][2]                                        │
+│  쿠폰 한 장으로 7마리 말 중 하나를 응원하고 …                                     │
+│  [ RACE 페이지 보기 ]                                                        │
 │ ┌ DAILY RACE ─────────┐┌ (WINNER 메뉴) ┐┌ (이용 가능 좌석) ┐┌ (내 쿠폰·이벤트) ┐│  ← 탭 페이지네이션
-│ │ NEXT RACE 준비 중 ▬▬▬││              ││               ││                ││     (지금은 1탭)
+│ │ NEXT RACE 18:00 ▬▬▬▬││              ││               ││                ││     (지금은 1탭)
 └─┴─────────────────────┴┴──────────────┴┴───────────────┴┴────────────────┴┘
   TODAY'S LINEUP                                              전체 메뉴 보기 ›
   오늘의 출전 메뉴 — 가장 많은 선택을 받은 메뉴들
@@ -646,7 +759,8 @@ interface UserState {
 - 슬라이드 데이터는 `HeroSlide[]` prop. 지금은 `_data/heroSlides.ts` 의 NEXT RACE 1장(준비 중 문구 + 커피 컵 경주 트랙 일러스트 `public/images/hero/next-race.jpg`). 구조는 4슬라이드(NEXT RACE · 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트)를 전제로 하며, 추가 슬라이드는 14단계에서 각 Service 값으로 page 가 만들어 넘긴다.
 - 높이 `clamp(460px, 34vw, 560px)`, 사진은 `next/image fill` + 좌→우·하→상 그라데이션. 활성 슬라이드는 느린 줌(7s)과 텍스트 페이드업.
 - 하단 탭: 소제목 + 굵은 제목, 활성 탭은 밝은 배경 + 좌측 밝은 회색(`--brand-300`) 바 + 진행바(5초, `--autoplay`). 슬라이드가 2장 이상일 때만 자동 전환·이전/다음 버튼·진행바가 동작하고, 호버·포커스 중에는 멈춘다. `prefers-reduced-motion` 이면 전환 효과 없음.
-- 카운트다운은 6단계에서 NEXT RACE 슬라이드에 연결한다(`lib/useCountdown.ts`, 클라이언트 마운트 후 표시).
+- **NEXT RACE 카운트다운(6단계, `HeroRaceClock`)**: 슬라이드 데이터의 `raceClock: true` 면 headline 자리에 `오늘 18:00 출발 [SOON]` + `RACE STARTS IN [0][1]:[2][4]:[3][2]`(밝은 반투명 칸 `Scoreboard onDark`), LIVE 면 `[● LIVE] NOW RACING 18:00` + "지금 트랙에서 경주가 진행 중이에요 · 다음 경주 내일 12:30". 하단 탭 제목도 `NEXT RACE 18:00` / `LIVE 18:00`. 시계를 읽기 전(정적 셸 · 하이드레이션 전)에는 headline("매일 12:30 · 18:00 출발")과 `--:--:--`. 스크린리더는 전광판을 "출발까지 1시간 24분 32초"로 읽는다. "COMING SOON" 배지와 "카운트다운이 곧 공개됩니다" 문구는 뺐다.
+- **시각 읽기 규칙**: Cache Components 는 클라이언트 컴포넌트도 빌드 때 미리 렌더하므로, 렌더 중에 `Date.now()`/`new Date()` 를 부르면 빌드 오류(blocking-prerender-current-time)가 난다. 현재 시각은 `lib/useCountdown.ts` 의 공용 시계만 읽는다 — `useSyncExternalStore` 의 서버 값은 `null`, 구독(브라우저 마운트) 때 처음 시각을 읽고 매 초 경계에 갱신한다. 타이머는 하나를 모두가 같이 쓰고, Activity 로 숨은 페이지는 구독을 푼다.
 
 **MenuLineup (`_components/MenuLineup.tsx`, server)**
 - `getMenus()` + `getCategories()` → `_lib/lineup.ts` 의 `pickLineup(menus, 8)`: HIDDEN 제외, WINNER → BEST → NEW → 배지 없음 순(같은 등급은 원래 순서), 품절은 뒤로.
@@ -655,104 +769,137 @@ interface UserState {
 
 ### 8.2 `/race` — 핵심 ①
 
-#### 상태 머신 (`app/(site)/race/_hooks/useRace.ts`)
+#### 상태 머신 (상태: `components/RaceProvider.tsx` · 전환 로직: `app/(site)/race/_hooks/useRace.ts`)
 
 ```
-BETTING ──(말 선택 + 모달 확인 + 쿠폰 차감)──▶ READY
-READY   ──(START 버튼 / 3·2·1 카운트)────────▶ RUNNING
-RUNNING ──(7마리 모두 결승 통과)───────────────▶ FINISHED  → Result Modal
-FINISHED ──(다시 하기)────────────────────────▶ BETTING
+BETTING ──(말 선택 + 모달 확인 + 쿠폰 1장 차감)──▶ READY
+READY   ──(START 버튼 / 3·2·1 카운트)──────────▶ RUNNING
+RUNNING ──(7마리 모두 결승 통과)─────────────────▶ FINISHED  → 쿠폰 정산 → Result Modal
+FINISHED ──(다시 하기)──────────────────────────▶ BETTING
 ```
+
+- 쿠폰은 7절 "쿠폰 규칙"을 따른다. 차감은 BETTING → READY 전환 때, 정산은 FINISHED 진입 때 **경주당 한 번만**(`raceNo` 로 이미 정산했는지 확인 — StrictMode 의 effect 재실행이나 페이지 재진입에도 두 번 지급되지 않게).
+- READY 이후에는 취소가 없다(건 쿠폰은 결과로만 돌아온다).
 
 > 프로토타입이므로 실제 18:00 를 기다리지 않는다. READY 에서 **"경주 시작" 버튼**(데모용)으로 즉시 출발할 수 있게 한다. 상단 카운트다운은 실제 다음 경주 시각을 계속 보여준다.
+> 8단계 구현: [경주 시작] 을 누르면 `startedAt = 지금 + 3초`(RACE_COUNTDOWN_MS)로 RUNNING 이 되고, 경과가 음수인 동안 3 · 2 · 1 → GO! 를 보여 준다. 7마리가 모두 들어오고 1.5초(FINISH_HOLD_MS) 뒤에 FINISHED.
 
 #### 화면 구성 (위→아래)
 
-1. **헤더 전광판**: `DAILY CAFE RACE` · 다음 경기 18:00 · 카운트다운 · 내 쿠폰 N장
-2. **출전표 (BETTING)**: `HorseCard` 7장 그리드(PC 4열 / 태블릿 2열 / 모바일 1열)
+1. **헤더 전광판(`RaceCountdown`, 6단계에 만듦)**: `NEXT RACE 오늘 18:00 [SOON]` ┊ `RACE STARTS IN [01]:[24]:[32]` ┊ `MY COUPONS [05]장` 세 칸(모바일은 위아래). LIVE 면 `NOW RACING 18:00 [● LIVE]` ┊ `다음 경주 내일 12:30` ┊ 내 쿠폰 — 카운트다운은 쉰다. 실제 경주는 시각과 상관없이 출전표에서 시작하므로 이 전광판은 실제 일정만 알려 준다.
+2. **출전표 (BETTING, `RaceBoard` · `HorseCard`)**: 머리 `TODAY'S RUNNERS / 출전표 Race #13` + 오른쪽 보상 안내 `쿠폰 1장으로 참여 [1위 4장] [2위 3장] [3위 2장] 돌려받기 (원금 포함)`(`PayoutGuide`, 숫자는 `RACE_PAYOUT`). 그 아래 카드 7장 그리드(PC 4열 / 태블릿 2열 / 모바일 1열), 게이트 번호 순
+   - **게이트 번호 규칙(팀 협의 2026-10-13 · 아직 구현 안 됨)**: 1번~7번 게이트 번호는 **지난 경주에서 들어온 순서대로** 매긴다 — 지난 경주 1위가 1번, 2위가 2번 … 7위가 7번. 아래 "게이트 번호 규칙" 참고. 지금 코드는 말마다 고정 번호(`Horse.id`)를 쓴다.
    ```
-   ┌ No.3 ───────────────── MOCHA ┐
-   │ [마스코트]   ● 대표색 모카       │
-   │ 성격: 느긋하다 마지막에 폭발      │
-   │ 최근 성적  2위 / 1위 / 4위       │
-   │ "막판 스퍼트가 강한 말"           │
-   │        [ 이 말 선택하기 ]         │
+   ┌───────────────────────────────┐
+   │ (3) MOCHA            [MY PICK]│  ← 게이트 번호 원(대표색 = 조끼 색) · 이름 · "모카 · 초록 조끼"
+   │     모카 · 초록 조끼            │
+   │ ┌───────────────────────────┐ │
+   │ │      [말 이미지(달리는 자세)]  │ │  ← public/images/horses/mocha.png
+   │ └───────────────────────────┘ │
+   │ 성향      [추입형] 느긋하다 마지막에 폭발 │
+   │ 최근 성적  [4위][2위][3위]         │  ← 기록에서 계산, 최근 경기부터 · 전광판 칸 · 1위는 금색
+   │ "뒤에서 기다리다 … 막판 스퍼트가 강한 말" │
+   │ [ 이 말 선택하기 ]                 │  ← READY 이후: 버튼 없음, 내 말은 [출발 대기 중]
    └───────────────────────────────┘
    ```
-   - 최근 성적 1위는 금색, 숫자는 전광판 폰트.
-   - 쿠폰 0장이면 버튼 비활성 + "쿠폰이 부족합니다" 안내.
-3. **BetConfirmModal**: "MOCHA에 쿠폰 1장을 사용하시겠습니까?" [취소] [사용하기] → `spendCoupon()` 후 READY. 선택한 말 카드에 `MY PICK` 티켓 배지.
-4. **HorseTrack (READY/RUNNING)**
-   ```
-   START │                                                │ FINISH
-     1 ▕🐎─────────────────────────────────────────────── ▏▒
-     2 ▕   🐎──────────────────────────────────────────── ▏▒
-     ...                                                     ▒ 체크무늬
-     7 ▕ 🐎────────────────────────────────────────────── ▏▒
-   ```
-   - 레인마다 번호·이름, 내 말 레인은 금색 테두리 하이라이트.
-   - 우측 상단에 실시간 순위 미니 전광판(1~3위).
-   - `RaceEventMessage`: 트랙 상단 중앙에 1.5초 표시 후 fade-out. 동시에 여러 개 오면 큐로 순차 표시(최대 1개 노출).
+   - 최근 성적은 스크린리더용으로 "최근 경기부터 4위, 2위, 3위" 를 함께 둔다. 선택 버튼 이름은 "이 말 선택하기 — 3번 MOCHA".
+   - 쿠폰 0장이면 버튼 7개 모두 비활성 + 출전표 위에 "쿠폰이 부족합니다 — 메뉴를 주문하면 1장 적립돼요 [메뉴 보러 가기 ›]".
+   - 모바일(1열)은 이미지 최대 폭 260px 로 카드 높이를 줄인다.
+3. **BetConfirmModal**: `RACE #13 · MY PICK` · 말 이미지 · `(3) 3번 MOCHA` · "MOCHA에 쿠폰 1장을 사용하시겠습니까?" + 보상 안내 + "4위 이하면 쿠폰은 돌아오지 않아요 · 보유 5장 → 4장" [취소] [사용하기](모바일 Bottom Sheet). [사용하기] → `placeBet(raceNo, horseId)` → `spendCoupon("RACE_BET", "Race #13 · 3번 MOCHA 참가")` → `enterGate(bet)` 로 READY. 처리 중에는 버튼 · 배경 닫기를 막고, ref 로 같은 틱의 두 번째 클릭도 막는다(쿠폰 1장만). 취소하면 아무것도 바뀌지 않는다. 다른 페이지로 가면(Activity) 열려 있던 확인창은 닫는다.
+3-1. **트랙 무대 머리띠 (READY 이후, `HorseTrack` 상단)**: 출전표 위 짙은 무대의 첫 줄 — READY: `READY · 게이트 입장 완료 [SOON]` · "Race #13 · 3번 MOCHA에 쿠폰 1장을 걸었어요" · 보상 요약 · [경주 시작] "누르면 3초 뒤 출발해요". RUNNING: `NOW RACING [● LIVE]` · "3번 MOCHA 응원 중" · "현재 N위". FINISHED: `FINISH · 경주 종료` · "N위로 들어왔어요" · "결과를 정리하고 있어요"(9단계 모달 자리). 걸고 나면 포커스를 이 제목으로 옮긴다(누른 카드 버튼이 사라지므로). 취소 버튼은 없다. (7단계의 ReadyPanel 을 8단계에서 이것으로 바꿨다.)
+4. **HorseTrack 경기 화면 (READY/RUNNING/FINISHED) — 사용자 결정 2026-10-13(아케이드 경마 레퍼런스 2장)**
+   - **PixiJS v8(WebGL) 캔버스**(`_lib/trackScene.ts`)로 그린다. 머리띠 · HUD · 카운트다운 · 토스트는 DOM(접근성 · 디자인 토큰 · 반응형 유지). 렌더러 선택지(PixiJS · Three.js · 순수 WebGL) 중 2D 스프라이트에 코드가 가장 적은 PixiJS. `/race` 에서만 동적 import 하므로 다른 페이지 번들에는 들어가지 않는다. WebGL 을 만들 수 없으면 캔버스 자리에 안내 문구, 순위는 HUD 로 계속 본다.
+   - **선두 추적 카메라**: 트랙 전체 길이는 화면 폭의 260%(`COURSE`). 선두는 화면의 66% 지점에 고정되고(출발 직후 24% → 66% 로 옮겨 가며 카메라가 붙는다) 나머지는 그 뒤에서 엎치락뒤치락. 잔디 · 울타리가 뒤로 흐르고(먼 울타리 0.75배 · 생울타리 0.5배 · 가까운 울타리 1.25배 시차) 막판에 결승선(체크무늬 띠 + FINISH 표지)이 오른쪽에서 들어온다. 선두가 결승을 지나면 카메라가 결승선에 멈추고 나머지가 들어온다. 통과한 말은 화면 밖까지 더 달려 나간다. 값은 시뮬레이션의 선두 ↔ 꼴찌 간격(p90 ≈ 0.21)이 화면 안에 들어오도록 잡았다.
+   - **원근 잔디, 레인선 없음**: 7마리를 게이트 번호 순으로 7줄(높이 32% → 89%)에 놓고 뒤쪽 줄은 0.66배까지 작게. 위에 생울타리 + 흰 울타리, 아래 흰 울타리. 말은 출전표와 같은 이미지(코끝 · 발 기준으로 배치) + 상하 들썩임 + 먼지 파티클. 말마다 게이트 번호 배지(대표색 원, 줄 배율과 무관하게 같은 크기, 모바일 0.78배), 내 말은 금색 MY 표식.
+   - **HUD(무대 아래, DOM)**: `RACE #13` ┊ 현재 순위 — 게이트 번호 배지를 순위 순으로(1~3위 흰 숫자 · 1위 금색, 내 말은 금색 테두리; 레퍼런스 2 의 하단 순위 바) ┊ `REMAINING [0][4][2][0] m`(1200m 환산). 모바일은 순위 줄이 한 줄을 통째로 쓴다.
+   - **카운트다운**: [경주 시작] 뒤 3 · 2 · 1 · GO! 를 캔버스 위 가운데에(DOM).
+   - `RaceEventMessage`: 캔버스 위 상단(생울타리 띠) 가운데에 1.5초 표시 후 fade-out. 동시에 여러 개 오면 큐로 순차 표시(최대 1개 노출), 3초 넘게 지난 메시지는 버린다.
+   - 추가 에셋(사용자 요청 "필요한 이미지를 검색해서 알려 달라" · 유료 무료 무관): 잔디 · 생울타리 · 울타리는 2D 캔버스로 그린 타일 텍스처라 `trackScene.ts` 의 `turfTexture · hedgeTexture · railTexture` 만 바꾸면 이미지로 교체된다. 말 달리기 프레임은 기존 말에셋(AI 생성 치비)과 같은 스타일이어야 하므로 기성 팩보다 같은 도구로 생성하는 쪽을 권했다(12절 8단계 참고).
 5. **RaceResultModal (FINISHED)**
    ```
    RACE RESULT
    🥇 3번 MOCHA   🥈 7번 COOKIE   🥉 1번 THUNDER
    ─────────────
-   YOUR HORSE  3번 MOCHA   WIN!
-   축하합니다! 무료 아메리카노 쿠폰을 획득했습니다.   (1위일 때)
+   YOUR HORSE  3번 MOCHA   1위  WIN!
+   쿠폰 4장을 돌려받았어요 (원금 1 + 추가 3) · 보유 8장
    ── or ──
-   YOUR HORSE  5번 CARAMEL  (4위)  NEXT TIME!
-   [다시 하기] [이벤트/쿠폰 보기]
+   YOUR HORSE  7번 COOKIE  2위  PLACE!     → 3장 (원금 1 + 추가 2)
+   YOUR HORSE  1번 THUNDER 3위  SHOW!      → 2장 (원금 1 + 추가 1)
+   ── or ──
+   YOUR HORSE  5번 CARAMEL  4위  NEXT TIME!
+   건 쿠폰 1장은 돌아오지 않아요 · 보유 4장
+   [다시 하기] [내 쿠폰 보기 → /my#coupons]
    ```
-   - 1위면 `addReward(FREE_AMERICANO)`, 가벼운 confetti(CSS) 연출.
+   - 1~3위면 `earnCoupons(payoutFor(rank), "RACE_PAYOUT", "Race #13 · 1위 (원금 1 + 추가 3)")` + 가벼운 confetti(CSS) 연출. 4위 이하는 정산 없음(차감은 이미 내역에 있다).
+   - WIN · PLACE · SHOW 는 경마 용어(1·2·3착). 숫자 순위를 항상 같이 보여 준다.
    - 결과는 `raceHistory` State 맨 앞에 `Race #(마지막+1)` 로 추가.
 6. **RaceHistory**: `RECENT RACES` — 최근 5경기 카드, 1~3위 표시.
 
+#### 게이트 번호 규칙 (팀 협의 2026-10-13 · 아직 구현 안 됨)
+
+**1번~7번 게이트 번호는 지난 경주에서 들어온 순서대로 매긴다.** 지난 경주 1위로 들어온 말이 이번 경주 1번, 2위가 2번 … 7위가 7번이다.
+
+- 예: Race #12 도착 순서 `[7, 2, 1, 3, 5, 4, 6]`(말 id) → Race #13 게이트 `1번 COOKIE · 2번 LATTE · 3번 THUNDER · 4번 MOCHA · 5번 CARAMEL · 6번 ESPRESSO · 7번 VANILLA`.
+- 경주가 끝날 때마다 다음 경주의 번호가 그 결과로 다시 매겨진다. 그래서 같은 말이라도 경주마다 번호가 바뀐다.
+- 지금 코드는 말마다 고정 번호(`Horse.id` = 게이트 번호, 5.1 표의 No)를 쓴다. 구현할 때 바뀌는 곳:
+  - `Horse.id` 는 말 식별자로만 쓰고, 게이트 번호는 경주마다 계산한다(지난 경주 `ranking` 에서의 위치 + 1).
+  - 기록(`RaceResult.ranking`) · 내가 건 말(`RaceBet.horseId`)은 말 id 를 그대로 저장한다(번호가 바뀌어도 같은 말을 가리키게).
+  - 화면 · 문구는 **그 경주의** 게이트 번호를 쓴다 — 출전표 번호 원(`GateBadge`) · 확인창 "3번 MOCHA" · READY · 쿠폰 내역 "Race #13 · N번 MOCHA 참가" · 8단계 트랙 레인 번호 · 9단계 결과.
+  - 말 이미지 조끼에 적힌 숫자는 게이트 번호와 상관없다(5.1 — 이름에 맞는 이미지를 골랐다).
+- **첫 경주(기록이 하나도 없을 때)**: 게이트 번호는 **무작위 순서**로 매긴다(팀 협의 2026-10-13).
+  - 순서는 그 경주에 대해 **한 번만** 정하고 저장한다 — 다시 그리거나 페이지를 오가도 바뀌면 안 된다. 백엔드가 붙으면 서버가 경주를 만들 때 정해 내려준다.
+  - Mock 단계에서는 렌더 중에 `Math.random()` 을 부르지 않는다(Cache Components 는 렌더 중 무작위 값을 쓰면 빌드 오류가 나고, 렌더마다 순서가 바뀐다). 브라우저에서 처음 필요할 때 한 번 섞어 `RaceProvider` 에 두고 그 값을 쓴다.
+- **출전표 카드 순서**: 게이트 번호 순(1번부터)으로 놓는다(팀 협의 2026-10-13). 번호가 지난 경주 도착 순서이므로, 결과적으로 지난 경주 순위순과 같은 순서가 된다. 첫 경주는 무작위로 정한 번호 순.
+
 #### 레이스 시뮬레이션 (`app/(site)/race/_lib/simulation.ts`)
 
-순수 함수로 작성하고 `useRace` 가 rAF 루프에서 호출한다.
+순수 함수로 작성하고 `useRaceRun` 이 rAF 루프에서 호출한다. 무작위는 `random` 인자로 주입한다(테스트 · 추후 서버 결과 재생 모드).
 
 ```ts
 interface RunnerState {
-  horseId: number;
-  progress: number;        // 0 ~ 1 (1 = 결승)
-  baseSpeed: number;       // 출발 시 랜덤 결정
-  modifier: number;        // 일시적 속도 배율 (1 = 정상)
-  modifierUntil: number;   // ms timestamp, 지나면 modifier → 1
-  finishedAt?: number;
+  horseId: number; trait: HorseTrait;
+  progress: number;        // 0 ~ 1 (1 = 결승). 통과 뒤에도 1.6 까지 더 늘어 화면 밖으로 달려 나간다
+  baseSpeed: number;       // 진행도/ms — 출발 때 무작위
+  drift: number;           // 완만한 속도 흔들림(0.95~1.05, 300ms 마다 랜덤워크) — 엎치락뒤치락의 바탕
+  modifier: number; modifierUntil: number;  // 이벤트의 일시 배율(경과 ms 기준)
+  spurted: boolean;        // 막판 스퍼트는 경주당 한 번
+  finishedAt: number | null;
 }
+interface RaceRun { raceNo; startedAt /* epoch ms, 경과 0 = 출발 */; elapsed; runners; ranking; doneAt; … 메시지 스로틀 상태 }
 
-function step(runners: RunnerState[], dtMs: number, now: number): {
-  runners: RunnerState[];
-  events: RaceEventMessage[];   // 이번 프레임에 발생한 이벤트
-};
+createRace(horses, raceNo, startedAt, random): RaceRun
+step(run, dtMs ≤ 50, random, names): { run, events }        // 한 스텝 — 경과가 0 미만(카운트다운)이면 움직이지 않는다
+advanceTo(run, targetElapsedMs, random, names): { run, events }  // 50ms 단위로 targetElapsed 까지 따라잡는다
+liveOrder(runners) · leaderProgress(runners)
 ```
 
-**튜닝 목표: 전체 경주 10~15초.**
+**튜닝 목표: 전체 경주 10~15초.** (구현값 — 몬테카를로 4,000회로 맞췄다)
 
-1. **기본 속도**: `baseSpeed = 1 / 12500ms × random(0.9, 1.1)` → 평균 약 12.5초 완주.
-2. **trait 보정** (구간별 배율):
+1. **기본 속도**: `baseSpeed = 1 / 12000ms × random(0.93, 1.07)`.
+2. **trait 보정** (구간별 배율 — 평균 완주 시간이 성향마다 비슷해지도록 조정):
    | trait | 0~30% | 30~70% | 70~100% |
    |---|---|---|---|
    | FAST_START | ×1.15 | ×1.0 | ×0.92 |
-   | STEADY | ×1.0 | ×1.0 | ×1.0 (이벤트 확률 ↓) |
-   | LATE_SPURT | ×0.92 | ×1.0 | ×1.15 |
-   | WILDCARD | ×1.0 | ×1.0 | ×1.0 (이벤트 확률 ↑↑, 변동폭 ↑) |
+   | STEADY | ×1.01 | ×1.02 | ×1.01 (이벤트 확률 ↓) |
+   | LATE_SPURT | ×0.90 | ×1.0 | ×1.12 (+ 막판 스퍼트 보장) |
+   | WILDCARD | ×1.0 | ×1.0 | ×1.0 (이벤트 확률 ↑↑, 배율 변동폭 ×1.3) |
    | BALANCED | ×1.02 | ×1.02 | ×1.02 |
-3. **랜덤 이벤트**: 약 300ms 마다 말별로 확률 체크(기본 4%, STEADY 2%, WILDCARD 9%).
-   - BOOST(순간 가속 ×1.35, 1s) / SLOW(잠깐 감속 ×0.7, 0.8s) / STUMBLE(주춤 ×0.4, 0.5s)
-   - SPURT: progress > 0.75 이고 LATE_SPURT 또는 확률 당첨 시 ×1.4, 1.5s
-   - OVERTAKE: 이번 프레임에 순위가 오른 말이 있으면 메시지만 생성 (쿨다운 2s)
-   - LEAD_BATTLE: 1·2위 차이 < 0.02 가 1초 이상 지속되면 메시지
-4. **메시지 스로틀**: 화면 메시지는 전체 기준 최소 1.2초 간격. 너무 많으면 재미가 떨어진다.
-5. **순위 기록**: `progress >= 1` 이 되는 프레임에 `finishedAt` 기록 → 도착 순서대로 `ranking` push. 7마리 모두 도착하면 FINISHED.
+3. **랜덤 이벤트**: 300ms 마다 말별로 확률 체크(기본 4%, STEADY 2%, WILDCARD 9%). 이미 배율이 걸린 말은 건너뛴다.
+   - BOOST(×1.35, 1s · 45%) / SLOW(×0.7, 0.8s · 35%) / STUMBLE(×0.4, 0.5s · 20%)
+   - SPURT: progress > 0.75 에서 LATE_SPURT 는 한 번 보장, 나머지는 판정마다 2% — ×1.3, 1.2s(경주당 한 번)
+   - OVERTAKE: 1~3위 안으로 순위가 오른 말이 있으면 메시지만(쿨다운 2s, 출발 직후 8% 전은 제외). 1위로 올라서면 "선두로 나섭니다", 아니면 "선두를 추격합니다"
+   - LEAD_BATTLE: 1·2위 차이 < 0.02 가 1초 이상 지속되면 메시지(쿨다운 4s)
+4. **메시지 스로틀**: 화면 메시지는 전체 기준 최소 **1.5초** 간격(토스트 표시 시간과 같아 큐가 밀리지 않는다). 속도 효과는 그대로 적용되고 메시지만 생략된다.
+5. **순위 기록**: `progress >= 1` 이 되는 스텝에 `finishedAt` 기록 → 도착 순서대로 `ranking` push(같은 스텝에 둘 이상이면 더 멀리 간 말이 먼저). 7마리 모두 도착하면 `doneAt`, 1.5초 뒤 FINISHED.
 6. **안전장치**: 18초가 지나도 도착하지 못한 말은 남은 진행도 순으로 강제 마감.
 
-**렌더링**
-- rAF 콜백에서 `setRunners` 로 State 갱신(지시서: 위치는 React State 관리). 7개 요소뿐이라 매 프레임 setState 로 충분하다.
-- 말 위치는 `transform: translateX(calc(progress × 트랙길이))` — `left` 사용 금지(리플로우).
-- 언마운트 / 페이지 이탈 시 `cancelAnimationFrame` 필수.
-- 탭이 백그라운드로 가면 `dt` 가 커지므로 `dt` 최대 50ms 로 clamp.
+**결과(2026-10-13, 4,000회)**: 7마리 완주 11.2~14.9초(중앙값 12.7초, 강제 마감 0회) · 선두 첫 도착 9.2~12.1초 · 우승률 12.5~16.0%(가장 높은 추입형 MOCHA 16%) · 경주당 선두 교체 2.4회 · 메시지 5.8개 · 선두 ↔ 꼴찌 최대 간격 p50 0.15 · p90 0.21 · p99 0.26.
+
+**렌더링(8단계 구현 — 사용자 결정으로 지시서의 "위치는 React State 관리"에서 벗어남)**
+- 경기 화면은 PixiJS 캔버스. `useRaceRun` 의 rAF 콜백이 매 프레임 `advanceTo(run, Date.now() − startedAt)` 로 시뮬레이션을 진행시키고 `scene.update(프레임)` 로 캔버스를 직접 갱신한다. React State(HUD 순위 · 남은 거리 · 카운트다운 · 토스트)는 **순위 · 토스트가 바뀌거나 100ms 마다**만 갱신한다(DOM 을 60fps 로 다시 그리지 않게).
+- 진행도는 프레임 누적이 아니라 **출발 시각 기준 경과 시간**이다. Cache Components 가 `/race` 를 `<Activity>` 로 숨기면 effect cleanup 으로 rAF 와 캔버스가 정리되고, 돌아오면 effect 가 다시 돌며 `runRef` 의 상태를 그 시각까지 50ms 단위로 따라잡는다 — "다른 페이지에 갔다 돌아와도 경주가 이어진다"(검증: 3초 떠난 사이 496m → 130m). 탭이 뒤로 가도 같다.
+- 캔버스는 보일 때마다 만들고(텍스처는 `Assets` 캐시) 숨겨지면 `destroy`. StrictMode 의 effect 재실행은 `cancelled` 플래그로 처리.
+- 언마운트 / 페이지 이탈 시 `cancelAnimationFrame` · 장면 `destroy` 필수.
 
 `app/(site)/race/_lib/messages.ts` 예:
 ```ts
@@ -872,7 +1019,8 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 
 #### `/menu/[id]` — 메뉴 상세
 
-- 메뉴판 티켓을 크게 펼친 모양: 일러스트 · `WINNER/BEST/NEW` 배지 · 이름 `........` 가격(점선 리더, 사이즈 메뉴는 이름만) · 영문명 · 설명 · 정보(카테고리, 판매 상태) · 주문 영역 · STUB 일련번호. 모바일은 세로로 쌓고 STUB 을 아래로 보낸다.
+- 메뉴판 티켓을 크게 펼친 모양: 일러스트 · `WINNER/BEST/NEW` 배지 + ♡ 찜하기 · 이름 `........` 가격(점선 리더, 사이즈 메뉴는 이름만) · 영문명 · 설명 · 정보(카테고리, 판매 상태) · 주문 영역 · STUB 일련번호. 모바일은 세로로 쌓고 STUB 을 아래로 보낸다.
+- **찜하기(`FavoriteButton`, client)**: 배지 줄 오른쪽 끝의 알약 버튼. 누를 때마다 `toggleFavorite(menu.id)` — 켜지면 검은 바탕 + 채운 하트. 글자는 늘 "찜하기"이고 상태는 `aria-pressed` 로 읽힌다(스크린리더 이름 "아메리카노 찜하기"). 품절이어도 찜할 수 있다. 찜 버튼은 **상세에만** 둔다(메뉴판 카드 · 메인 라인업 · 마이페이지 카드에는 없음 — 사용자 결정).
 - **주문 영역(`AddToCart`, client)**: 사이즈 4칸 라디오(칸마다 사이즈 가격 — 사이즈별 가격표 역할, 기본 S) → 수량 스테퍼(1~20) + 합계 → `[← 메뉴판으로] [장바구니 담기]` → 담은 뒤 "장바구니에 아메리카노 M 3개를 담았어요. 장바구니 보기 ›"(`role="status"`). 디저트는 사이즈 없이 수량부터. 이미 담은 메뉴·사이즈면 수량을 더하고, 20개를 넘으면 남은 만큼만 담고 알려 준다. 품절이면 가격은 보이되 사이즈·수량·담기가 모두 막힌다.
 - 위에 현재 위치(`메뉴판 › 커피`), 아래에 **같은 카테고리의 다른 메뉴** 최대 3개(메뉴판 순서, `MenuCard` 재사용).
 - 메뉴판에 보이는 메뉴만 연다(`selectDetail`). HIDDEN · 숨김 카테고리 · 없는 id 는 `notFound()` → 같은 폴더의 `not-found.tsx`("SCRATCHED"). 품절은 열리고 스탬프 + 빨간 "품절" 상태로 보인다.
@@ -880,11 +1028,12 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 - `params` 는 페이지 최상단이 아니라 `<Suspense>` 안의 `MenuDetailContent` 에서만 읽는다. `partialPrefetching` 은 모든 링크가 같은 App Shell 을 미리 받아 두는 방식이라, 밖에서 읽으면 Shell 이 URL 하나에 묶여 개발 모드에서 "URL data outside of Suspense" 가 뜬다. Shell 에는 같은 티켓 틀의 `MenuDetailSkeleton` 이 들어가고, 카드를 누르면 잠깐 보였다가 내용으로 바뀐다(빌드한 메뉴를 주소로 바로 열면 같은 HTML 안에서 곧바로 교체된다).
 - 메인 `TODAY'S LINEUP` 카드도 해당 메뉴의 상세로 연결한다.
 
-### 8.5 `/event` — Race Event & Race Ticket
+### 8.5 `/event` — Race Event
 
-- `MY COUPONS` 전광판: 레이스 참가권 N장 + 획득한 보상 쿠폰 목록(`CouponCard` = Race Ticket 디자인, 사용 여부 스탬프).
-- `EventCard` 목록: `DAILY RACE 18:00 — 오늘의 Race에 참가하고 쿠폰 보상을 받아보세요. [Race 참여하기 → /race]` 등.
-- 쿠폰이 0장일 때 빈 상태 일러스트(빈 마구간 + "다음 이벤트에서 만나요").
+진행 중인 카페 이벤트를 보는 곳이다. **내 쿠폰은 여기서 보여주지 않는다**(`/my` — 8.10).
+
+- `EventCard` 목록: `DAILY RACE 18:00 — 쿠폰 1장으로 참여하고 1~3위면 원금과 함께 추가 쿠폰을 받아보세요. [Race 참여하기 → /race]`, `주문 적립 — 주문 한 번에 쿠폰 1장` 등.
+- 진행 중인 이벤트가 없으면 빈 상태 일러스트(빈 마구간 + "다음 이벤트에서 만나요").
 
 ### 8.6 `/admin` — 관리자 공통
 
@@ -936,16 +1085,62 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 │ ☕ 아메리카노 (M)   [− 3 +]   13,500원  ×   │  │ 총 수량        5개 │
 │    Americano · 4,500원                    │  │ - - - - - - - - - │
 │ ☕ 아메리카노 (XL)  [− 1 +]    5,500원  ×   │  │ 합계     25,500원 │
-│ 🍰 당근 케이크      [− 1 +]    6,500원  ×   │  │ [주문하기](준비 중) │
-└───────────────────────────────────────────┘  │ [메뉴 더 담기]     │
+│ 🍰 당근 케이크      [− 1 +]    6,500원  ×   │  │ 🎟 주문 시 쿠폰 +1 │
+└───────────────────────────────────────────┘  │ [주문하기]  (목업)  │
+                                               │ [메뉴 더 담기]     │
                                                └───────────────────┘
 ```
 
 - Header 장바구니 아이콘에서 들어온다. 제목 `MY ORDER / CART`. 데이터는 `useCart()` 하나.
 - 한 줄 = 메뉴 + 사이즈(같은 메뉴도 사이즈가 다르면 다른 줄): 일러스트 · 이름(상세 링크) + 사이즈 칩 · 영문명 · 단가 · 수량 스테퍼 · 금액 · 삭제(×). 모바일은 `일러스트 | 이름 · ×` / `수량 · 금액` 두 줄.
-- 요약(PC 오른쪽 sticky, ≤960px 아래): 총 수량 · 합계(위에 티켓 절취선 점선) · "주문하기"(준비 중으로 비활성) · "메뉴 더 담기".
+- 요약(PC 오른쪽 sticky, ≤960px 아래): 총 수량 · 합계(위에 티켓 절취선 점선) · "주문 시 쿠폰 +1" 안내 · "주문하기" · "메뉴 더 담기".
+- **주문하기(목업)**: 실제 결제 없이 `placeOrder(lines)`(주문 한 건 `Order` 를 만들어 돌려줌) → `addOrder(order)`(주문 내역) → `earnCoupons(ORDER_COUPON_REWARD, "ORDER", "주문 적립 · 아메리카노 외 2건")` → `clear()`. 장바구니 자리에 완료 상태를 보여 준다: `ORDER No.0001` · "주문이 접수됐어요" · `아메리카노 외 1건 · 2개 · 10,500원` · "쿠폰 1장이 적립됐어요(보유 N장)" + [주문 내역 보기 → /my#orders] [메뉴판 보러 가기]. 처리 중에는 버튼을 막고 ref 로도 막아 두 번 적립되지 않게 한다.
+- **Activity 주의**: Cache Components 는 다른 페이지로 가도 `/cart` 를 언마운트하지 않고 숨겨 두므로(최대 3개 경로) State 가 남는다. 주문 완료 · 오류 · 전체 삭제 확인은 `useLayoutEffect` cleanup 에서 되돌려, 메뉴를 더 담고 돌아오면 새 장바구니가 보이게 한다(`node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`). 다른 페이지의 일회성 안내 State 도 같은 방식으로 다룬다.
 - "전체 삭제" 는 같은 자리에서 "모두 삭제할까요? 삭제 / 취소" 로 한 번 더 묻는다(빨강은 위험 동작 전용). 줄 삭제 · 전체 삭제 뒤에는 포커스를 목록 제목(비면 빈 상태 제목)으로 옮긴다.
 - 비어 있으면 "장바구니가 비어 있어요" + "메뉴판 보러 가기".
+
+### 8.10 `/my` — 마이페이지
+
+쿠폰 수만 보는 곳이 아니라 **"내 것"을 모아 보는 곳**이다(2026-10-13 결정): 내 정보 · 주문 내역 · 찜한 메뉴 · 쿠폰 + (자리만) 내 레이스 기록 · 좌석 예약 내역.
+Header 의 `MY` 메뉴와 쿠폰 칩(`/my#coupons`)에서 들어온다. 로그인이 없으므로 Mock 사용자 1명 기준이다.
+구성은 **요약 + 섹션 세로 나열**(사용자 결정) — 각 섹션은 최근 몇 개만 보여 주고 "전체 보기 (N) / 접기"로 같은 자리에서 펼친다(하위 주소 없음).
+
+```
+MY PAGE
+┌ [말] MEMBER No.0007          ┊  보유 쿠폰   찜한 메뉴   주문 내역 ┐  ← 내 정보 | 요약 전광판
+│      럭키 포니 님             ┊  [0][9]장   [0][2]개   [0][4]건  │    숫자 칸 → #coupons · #favorites · #orders
+│      2026.10.01 가입 · …      ┊                                  │    (≤1023px 위아래로, 절취선도 가로)
+└─────────────────────────────────────────────────────────────────┘
+ORDERS  주문 내역                                            4건
+┌ ORDER No.0004  10/13 15:04                       [쿠폰 +1] ┐  ← 영수증 카드, 최근 3건
+├ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┤
+│ 아메리카노 [S]                         × 1        4,000원   │  ← 이름은 상세 링크
+│ 당근 케이크                            × 1        6,500원   │
+│ 총 2개                                           10,500원   │
+└───────────────────────────────────────────────────────────┘
+[ 전체 보기 (4) ]
+MY PICKS  찜한 메뉴                                          2개
+[썸네일][썸네일]  ← 최근 찜한 순, 최근 4개(PC 4열 · ≤1023px 3열 · 모바일 2열), 카드 → 상세
+COUPONS  쿠폰                                           보유 9장
+┌ 쿠폰 한 장으로 DAILY RACE 에 참여할 수 있어요.   [Race 참여하기] [메뉴 주문하기] ┐
+│ · 주문할 때마다 1장 · 레이스 1~3위 추가 쿠폰 · 교환은 준비 중                   │
+└───────────────────────────────────────────────────────────────────────────┘
+적립 · 사용 내역 4건
+┌ 10/13 18:02 ┊ [레이스 보상] Race #13 · 1위 (원금 1 + 추가 3)   +4 ┐  ← Race Ticket 줄, 최근 5건
+├ 10/13 18:01 ┊ [레이스 참가] Race #13 · 3번 MOCHA 참가        −1 ┤     (+ 는 진한 글씨, − 는 회색)
+MY RACES  내 레이스 기록                                   [준비 중]
+┊ 레이스에 참여하면 내가 고른 말과 순위, 돌려받은 쿠폰이 여기에 기록돼요.  [출전표 보기] ┊
+MY SEATS  좌석 예약 내역                                   [준비 중]
+┊ 좌석을 예약하면 예약한 자리와 시간이 여기에 보여요.                    [좌석 보기] ┊
+```
+
+- **내 정보**: `getProfile()`(Mock) — 말 마스코트 · `MEMBER No.0007` · 닉네임 · 가입일 + "로그인 기능이 생기면 내 정보를 바꿀 수 있어요". 수정 기능은 없다.
+- **주문 내역**: `orders`(최신순). 주문 순간의 장바구니 사본이라 메뉴 가격이 바뀌어도 그대로다. 비어 있으면 "아직 주문 내역이 없어요" + 메뉴판 링크.
+- **찜한 메뉴**: `favorites` 순서대로, page 가 메뉴 Service 에서 받은 **메뉴판에 보이는 메뉴**만 그린다(숨김 메뉴 · 숨김 카테고리는 상세가 없어 빠진다). 품절은 흐리게 + `SOLD OUT`. 찜 해제는 상세의 ♡ 에서만 한다. 비어 있으면 "메뉴 상세에서 ♡ 찜하기를 누르면 여기에 모여요".
+- **쿠폰**: 얻는 법 · 교환 준비 중 안내 + `couponHistory`. 쿠폰 교환은 규칙이 정해질 때까지 안내 문구만 둔다(버튼 없음).
+- **내 레이스 기록 · 좌석 예약 내역**: 지금은 `PlannedSection`(점선 상자 + "준비 중" + 해당 페이지 링크). 9단계 · 11단계에서 실제 목록으로 바꾼다.
+- 섹션은 `scroll-margin-top` 으로 #앵커 이동 시 헤더에 가리지 않는다.
+- 프로필 · 메뉴 목록은 모두에게 같아 page 에 `"use cache"`, 쿠폰 · 찜 · 주문은 클라이언트 컴포넌트가 `useUser()` 로 읽는다. 시각은 클라이언트에서 만든 값이라 하이드레이션이 어긋나지 않는다.
 
 ---
 
@@ -957,7 +1152,7 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 | Tablet | 768–1199px | 카드 2열, `/seat` 필터 상단 + 상세 모달 |
 | Mobile | < 768px | 1열, 햄버거 내비, Bottom Sheet |
 
-- **경마 트랙**: `min-width: 640px` + 가로 스크롤 컨테이너. 레인 높이 최소 40px.
+- **경마 트랙(경기 화면)**: 캔버스가 컨테이너 폭을 채우고 높이는 `clamp(260px, 32vw, 440px)`(모바일 `clamp(240px, 62vw, 320px)`). 장면의 치수가 모두 폭 · 높이 비율이라 가로 스크롤이 없다. 말 폭은 PC 12% · 모바일 15%, 번호 배지는 모바일 0.78배.
 - **좌석 배치도**: `min-width: 720px` + 가로 스크롤. 스크롤 가능함을 알리는 그라데이션 힌트.
 - 좌석·버튼 터치 영역 최소 44px.
 
@@ -968,7 +1163,10 @@ recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3
 DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 · 실제 쿠폰 발급 · 실제 좌석 예약 API · WebSocket 실시간 통신.
 → 모두 Mock Data + React State 로 "동작하는 것처럼" 보여준다. 현금·실제 금전 배팅은 어떤 형태로도 구현하지 않는다.
 → 관리자 페이지도 인증 없이 열린다. 접근 제어는 로그인 기능을 붙일 때 함께 넣는다.
-→ 장바구니는 담기·수량·삭제·합계까지만 한다. "주문하기" 는 준비 중으로 막아 두고, 장바구니는 저장하지 않는다(새로고침 시 비워짐).
+→ 장바구니는 담기·수량·삭제·합계와 목업 "주문하기"(주문 내역 기록 · 쿠폰 +1 · 장바구니 비우기)까지만 한다. 결제는 없고, 장바구니 · 주문 내역 · 찜은 저장하지 않는다(새로고침 시 비워짐).
+→ 마이페이지의 내 정보 수정, 주문 취소 · 다시 담기는 하지 않는다.
+→ 쿠폰을 메뉴로 바꾸는 교환(몇 장 → 어떤 메뉴)은 하지 않는다. 컨셉만 7절에 적어 두고, `/my` 에 "준비 중" 안내만 둔다.
+→ README 의 쿠폰 수에 따른 할인율·포인트 적립률, 레벨별 시그니처 메뉴 해금도 이번 범위 밖이다.
 
 ---
 
@@ -983,6 +1181,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - `lib/` 에 `API_BASE = process.env.NEXT_PUBLIC_API_BASE` 와 공용 fetch 헬퍼(`lib/api.ts`)를 추가하고, 각 라우트의 `*Service.ts` 가 그것을 쓰도록 교체한다. 교체가 끝나면 `_data/` 폴더는 지운다.
 - 좌석 실시간 반영은 처음엔 polling(`setInterval` 로 `getSeats()` 재호출) → 이후 WebSocket/SSE 로 확장. 컴포넌트는 `seats` 배열만 받으므로 바뀌지 않는다.
 - 레이스 결과는 최종적으로 서버가 결정해야 한다(클라이언트 랜덤은 데모용). 그때는 서버가 `ranking` + 이벤트 타임라인을 내려주고, 프론트는 그것을 **재생**만 하도록 `simulation.ts` 를 "결과 지정 모드"로 확장한다. 지금부터 `useRace` 가 시뮬레이터를 주입받는 구조로 만들어 두면 교체가 쉽다.
+- 쿠폰 차감·정산도 그때 서버로 옮긴다. `placeBet` 이 서버에서 1장을 빼고, 결과 확정 시 서버가 `RACE_PAYOUT` 만큼 돌려준 뒤, 프론트는 `UserProvider` 를 서버 값으로 다시 불러온다. 참여 횟수 제한(경주 시각당 1회 등)을 두기로 하면 그것도 서버에서 건다.
 
 ---
 
@@ -998,11 +1197,12 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 | 3 | (관리자) 카테고리 관리 | 2 |
 | 4 | 메뉴 조회 | 2, 3 |
 | 4-1 | 메뉴 사이즈 & 장바구니 | 2, 4 |
-| 5 | 쿠폰 지갑 & 이벤트 | 1 |
+| 5 | 쿠폰 · 주문 적립 · 마이페이지 & 이벤트 | 1, 4-1 |
+| 5-1 | 마이페이지 확장 — 내 정보 · 주문 내역 · 찜 | 5 |
 | 6 | 경주 일정 & 카운트다운 | 1 |
-| 7 | 말 출전표 & 쿠폰 사용 | 5, 6 |
+| 7 | 말 출전표 & 쿠폰 걸기 | 5, 6 |
 | 8 | 경주 시뮬레이션 & 애니메이션 | 7 |
-| 9 | 경주 결과 · 보상 · 기록 | 8 |
+| 9 | 경주 결과 · 쿠폰 정산 · 기록 | 8 |
 | 10 | 좌석 현황 & 배치도 | 1 |
 | 11 | 좌석 상세 & 예약 | 10 |
 | 12 | 좌석 필터 & 추천 | 10 |
@@ -1143,22 +1343,53 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 ---
 
-### 5단계 — 쿠폰 지갑 & 이벤트 (`/event`)
+### 5단계 — 쿠폰 · 주문 적립 · 마이페이지 & 이벤트 (`/my`, `/cart`, `/event`)
 
-레이스 참가권과 보상 쿠폰의 단일 소스(UserProvider)를 완성한다. 설계: 7, 8.5.
+쿠폰 한 종류의 단일 소스(UserProvider)를 완성하고, 주문 적립 · 내 쿠폰 확인 · 이벤트 안내를 붙인다. 설계: 3(Header), 7, 8.5, 8.9, 8.10.
 
 **구현**
-- [ ] `UserProvider` — `coupons`, `rewards`, `spendCoupon()`, `addReward()` 완성 (`INITIAL_COUPONS = 5`)
+- [x] `types/common.ts` — `Coupon` · `rewards` · `addReward` 제거, `CouponReason` · `CouponLog` · `UserState`(7절)로 교체
+- [x] `UserProvider` — `coupons`, `history`(5-1단계에서 `couponHistory` 로 이름 변경), `spendCoupon(reason, label)`, `earnCoupons(amount, reason, label)` 완성 (`INITIAL_COUPONS = 5`). 최신 값을 ref 로도 들고 있어 같은 틱에 두 번 불려도 0장 아래로 내려가지 않는다
 - [x] Header 쿠폰 칩이 Context 값을 표시 (1단계 재구성 때 선반영)
-- [ ] `app/(site)/event/_types.ts`, `_data/events.ts`, `_lib/eventService.ts`
-- [ ] `CouponCard.tsx` — Race Ticket 디자인, 사용 여부 스탬프
-- [ ] `EventCard.tsx` — 이벤트 소개 + `/race` 이동 버튼
-- [ ] 쿠폰 0장 빈 상태
+- [x] `Header.tsx` — 내비에 `MY` 추가, 쿠폰 칩 링크 `/event` → `/my` / `Footer.tsx` 메뉴 줄에도 `MY`
+- [x] `app/(site)/cart/_lib/orderService.ts`(`placeOrder`, `orderSummary`, `ORDER_COUPON_REWARD = 1`) + `CartView` 주문하기 활성화 · 완료 상태(`ORDER No.0001`)
+- [x] `app/(site)/my/page.tsx` + `MyCoupons.tsx` · `CouponHistory.tsx` — 보유 쿠폰 전광판 · 교환 준비 중 안내 · 증감 내역 · 빈 상태
+- [x] `app/(site)/event/_types.ts`, `_data/events.ts`, `_lib/eventService.ts`
+- [x] `EventCard.tsx` — 가로 티켓 + 이동 버튼 / 이벤트 0개 빈 상태
+- [x] 메인 히어로 문구의 "우승하면 음료 보상" → "3위 안에 들면 추가 쿠폰"
 
 **완료 확인**
-- [ ] 쿠폰 수가 Header 와 `/event` 에서 같다
-- [ ] `spendCoupon()` 은 0장일 때 false 를 돌려주고 수가 음수가 되지 않는다
-- [ ] Race 참여하기 버튼이 `/race` 로 이동한다
+- [x] 쿠폰 수가 Header 와 `/my` 에서 같고, `/event` 에는 내 쿠폰이 없다
+- [ ] `spendCoupon()` 은 0장일 때 false 를 돌려주고 수가 음수가 되지 않는다 — 아직 호출하는 화면이 없어 코드로만 확인. 7단계 `/race` 에서 화면으로 확인한다
+- [x] 장바구니에서 주문하면 쿠폰이 1장 늘고(담은 수량과 무관), 장바구니가 비고, `/my` 내역 맨 위에 `+1` 이 생긴다 — 주문하기를 같은 틱에 두 번 눌러도 1장만 적립
+- [x] 주문 뒤 메뉴를 더 담고 `/cart` 로 돌아오면 지난 주문 완료 화면이 아니라 새 장바구니가 보인다(Activity 로 남은 State 초기화 — 8.9)
+- [x] Header 의 MY 메뉴 · 쿠폰 칩이 `/my` 로 이동하고 현재 경로가 강조된다 (861px 에서도 헤더가 넘치지 않음)
+- [x] Race 참여하기 버튼이 `/race` 로 이동한다
+- [x] `npm run build`, `npm run lint` 통과 · PC(1440) · 모바일(390)에서 `/cart` · `/my` · `/event` 확인
+
+---
+
+### 5-1단계 — 마이페이지 확장 (내 정보 · 주문 내역 · 찜)
+
+마이페이지를 쿠폰 수만 보는 곳에서 "내 것"을 모아 보는 곳으로 넓힌다(2026-10-13 결정). 설계: 4, 7, 8.4(찜하기), 8.9, 8.10.
+
+**구현**
+- [x] `types/common.ts` — `Order` 추가, `UserState` 에 `favorites` · `toggleFavorite` · `orders` · `addOrder`, `history` → `couponHistory`
+- [x] `UserProvider` — 찜(최근 찜한 순 토글) · 주문 내역(최신순) State
+- [x] `orderService.placeOrder` 가 `Order`(장바구니 사본 · 총 수량 · 합계 · 요약 · 적립 쿠폰)를 돌려주고, `CartView` 가 `addOrder` 로 내역에 남긴다. 완료 화면에 수량 · 합계 + [주문 내역 보기 → /my#orders]
+- [x] `menu/_components/FavoriteButton.tsx` — 상세 배지 줄 오른쪽 ♡ 찜하기(aria-pressed)
+- [x] `my/_types.ts` · `_data/profile.ts` · `_lib/myService.ts`(`getProfile`) · `_lib/format.ts` · `_hooks/useShowMore.ts`
+- [x] `MyOverview`(내 정보 + 요약 전광판 → #앵커) · `OrderHistory` · `FavoriteMenus` · `MyCoupons` + `CouponHistory` · `PlannedSection`(내 레이스 기록 · 좌석 예약 내역) · `MySection`
+- [x] `my/page.tsx` — `"use cache"`, 프로필 + 메뉴판에 보이는 메뉴(찜 후보)를 Service 에서 받아 조립
+- [x] Header 쿠폰 칩 · 이벤트 "내 쿠폰 보기" → `/my#coupons`
+
+**완료 확인**
+- [x] 상세에서 찜을 켜고 끄면 마이페이지 찜한 메뉴에 최근 찜한 순으로 바로 반영된다
+- [x] 주문하면 마이페이지 주문 내역 맨 위에 그 주문(줄 · 수량 · 합계 · 쿠폰 +1)이 생기고, 요약의 주문 수 · 쿠폰 수가 함께 바뀐다
+- [x] 주문 4건이면 3건만 보이다가 "전체 보기 (4)" 로 펼쳐지고 "접기" 로 돌아간다
+- [x] `/my#orders` · `/my#coupons` 로 오면 해당 섹션이 헤더 바로 아래에 온다
+- [x] 내 레이스 기록 · 좌석 예약 내역은 "준비 중" 자리와 해당 페이지 링크만 보인다
+- [x] `npm run build`, `npm run lint` 통과 · PC(1440) · 모바일(390)에서 `/my` · `/menu/[id]` 확인
 
 ---
 
@@ -1166,71 +1397,106 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 메인 · `/race` · Header 가 함께 쓰는 시간 기능.
 
+사용자 결정(2026-10-13): 시작 10분 전부터 SOON · 시작 후 10분 LIVE / `/race` 는 준비 중 화면을 유지하고 전광판 컴포넌트만 만든다 / 메인 히어로 카운트다운은 지금 연결.
+
 **구현**
-- [ ] `lib/time.ts` — `RACE_TIMES`, `getNextRaceTime`, `getLiveRaceTime`, 시각 포맷
-- [ ] `lib/useCountdown.ts` — 1초 시계, 하이드레이션 전 `--:--:--`
-- [ ] `RaceCountdown.tsx` — `/race` 헤더 전광판(다음 경기 · 남은 시간 · 내 쿠폰)
-- [ ] Header RACE 메뉴의 LIVE 표시(경주 시작 후 10분)
+- [x] `lib/time.ts` — `RACE_TIMES`(KST), `getRaceSchedule` · `getNextRaceTime` · `getLiveRaceTime`, `formatCountdown` · `formatCountdownSpoken` · `formatRaceSlot` · `formatRaceTimes`
+- [x] `lib/useCountdown.ts` — 공용 1초 시계(초 경계 정렬, 구독자 없으면 타이머 정지), `useNow` · `useRaceCountdown` · `useRacePhase`, 하이드레이션 전 `--:--:--`
+- [x] `components/RacePhaseBadge.tsx` · `Scoreboard` 의 `onDark`
+- [x] `RaceCountdown.tsx` + `race.module.css` — `/race` 상단 전광판(다음 경기 · 남은 시간 · 내 쿠폰). 페이지에는 7단계에서 붙인다
+- [x] Header RACE 메뉴의 SOON · LIVE 신호(PC 점 · 모바일 글자 배지)
+- [x] 메인 히어로 NEXT RACE 슬라이드 — `HeroRaceClock` · 탭 제목, 슬라이드 문구 정리
+- [x] Footer · `/event` 의 경주 시각을 `formatRaceTimes()` 로
+- [x] (버그 수정) 모바일 햄버거 메뉴가 열려도 보이지 않던 문제 — 헤더 blur 를 `::before` 로(3절 Header)
 
 **완료 확인**
-- [ ] 카운트다운이 1초마다 줄어든다
-- [ ] 경주 시각이 지나면 다음 경주로 넘어가고, 마지막 경주 뒤에는 내일 첫 경주를 가리킨다
-- [ ] 새로고침 시 하이드레이션 경고가 없다
+- [x] 카운트다운이 1초마다 줄어든다 (2초 뒤 정확히 2초 감소)
+- [x] 경주 시각이 지나면 다음 경주로 넘어가고, 마지막 경주 뒤에는 내일 첫 경주를 가리킨다 — 경계 13개(12:19:59 UPCOMING → 12:20 SOON → 12:30 LIVE → 12:40 다음 18:00, 18:10 → 내일 12:30, KST 자정 직후 등) 순수 함수 테스트 + 브라우저에서 17:59:57 → LIVE, 18:09:58 → 내일 12:30 자동 전환 확인
+- [x] 새로고침 시 하이드레이션 경고가 없다(콘솔 오류 0) · 정적 셸에는 "매일 12:30 · 18:00 출발" + `--:--:--`
+- [x] `npm run build`(`/` · `/race` 정적), `npm run lint` 통과 · PC(1440) · 모바일(390)에서 히어로 · 헤더 · 모바일 메뉴 · 전광판(검증용으로 잠시 붙였다가 되돌림) 확인
 
 ---
 
-### 7단계 — 말 출전표 & 쿠폰 사용 (`/race` BETTING)
+### 7단계 — 말 출전표 & 쿠폰 걸기 (`/race` BETTING)
 
-설계: 8.2 화면 구성 1~3.
+설계: 7(쿠폰 규칙), 8.2 화면 구성 1~3.
+
+사용자 결정(2026-10-13): 레이스 상태는 루트 `RaceProvider` / 최근 성적은 경주 기록에서 계산 / 쿠폰을 건 뒤에는 출발 대기 패널 / 말 이미지는 `말에셋.png` 를 잘라 쓰되 이름에 어울리는 말을 고르고(조끼 숫자 ≠ 게이트 번호 허용) 대표색은 조끼 색, 출전 7장만.
 
 **구현**
-- [ ] `app/(site)/race/_types.ts`, `_data/horses.ts`, `_lib/raceService.ts` (`getHorses`, `placeBet`)
-- [ ] `HorseCard.tsx` — 번호 · 이름 · 마스코트 · 대표색 · 성격 · 최근 성적 · 설명 · 선택 버튼
-- [ ] `BetConfirmModal.tsx` — "OOO에 쿠폰 1장을 사용하시겠습니까?"
-- [ ] `useRace` — BETTING → READY 전환, 쿠폰 차감
-- [ ] 쿠폰 0장이면 선택 버튼 비활성 + 안내
+- [x] `/race` 의 준비 중 화면을 실제 페이지로 교체하고 맨 위에 `RaceCountdown`(6단계) 을 붙인다
+- [x] `scripts/split-horses.mjs` + `assets/horse-sheet.png` → `public/images/horses/*.png` 7장(배경 잔여물 정리 · 같은 캔버스)
+- [x] `app/(site)/race/_types.ts`(`Horse` 에 `nameKo` · `colorName` · `image`, `recentResults` 제거, `RaceBet`), `_data/horses.ts`, `_data/raceHistory.ts`(Race #8~#12), `_lib/raceService.ts` (`getHorses`, `getRaceHistory`, `placeBet`)
+- [x] `_lib/payout.ts` — `RACE_ENTRY_COUPONS = 1` · `RACE_PAYOUT = { 1: 4, 2: 3, 3: 2 }`(원금 포함, 우선값) · `payoutFor(rank)`(4위 이하 0) · `payoutTable` · `payoutSummary`
+- [x] `_lib/records.ts` — `nextRaceNo` · `recentRanks` · `TRAIT_LABEL` · `textOn`
+- [x] `components/RaceProvider.tsx` + 루트 레이아웃 / `useRace` — 기록 합치기 · 경주 번호 · BETTING → READY 전환, `spendCoupon("RACE_BET", …)`
+- [x] `HorseCard.tsx` · `GateBadge.tsx` — 게이트 번호 · 이름 · 말 이미지 · 대표색 · 성향 · 최근 성적 · 설명 · 선택 버튼
+- [x] `PayoutGuide.tsx` — 출전표 위 보상 안내(`RACE_PAYOUT` 에서 생성)
+- [x] `BetConfirmModal.tsx` — "OOO에 쿠폰 1장을 사용하시겠습니까?" + 보상 안내 + 보유 수 변화
+- [x] `ReadyPanel.tsx` — 출발 대기 패널(8단계에서 트랙으로 교체)
+- [x] 쿠폰 0장이면 선택 버튼 비활성 + 주문 적립 안내
+- [ ] **게이트 번호를 지난 경주 도착 순서로 매기기(팀 협의 2026-10-13)** — 8.2 "게이트 번호 규칙" 대로 말 id 와 게이트 번호를 나누고, 출전표 · 확인창 · READY · 쿠폰 내역 문구가 그 경주의 게이트 번호를 쓰게 한다. 출전표 카드는 게이트 번호 순. 기록이 없는 첫 경주는 무작위 순서를 한 번만 정해 `RaceProvider` 에 둔다
 
 **완료 확인**
-- [ ] 출전표 7장이 보이고 최근 성적 1위가 금색으로 강조된다
-- [ ] 확인 → 쿠폰 1장 감소(Header 에도 반영), 취소 → 변화 없음
-- [ ] 0장일 때 선택할 수 없다
+- [ ] Race #13 출전표의 게이트 번호가 Race #12 도착 순서(1번 COOKIE · 2번 LATTE · 3번 THUNDER · 4번 MOCHA · 5번 CARAMEL · 6번 ESPRESSO · 7번 VANILLA)와 같고 카드도 그 순서로 놓이며, 경주가 끝나면 다음 경주 번호가 그 결과대로 다시 매겨진다
+- [ ] 기록이 없으면 무작위 순서로 번호가 매겨지고, 다시 그리거나 다른 페이지를 다녀와도 그 순서가 그대로다(빌드 · 하이드레이션 경고 없음)
+- [x] 출전표 7장이 보이고 최근 성적 1위가 금색으로 강조된다(금색 칸 3개 — THUNDER · ESPRESSO · COOKIE)
+- [x] 확인 → 쿠폰 1장 감소(Header 에도 반영) + `/my` 내역에 `−1`, 취소 → 변화 없음 · [사용하기] 를 같은 틱에 두 번 눌러도 1장만
+- [x] 0장일 때 선택할 수 없다(검증용으로 초기 쿠폰을 잠시 0장으로 빌드해 확인 후 되돌림)
+- [x] 쿠폰을 건 뒤 다른 페이지 5곳을 다녀와도 READY · MY PICK 이 남는다(RaceProvider)
+- [x] 순수 함수 테스트(보상 · 기록 무결성 · 다음 번호 13 · 최근 성적 · 배지 글자색), `npm run build`(`/race` 정적) · `npm run lint` 통과, 콘솔 오류 없음 · PC(1440) · 모바일(390) 확인
 
 ---
 
 ### 8단계 — 경주 시뮬레이션 & 애니메이션 (`/race` READY → RUNNING)
 
-설계: 8.2 상태 머신 · 레이스 시뮬레이션.
+설계: 8.2 상태 머신 · 화면 구성 3-1 · 4 · 레이스 시뮬레이션.
+
+사용자 결정(2026-10-13): 경기 화면은 아케이드 경마 레퍼런스(측면 뷰 · 잔디 · 흰 울타리 · 번호 배지 · 하단 순위 바) 2장을 따른다 / **선두 추적 카메라** / **원근 잔디 · 레인선 없음** / CSS 대신 **WebGL — PixiJS v8**, 경기 화면만 캔버스(머리띠 · HUD · 토스트는 DOM) / 추가 이미지 에셋은 "필요한 것을 검색해 알려 달라(유료 무료 무관)" → 아래 후속.
 
 **구현**
-- [ ] `_lib/simulation.ts` — `createRace`, `step` (기본 속도 · trait 구간 배율 · 랜덤 이벤트 · 도착 순위 · 18초 안전장치)
-- [ ] `_lib/messages.ts` — 이벤트 메시지 템플릿
-- [ ] `useRace` — 3·2·1 카운트, rAF 루프(effect 안), dt clamp, 메시지 큐(1.5초씩)
-- [ ] `HorseTrack.tsx` · `HorseRunner.tsx` — 가로 트랙 7레인, START/FINISH, 내 말 레인 강조, 실시간 1~3위
-- [ ] `RaceEventMessage.tsx` — 트랙 상단 토스트
+- [x] `_lib/simulation.ts` — `createRace` · `step` · `advanceTo` · `liveOrder` · `leaderProgress` (기본 속도 · trait 구간 배율 · drift · 랜덤 이벤트 · 스퍼트 · 추월 · 선두 경쟁 · 도착 순위 · 18초 안전장치 · 통과 후 달려 나가기)
+- [x] `_lib/messages.ts` — 이벤트 메시지 템플릿(OVERTAKE 는 올라선 순위에 따라 문구가 다르다)
+- [x] `_types.ts` — `RaceEventType` · `RaceEventMessage.at` · `RunnerState` · `RaceRun`
+- [x] `components/RaceProvider.tsx` — `startRace(run)` · `finishRace(ranking)` · `runRef` · `ranking`(단계 전환은 `transition` 하나로)
+- [x] `useRace.startRace` — 출발 시각 = 지금 + 3초 / `useRaceRun` — rAF 루프(effect 안, 경과 시간 기준 따라잡기), 캔버스 매 프레임 · DOM 100ms, 토스트 큐(1.5초씩 · 3초 지난 것은 버림), 7마리 도착 + 1.5초 뒤 `finishRace`
+- [x] `_lib/trackScene.ts` — PixiJS 장면: 생울타리 · 먼 울타리 · 잔디 줄무늬 · 원근 그늘 · START/FINISH 기둥 · 말 7마리(배지 · MY · 그림자 · 들썩임 · 먼지) · 가까운 울타리, `cameraFor`, ResizeObserver, `destroy`
+- [x] `HorseTrack.tsx` — 머리띠(READY · [경주 시작] / NOW RACING LIVE / FINISH) + 캔버스 호스트(WebGL 실패 시 안내) + 3·2·1·GO! + `RaceEventMessage` + HUD(RACE # ┊ 순위 배지 ┊ REMAINING m)
+- [x] `ReadyPanel` · (중간 CSS 버전의) `HorseRunner` 삭제, `RaceBoard` 에서 `HorseTrack` 조립, `HorseCard` 의 내 말 문구(출발 대기 중 · 경주 중 · 경주 종료)
+- [x] `pixi.js@8.22.0` 추가(`/race` 에서만 동적 import)
+- [ ] **후속 — 이미지 에셋(사용자 요청)**: 검색 결과 기성 에셋은 대부분 픽셀/벡터 스타일이라 기존 말에셋(AI 생성 치비)과 맞지 않는다. (1) 말 달리기 프레임 — 같은 도구로 "같은 말 · 측면 · 달리기 4~6 프레임 시트"를 생성해 받으면 `trackScene` 의 Sprite 를 `AnimatedSprite` 로 바꾼다. (2) 잔디 · 생울타리 · 울타리 — CSS 로 그린 타일을 그대로 써도 되고, 이미지를 받으면 `turfTexture · hedgeTexture · railTexture` 세 함수만 바꾼다(seamless · 256×64 정도). (3) 관중석 · 나무 실루엣 같은 원경은 선택.
 
 **완료 확인**
-- [ ] 시뮬레이션을 여러 번 돌려 경주 시간이 10~15초 안에 들어오는지 확인
-- [ ] 말마다 우승 확률이 한쪽으로 크게 쏠리지 않는다
-- [ ] 경주 중 추월이 눈에 보이고 이벤트 메시지가 1~2초 보였다 사라진다
-- [ ] 다른 페이지에 갔다 돌아와도 경주가 이어진다
+- [x] 시뮬레이션을 여러 번 돌려 경주 시간이 10~15초 안에 들어온다 — 4,000회: 7마리 완주 11.2~14.9초(중앙값 12.7초), 강제 마감 0회
+- [x] 말마다 우승 확률이 한쪽으로 크게 쏠리지 않는다 — 12.5~16.0%(처음 값은 추입형 33% 라 trait 배율 · 스퍼트 배율을 낮춰 맞췄다)
+- [x] 경주 중 추월이 눈에 보이고 이벤트 메시지가 1~2초 보였다 사라진다 — 경주당 선두 교체 2.4회, 브라우저에서 토스트 "🔥 COOKIE가 속도를 올립니다!" · "🏁 THUNDER와 ESPRESSO의 치열한 선두 경쟁!" 확인
+- [x] 다른 페이지에 갔다 돌아와도 경주가 이어진다 — 경주 중 HOME 으로 갔다 3초 뒤 RACE 로 복귀: 남은 거리 496m → 130m, 캔버스 다시 생성
+- [x] `npm run build`(`/race` 정적) · `npm run lint` · `tsc` 통과, 콘솔 오류 · 경고 0 · headless Chrome(SwiftShader WebGL) 1440 · 390 에서 READY · 카운트다운 · RUNNING · FINISHED 확인
 
 ---
 
-### 9단계 — 경주 결과 · 보상 · 기록 (`/race` FINISHED)
+### 9단계 — 경주 결과 · 쿠폰 정산 · 기록 (`/race` FINISHED)
 
-설계: 8.2 화면 구성 5~6.
+설계: 7(쿠폰 규칙), 8.2 화면 구성 5~6.
 
 **구현**
-- [ ] `_data/raceHistory.ts`, `raceService.getRaceHistory`
-- [ ] `RaceResultModal.tsx` — 1~3위, YOUR HORSE, WIN! / NEXT TIME!
-- [ ] 우승 시 `addReward(FREE_AMERICANO)` + confetti
+- [x] `_data/raceHistory.ts`, `raceService.getRaceHistory` (7단계에서 함께 — 최근 성적 · 경주 번호 계산에 필요)
+- [ ] 끝난 경주를 `RaceProvider.results` 맨 앞에 추가(출전표 최근 성적 · 다음 경주 번호가 함께 바뀐다)
+- [ ] FINISHED 진입 시 정산 — 1~3위면 `earnCoupons(payoutFor(rank), "RACE_PAYOUT", …)`, `raceNo` 로 경주당 한 번만
+- [ ] `RaceResultModal.tsx` — 1~3위, YOUR HORSE + 순위, WIN! / PLACE! / SHOW! / NEXT TIME!, 돌려받은 쿠폰(원금 + 추가) · 보유 수
+- [ ] 1~3위 confetti
 - [ ] `RaceHistory.tsx` — RECENT RACES 최근 5경기, 방금 경주를 맨 앞에 추가
 - [ ] 다시 하기 → BETTING 초기화
+- [ ] 내 레이스 기록 — `UserState` 에 내가 참여한 경주(경주 번호 · 고른 말 · 순위 · 돌려받은 쿠폰) 추가, `/my` 의 MY RACES 를 `PlannedSection` 에서 실제 목록으로 교체
 
 **완료 확인**
 - [ ] 결과 모달의 순위가 트랙 도착 순서와 같다
-- [ ] 1위를 맞히면 `/event` 에 무료 아메리카노 쿠폰이 생긴다
+- [ ] 경주가 끝나면 `/my` 내 레이스 기록 맨 위에 그 경주가 생긴다
+- [ ] 내 말이 1·2·3위면 쿠폰이 각각 4·3·2장 늘고(건 1장 포함 순증 +3·+2·+1), 4위 이하면 건 1장만 빠진 채로 끝난다
+- [ ] 결과 모달을 다시 열거나 다른 페이지에 갔다 와도 두 번 지급되지 않는다
+- [ ] `/my` 내역에 참가 `−1` 과 정산 `+N` 이 순서대로 남는다
 - [ ] 다시 하기 후 새 경주의 번호가 1 늘어난다
+- [ ] (조율) 몇 경주 돌려 본 뒤 `RACE_PAYOUT` 수량과 참여 횟수 제한 여부를 다시 정한다
 
 ---
 
@@ -1264,9 +1530,11 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [ ] `SeatDetailPanel.tsx` — ID · 타입 · 상태 · 위치 · 특징 목록, PC 사이드 패널 / 모바일 Bottom Sheet
 - [ ] `seatService.reserveSeat` → 상태 RESERVED, "예약되었습니다." 스탬프
 - [ ] AVAILABLE 이 아니면 예약 버튼 대신 상태 안내
+- [ ] 좌석 예약 내역 — 내가 예약한 좌석을 페이지를 넘나드는 값(`UserState`)으로 남기고, `/my` 의 MY SEATS 를 `PlannedSection` 에서 실제 목록으로 교체
 
 **완료 확인**
 - [ ] 예약하면 배치도 · 요약 숫자가 즉시 바뀐다
+- [ ] 예약한 좌석이 `/my` 좌석 예약 내역에 보인다
 - [ ] 사용 중 · 예약 · 수리 중 좌석은 예약할 수 없다
 - [ ] 모바일에서 시트가 열리고 ESC · 배경 탭으로 닫힌다
 
@@ -1311,16 +1579,16 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 앞 단계의 Service 들을 모아 보여 주는 화면. 설계: 8.1.
 
 **구현**
-- [x] `Hero.tsx` — 전폭 슬라이더 골격(탭 페이지네이션 · 자동 전환 · 진행바). 현재 NEXT RACE 1장(준비 중 문구 + 사진)
+- [x] `Hero.tsx` — 전폭 슬라이더 골격(탭 페이지네이션 · 자동 전환 · 진행바). 현재 NEXT RACE 1장(카운트다운 + 사진)
 - [x] `MenuLineup.tsx` + `_lib/lineup.ts` — TODAY'S LINEUP 배지 메뉴 8개 그리드
-- [ ] NEXT RACE 슬라이드에 카운트다운 연결(6단계 뒤)
+- [x] NEXT RACE 슬라이드에 카운트다운 연결(6단계에서 함께 함 — `HeroRaceClock`)
 - [ ] 히어로 슬라이드 추가 — 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트 (각 Service 값으로 page 가 조립)
 - [ ] `DashboardCard.tsx` — 이용 가능 좌석 · 오늘의 인기 메뉴 · 내 쿠폰 · 다음 경주 (슬라이드로 흡수할지 별도 섹션으로 둘지 결정)
 - [ ] `app/(site)/page.tsx` — `getSeatSummary`, `getTodayWinnerMenu` 를 각 라우트 Service 에서 가져와 조립
 
 **완료 확인**
-- [ ] 카드 4개가 각각 `/seat`, `/menu`, `/event`, `/race` 로 이동한다
-- [ ] 쿠폰 수가 Header · `/event` 와 같다
+- [ ] 카드 4개가 각각 `/seat`, `/menu`, `/my#coupons`(내 쿠폰), `/race` 로 이동한다
+- [ ] 쿠폰 수가 Header · `/my` 와 같다
 - [ ] 다른 라우트의 `_components/`·`_data/` 를 직접 import 하지 않는다
 
 ---

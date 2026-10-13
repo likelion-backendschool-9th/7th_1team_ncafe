@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatRaceTimes } from "@/lib/time";
 import styles from "./layout.module.css";
 
 const FOOTER_NAV = [
@@ -7,6 +8,7 @@ const FOOTER_NAV = [
   { href: "/seat", label: "SEAT" },
   { href: "/race", label: "RACE" },
   { href: "/event", label: "EVENT" },
+  { href: "/my", label: "MY" },
 ];
 
 export default function Footer() {
@@ -30,8 +32,7 @@ export default function Footer() {
           <div>
             <dt>DAILY RACE</dt>
             <dd>
-              {/* 6단계에서 lib/time.ts 의 RACE_TIMES 로 교체 */}
-              12:30 · 18:00 — <Link href="/race">출전표 보기</Link>
+              {formatRaceTimes()} — <Link href="/race">출전표 보기</Link>
             </dd>
           </div>
         </dl>

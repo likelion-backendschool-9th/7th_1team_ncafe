@@ -1,0 +1,702 @@
+/* ===== /race — 7~9단계에서 출전표 · 트랙 · 결과 스타일을 이어 붙인다 ===== */
+
+/* ----- RaceCountdown: 다음 경기 ┊ 남은 시간 ┊ 내 쿠폰 ----- */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+
+.boardCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 24px 28px;
+}
+
+.boardCell + .boardCell {
+  border-left: 2px dashed var(--border-strong);
+}
+
+.boardLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--brand-600);
+}
+
+.boardValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.boardUnit {
+  align-self: flex-end;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* ----- 게이트 번호 배지(대표색 = 조끼 색) ----- */
+.gate {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.gateSm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.9rem;
+}
+
+/* ----- 출전표 머리 + 보상 안내 ----- */
+.lineup {
+  margin-top: 48px;
+}
+
+.lineupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--text-strong);
+}
+
+.lineupEyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-600);
+}
+
+.lineupTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.lineupRace {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.payout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.payoutLead {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.payoutChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.payoutChip {
+  padding: 2px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.payoutChip strong {
+  color: var(--text-strong);
+}
+
+.payoutCompact {
+  justify-content: center;
+}
+
+/* ----- 쿠폰 0장 안내 ----- */
+.noCoupon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  color: var(--text-body);
+}
+
+.noCoupon strong {
+  color: var(--text-strong);
+}
+
+.noCouponLink {
+  margin-left: auto;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--text-strong);
+}
+
+/* ----- 출전표 카드 — PC 4열 · 태블릿 2열 · 모바일 1열 ----- */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cards > li {
+  display: flex;
+}
+
+.card {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+
+/* 내가 건 말 — 짙은 테두리 + MY PICK */
+.cardPicked {
+  box-shadow: inset 0 0 0 2px var(--brand-900);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cardTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardName {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.cardSub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cardPick {
+  align-self: flex-start;
+}
+
+.cardPhoto {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.cardPhoto img {
+  width: 100%;
+  height: auto;
+}
+
+.cardFacts > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+
+.cardFacts dt {
+  flex: none;
+  width: 58px;
+  color: var(--text-muted);
+}
+
+.cardFacts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-strong);
+}
+
+.trait {
+  margin-right: 4px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 최근 성적 — 전광판 칸, 1위는 금색 */
+.ranks {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ranks li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--brand-900);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.ranks small {
+  font-size: 0.7em;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.ranks .rankWin {
+  background: var(--gold-500);
+  color: var(--text-strong);
+}
+
+.cardDesc {
+  flex: 1;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.cardButton {
+  margin-top: 4px;
+}
+
+.cardWaiting {
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-900);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+}
+
+/* ----- 트랙 무대(READY · RUNNING · FINISHED) — 머리띠 + 경기 화면(PixiJS 캔버스) + HUD ----- */
+.stage {
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--brand-900);
+  color: #fff;
+}
+
+.stageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 16px 24px;
+}
+
+.stageText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.stageLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--brand-300);
+}
+
+.stageTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.stageTitle:focus {
+  outline: none;
+}
+
+.stageNote {
+  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.stageAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.stageAction :global(.btn) {
+  background: #fff;
+  border-color: #fff;
+  color: var(--text-strong);
+}
+
+.stageHint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 경기 화면 — 캔버스가 이 박스를 채운다(크기는 CSS 가 정하고 렌더러가 따라간다). 배경색은 캔버스가 뜨기 전 잔디색 */
+.field {
+  position: relative;
+  height: clamp(260px, 32vw, 440px);
+  overflow: hidden;
+  background: #3f8f38;
+}
+
+.fieldCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+.fieldCanvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* WebGL 을 쓸 수 없는 브라우저 — 순위는 HUD 로 계속 볼 수 있다 */
+.fieldFallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 3 · 2 · 1 · GO! */
+.count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.countNum {
+  font-size: clamp(3rem, 10vw, 6.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  animation: countPop 0.9s ease-out;
+}
+
+@keyframes countPop {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 이벤트 토스트 — 트랙 상단(생울타리 띠) 가운데, 1.5초 */
+.toastArea {
+  position: absolute;
+  top: 3%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(20, 20, 22, 0.88);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: toastIn 1.5s ease both;
+}
+
+@keyframes toastIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  12% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* HUD — 경주 번호 ┊ 현재 순위(게이트 번호 배지, 1~3위 강조, 내 말 테두리) ┊ 남은 거리 */
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hudBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hudLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--brand-300);
+}
+
+.hudValue {
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.hudOrder {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hudSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.hudRank {
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.hudTop .hudRank {
+  color: #fff;
+}
+
+.hudTop:first-child .hudRank {
+  color: var(--gold-500);
+}
+
+.hudMine {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--gold-500);
+}
+
+.hudDistance {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hudUnit {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--brand-300);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countNum,
+  .toast {
+    animation: none;
+  }
+}
+
+/* ----- 쿠폰 걸기 확인창 ----- */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.confirmEyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+}
+
+.confirmHorse {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.confirmHorseName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.confirmTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.confirmNote {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.confirmError {
+  font-size: 0.86rem;
+  color: var(--red-600);
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.confirmActions :global(.btn) {
+  flex: 1;
+}
+
+@media (max-width: 1199px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lineup {
+    margin-top: 40px;
+  }
+
+  /* 1열이라 이미지가 폭 전체를 차지하면 카드가 너무 길다 */
+  .cardPhoto img {
+    max-width: 260px;
+  }
+
+  .stageHead {
+    padding: 16px 20px;
+  }
+
+  .stageAction {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .field {
+    height: clamp(240px, 62vw, 320px);
+  }
+
+  .hud {
+    gap: 10px 16px;
+    padding: 12px 16px;
+  }
+
+  /* 순위 줄은 한 줄을 통째로 쓴다 */
+  .hudOrder {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 860px) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .boardCell {
+    padding: 18px 20px;
+  }
+
+  .boardCell + .boardCell {
+    border-left: 0;
+    border-top: 2px dashed var(--border-strong);
+  }
+}

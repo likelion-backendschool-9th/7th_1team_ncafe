@@ -10,8 +10,10 @@ export interface HeroSlide {
   tab: { label: string; title: string };
   eyebrow: string; // "DAILY CAFE RACE"
   title: string; // "NEXT RACE"
-  headline: string; // "첫 번째 레이스를 준비하고 있어요"
+  headline: string; // 제목 아래 한 줄 — raceClock 이면 시계를 읽기 전(정적 셸)에만 보인다
   description: string;
+  /** true 면 headline 자리에 다음 경주 시각 · 카운트다운(SOON · LIVE)을 그리고, 하단 탭 제목도 경주 시각으로 바뀐다 */
+  raceClock?: boolean;
   /** 작은 상태 배지 문구 — "COMING SOON" 등. 없으면 표시하지 않는다 */
   status?: string;
   cta?: { label: string; href: string };

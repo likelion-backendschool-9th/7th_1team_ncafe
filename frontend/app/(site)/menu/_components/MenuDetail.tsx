@@ -3,6 +3,7 @@ import Link from "next/link";
 import TicketBadge from "@/components/TicketBadge";
 import { ticketSerial, type MenuDetailData } from "../_lib/menuBoard";
 import AddToCart from "./AddToCart";
+import FavoriteButton from "./FavoriteButton";
 import MenuCard from "./MenuCard";
 import boardStyles from "./menu.module.css";
 import styles from "./menuDetail.module.css";
@@ -39,11 +40,11 @@ export default function MenuDetail({ menu, category, related }: MenuDetailData) 
         </div>
 
         <div className={styles.body}>
-          {menu.badge && (
-            <span className={styles.badge}>
-              <TicketBadge tone={menu.badge} />
-            </span>
-          )}
+          {/* 배지(있으면) · 찜 버튼 한 줄 */}
+          <div className={styles.topRow}>
+            {menu.badge && <TicketBadge tone={menu.badge} />}
+            <FavoriteButton menuId={menu.id} menuName={menu.name} />
+          </div>
 
           <div className={styles.leader}>
             <h1 id="menu-title" className={styles.name}>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState, type CSSProperties } from "react";
 import type { HeroSlide } from "../_types";
+import HeroRaceClock, { HeroRaceTabTitle } from "./HeroRaceClock";
 import styles from "./hero.module.css";
 
 /** 슬라이드 자동 전환 간격(ms). 활성 탭의 진행바 애니메이션 길이로도 쓰인다(CSS 변수 --autoplay). */
@@ -79,7 +80,11 @@ export default function Hero({ slides }: HeroProps) {
                 <div className={styles.text}>
                   <span className={styles.eyebrow}>{slide.eyebrow}</span>
                   <Heading className={styles.title}>{slide.title}</Heading>
-                  <p className={styles.headline}>{slide.headline}</p>
+                  {slide.raceClock ? (
+                    <HeroRaceClock fallback={slide.headline} />
+                  ) : (
+                    <p className={styles.headline}>{slide.headline}</p>
+                  )}
                   <p className={styles.description}>{slide.description}</p>
                   <div className={styles.actions}>
                     {slide.cta && (
@@ -133,7 +138,9 @@ export default function Hero({ slides }: HeroProps) {
                 onClick={() => go(i)}
               >
                 <small>{slide.tab.label}</small>
-                <strong>{slide.tab.title}</strong>
+                <strong>
+                  {slide.raceClock ? <HeroRaceTabTitle fallback={slide.tab.title} /> : slide.tab.title}
+                </strong>
                 {/* key 로 리마운트해 탭이 바뀔 때마다 진행바가 0부터 다시 채워진다 */}
                 {active && autoplay && <span key={index} className={styles.progress} aria-hidden />}
               </button>

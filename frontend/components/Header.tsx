@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useRacePhase } from "@/lib/useCountdown";
 import BrandLogo from "./BrandLogo";
 import { useCart } from "./CartProvider";
 import { useUser } from "./UserProvider";
@@ -14,6 +15,7 @@ const NAV = [
   { href: "/seat", label: "SEAT", ko: "좌석" },
   { href: "/race", label: "RACE", ko: "경주" },
   { href: "/event", label: "EVENT", ko: "이벤트" },
+  { href: "/my", label: "MY", ko: "마이페이지" },
 ];
 
 export default function Header() {
@@ -50,6 +52,7 @@ export default function Header() {
                   aria-current={isCurrent(item.href) ? "page" : undefined}
                 >
                   {item.label}
+                  {item.href === "/race" && <RaceSignal />}
                   <span className={styles.navKo}>{item.ko}</span>
                 </Link>
               </li>
@@ -58,7 +61,8 @@ export default function Header() {
         </nav>
 
         <div className={styles.utility}>
-          <Link href="/event" className={styles.coupon} aria-label={`내 쿠폰 ${coupons}장 — 이벤트 페이지로 이동`}>
+          {/* 내 쿠폰 → 마이페이지의 쿠폰 섹션 */}
+          <Link href="/my#coupons" className={styles.coupon} aria-label={`내 쿠폰 ${coupons}장 — 마이페이지 쿠폰으로 이동`}>
             <TicketIcon />
             <span className={styles.couponText}>
               <strong className={styles.couponCount}>{coupons}</strong>장
@@ -95,6 +99,26 @@ export default function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * RACE 메뉴의 경주 신호 — 시작 10분 전부터 SOON, 시작 후 10분은 LIVE(lib/time.ts).
+ * PC 는 글자 오른쪽 위의 작은 점(LIVE 빨강 · SOON 테두리), 모바일 메뉴는 글자 배지로 보인다.
+ * 단계가 바뀔 때만 다시 그린다(useRacePhase) — 헤더 전체가 매초 다시 그려지지 않게.
+ */
+function RaceSignal() {
+  const phase = useRacePhase();
+  if (phase !== "LIVE" && phase !== "SOON") return null;
+
+  const live = phase === "LIVE";
+  return (
+    <span className={`${styles.raceSignal} ${live ? styles.raceLive : styles.raceSoon}`}>
+      <span className={styles.raceSignalText}>
+        {live ? "LIVE" : "SOON"}
+        <span className="visually-hidden">{live ? " — 경주 진행 중" : " — 곧 출발"}</span>
+      </span>
+    </span>
   );
 }
 

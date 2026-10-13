@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CartProvider } from "@/components/CartProvider";
+import { RaceProvider } from "@/components/RaceProvider";
 import { UserProvider } from "@/components/UserProvider";
 import "./globals.css";
 
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body>
         <UserProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <RaceProvider>{children}</RaceProvider>
+          </CartProvider>
         </UserProvider>
       </body>
     </html>

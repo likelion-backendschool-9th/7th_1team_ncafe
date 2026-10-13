@@ -73,9 +73,43 @@
   padding: 40px 40px 32px;
 }
 
-.badge {
+/* 배지 · 찜 버튼 — 배지가 없어도 찜 버튼은 오른쪽 끝 */
+.topRow {
   display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.favorite {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 14px 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.favorite:hover {
+  border-color: var(--brand-400);
+  color: var(--text-strong);
+}
+
+.favoriteOn,
+.favoriteOn:hover {
+  border-color: var(--brand-900);
+  background: var(--brand-900);
+  color: #fff;
 }
 
 /* 이름 ........ 가격 — 메뉴판 카드의 점선 리더를 크게 */

@@ -237,6 +237,25 @@
   letter-spacing: -0.01em;
 }
 
+/* 주문 시 적립되는 쿠폰 — 합계 아래 작은 티켓 줄 */
+.summaryCoupon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.summaryCoupon strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
 .summaryNote {
   margin-top: -6px;
   font-size: 0.8rem;
@@ -244,8 +263,15 @@
   color: var(--text-muted);
 }
 
-/* ----- 비어 있을 때 ----- */
-.empty {
+.summaryError {
+  font-size: 0.82rem;
+  text-align: center;
+  color: var(--red-600);
+}
+
+/* ----- 비어 있을 때 · 주문 완료 ----- */
+.empty,
+.done {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -265,6 +291,35 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-strong);
+}
+
+.doneSerial {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+}
+
+.doneCoupon {
+  padding: 8px 16px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  font-size: 0.9rem;
+}
+
+.doneCoupon strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 /* ----- 반응형 ----- */

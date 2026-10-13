@@ -1,0 +1,153 @@
+/* ===== /event — 진행 중인 이벤트(가로 경마 티켓 목록) ===== */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* STUB | 본문 — STUB 경계 위아래에 반원 홈 */
+.ticket {
+  --notch: 10px;
+  --stub: 176px;
+  display: grid;
+  grid-template-columns: var(--stub) minmax(0, 1fr);
+  min-height: 148px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.stub {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 22px;
+  border-right: 2px dashed var(--border-strong);
+}
+
+.serial {
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+}
+
+.period {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.time {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding: 24px 32px;
+}
+
+.text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.desc {
+  max-width: 560px;
+  font-size: 0.92rem;
+  color: var(--text-body);
+}
+
+.cta {
+  flex: none;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty strong {
+  font-size: 1.1rem;
+  color: var(--text-strong);
+}
+
+/* ----- 반응형 ----- */
+@media (max-width: 960px) {
+  .main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 모바일: STUB 이 위 띠가 되고 절취선도 가로로 */
+@media (max-width: 767px) {
+  .ticket {
+    grid-template-columns: minmax(0, 1fr);
+    -webkit-mask: none;
+    mask: none;
+  }
+
+  .stub {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 16px 20px 14px;
+    border-right: 0;
+    border-bottom: 2px dashed var(--border-strong);
+  }
+
+  .serial {
+    flex-basis: 100%;
+  }
+
+  .time {
+    font-size: 1rem;
+  }
+
+  .main {
+    padding: 18px 20px 22px;
+  }
+
+  .cta {
+    width: 100%;
+  }
+}

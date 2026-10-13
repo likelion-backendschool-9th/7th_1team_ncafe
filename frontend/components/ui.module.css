@@ -170,6 +170,60 @@
   font-size: clamp(2.2rem, 7vw, 3.8rem);
 }
 
+/* 어두운 배경(메인 히어로) 위 — 짙은 칸이 묻히지 않게 밝은 반투명 칸 + 얇은 테두리 */
+.boardOnDark .boardCell {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.boardOnDark .boardSep {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== RacePhaseBadge — SOON(테두리) · LIVE(빨강 + 깜빡이는 점) ===== */
+.phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.phaseSoon {
+  border: 1.5px solid currentColor;
+}
+
+.phaseLive {
+  background: var(--red-600);
+  color: #fff;
+}
+
+.phaseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: phasePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes phasePulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phaseDot {
+    animation: none;
+  }
+}
+
 /* ===== HorseAvatar ===== */
 .horse {
   position: relative;
