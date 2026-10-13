@@ -464,7 +464,7 @@
   }
 }
 
-/* ===== 준비 중 페이지(각 기능 단계에서 교체) ===== */
+/* ===== 안내 상자 — 404(OFF TRACK) · 메뉴 상세 없음(SCRATCHED) ===== */
 .soon {
   display: flex;
   flex-direction: column;

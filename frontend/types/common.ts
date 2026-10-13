@@ -38,6 +38,27 @@ export interface RaceEntry extends RaceBet {
   settledAt: string | null; // ISO — 정산 시각, 정산 전 null
 }
 
+/**
+ * 좌석 예약 한 건(11단계) — 지점 · 날짜 · 2시간 시간대 · 의자 단위(BLUEPRINT 8.3).
+ * RESERVED 는 자리를 잡은 예약, WAITING 은 자리가 없을 때 넣는 예약대기(의자 없음).
+ * /seat 는 같은 시간대의 내 예약을 배치도에 겹쳐 그리고, /my 는 목록으로 보여 준다. 결제 · 쿠폰은 없다.
+ */
+export type SeatReservationKind = "RESERVED" | "WAITING";
+
+export interface SeatReservation {
+  id: string; // "S-0001"
+  kind: SeatReservationKind;
+  branchId: string;
+  branchName: string; // "마포 본점" — 지점 데이터를 다시 보지 않아도 되게 이름을 함께 남긴다
+  date: string; // "2026-10-17"(KST)
+  start: string; // "13:00"
+  end: string; // "15:00"
+  people: number;
+  chairIds: string[]; // 의자 id("T03-1") — 예약대기는 빈 배열
+  chairLabels: string[]; // 표시용 "T03 1번" · "B07"
+  reservedAt: string; // ISO
+}
+
 /** 마이페이지에 모이는 "내 것" — 페이지를 넘나들어 Context(UserProvider)에 둔다. */
 export interface UserState {
   coupons: number; // 보유 쿠폰
@@ -51,6 +72,9 @@ export interface UserState {
   races: RaceEntry[]; // 내가 참여한 경주, 최신순
   joinRace: (bet: RaceBet, gate: number) => boolean; // 쿠폰을 건 경주 기록 — 그 경주에 이미 걸었으면 false
   settleRace: (raceNo: number, rank: number, payout: number) => boolean; // 순위 · 돌려받은 쿠폰 기록 — 이미 정산했으면 false(경주당 한 번)
+  seatReservations: SeatReservation[]; // 좌석 예약 · 예약대기, 최신순
+  addSeatReservation: (reservation: SeatReservation) => void;
+  cancelSeatReservation: (id: string) => boolean; // 목록에서 지운다 — 없으면 false
 }
 
 /** 장바구니 한 줄 — 같은 메뉴·같은 사이즈는 한 줄로 합친다. */

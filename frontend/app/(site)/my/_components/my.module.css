@@ -1,4 +1,4 @@
-/* ===== /my — 내 정보 + 요약 · 주문 내역 · 찜한 메뉴 · 쿠폰 · (준비 중) 레이스 · 좌석 ===== */
+/* ===== /my — 내 정보 + 요약 · 주문 내역 · 찜한 메뉴 · 쿠폰 · 내 레이스 기록 · 좌석 예약 내역 ===== */
 
 /* ----- 내 정보 + 요약: 프로필 | 절취선 | 숫자 전광판 3칸 ----- */
 .overview {
@@ -660,22 +660,158 @@
   color: var(--text-muted);
 }
 
-/* ----- 준비 중 섹션(좌석 예약) ----- */
-.soonTag {
+/* ----- 좌석 예약 내역 — 날짜 · 시간대 STUB ┊ 지점 · 좌석 · 인원 ┊ 상태 + 취소 ----- */
+.section:focus {
+  outline: none;
+}
+
+.seatList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seatRow {
+  --notch: 7px;
+  --stub: 120px;
+  display: grid;
+  grid-template-columns: var(--stub) minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 72px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.seatRowPast {
+  opacity: 0.6;
+}
+
+.seatStub {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  border-right: 2px dashed var(--border-strong);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.seatDate {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+}
+
+.seatTime {
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
   color: var(--text-muted);
 }
 
-.planned {
+.seatBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 18px;
+}
+
+.seatBranch {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
-  padding: 22px 24px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  font-size: 0.92rem;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.seatBranch small {
+  font-size: 0.78rem;
+  font-weight: 500;
   color: var(--text-muted);
+}
+
+.seatChairs {
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.seatActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 10px 18px 10px 8px;
+}
+
+.seatStatus {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.seatStatusWaiting {
+  border: 1px dashed var(--border-strong);
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.seatStatusPast {
+  border: 0;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+
+.seatConfirm {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+.seatConfirm > :first-of-type {
+  margin-left: 4px;
+}
+
+.seatTextBtn {
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.seatTextBtn:hover {
+  color: var(--text-strong);
+}
+
+/* 빨강은 위험 동작 전용 */
+.seatTextBtnDanger,
+.seatTextBtnDanger:hover {
+  font-weight: 700;
+  color: var(--red-600);
 }
 
 /* ----- 반응형 ----- */
@@ -737,13 +873,11 @@
     gap: 14px 12px;
   }
 
-  .couponInfo,
-  .planned {
+  .couponInfo {
     padding: 18px;
   }
 
-  .couponActions,
-  .planned :global(.btn) {
+  .couponActions {
     width: 100%;
   }
 
@@ -807,5 +941,29 @@
   .raceRank {
     padding: 3px 10px;
     font-size: 1rem;
+  }
+
+  .seatRow {
+    --stub: 76px;
+  }
+
+  .seatStub {
+    padding: 0 6px;
+  }
+
+  .seatDate {
+    font-size: 0.74rem;
+  }
+
+  .seatTime {
+    font-size: 0.68rem;
+  }
+
+  .seatBody {
+    padding: 10px 12px;
+  }
+
+  .seatActions {
+    padding: 10px 12px 10px 4px;
   }
 }

@@ -2,10 +2,10 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RaceBet } from "@/app/(site)/race/_types";
-import type { CouponLog, CouponReason, Order, RaceEntry, UserState } from "@/types/common";
+import type { CouponLog, CouponReason, Order, RaceEntry, SeatReservation, UserState } from "@/types/common";
 
-// "내 것" Context — 쿠폰 · 찜한 메뉴 · 주문 내역 · 내 레이스 기록. 로그인이 없으므로 Mock 사용자 1명 기준이다.
-// Header(쿠폰 칩) · /race(걸기 · 내가 건 말) · RaceSettlement(정산) · /cart(주문 적립·기록) · /menu/[id](찜) · /my 가 같은 값을 본다.
+// "내 것" Context — 쿠폰 · 찜한 메뉴 · 주문 내역 · 내 레이스 기록 · 좌석 예약. 로그인이 없으므로 Mock 사용자 1명 기준이다.
+// Header(쿠폰 칩) · /race(걸기 · 내가 건 말) · RaceSettlement(정산) · /cart(주문 적립·기록) · /menu/[id](찜) · /seat(예약 · 배치도에 내 예약 겹치기) · /my 가 같은 값을 본다.
 // 쿠폰 수는 spendCoupon · earnCoupons 로만 바뀌고, 바뀔 때마다 couponHistory 맨 앞에 한 줄이 남는다.
 // React State 에만 두므로 새로고침하면 초기화된다(프로토타입).
 // Mock 초기값 — 백엔드 연결 시 GET /api/my/coupons · /api/my/favorites · /api/my/orders · /api/my/races 결과로 초기화한다.
@@ -99,6 +99,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
     [commitRaces],
   );
 
+  // 좌석 예약 · 예약대기 — /seat 가 만들고(seatService 결과), /my 가 보여 주고 취소한다. 최신순.
+  const [seatReservations, setSeatReservations] = useState<SeatReservation[]>([]);
+
+  const addSeatReservation = useCallback((reservation: SeatReservation) => {
+    setSeatReservations((prev) => [reservation, ...prev]);
+  }, []);
+
+  const cancelSeatReservation = useCallback((id: string) => {
+    let found = false;
+    setSeatReservations((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      found = next.length !== prev.length;
+      return next;
+    });
+    return found;
+  }, []);
+
   const value = useMemo(
     () => ({
       coupons: wallet.coupons,
@@ -112,8 +129,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
       races,
       joinRace,
       settleRace,
+      seatReservations,
+      addSeatReservation,
+      cancelSeatReservation,
     }),
-    [wallet, spendCoupon, earnCoupons, favorites, toggleFavorite, orders, addOrder, races, joinRace, settleRace],
+    [
+      wallet,
+      spendCoupon,
+      earnCoupons,
+      favorites,
+      toggleFavorite,
+      orders,
+      addOrder,
+      races,
+      joinRace,
+      settleRace,
+      seatReservations,
+      addSeatReservation,
+      cancelSeatReservation,
+    ],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

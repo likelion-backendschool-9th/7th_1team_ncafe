@@ -82,28 +82,46 @@ frontend/
 │  │  │  ├─ _types.ts             # Horse, Gates, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
 │  │  │  └─ lab/                  # /race/lab 개발용 실험실(시드 · 배속 · 되감기 · 이벤트 강제 · 게이트 번호 = 직전 실험 경주 도착 순서) — 쿠폰 · 단계와 무관, noindex
 │  │  │
-│  │  ├─ seat/                    # /seat  ★ 핵심
-│  │  │  ├─ page.tsx
+│  │  ├─ seat/                    # /seat  ★ 핵심 — 날짜 · 지점 · 시간대 → 의자 단위 예약(8.3, 2026-10-13 재설계)
+│  │  │  ├─ page.tsx              # "use cache" — 제목 → SeatBooking(좌석 · 평면도 · 지점 · 시간대를 Service 에서)
 │  │  │  ├─ _components/
-│  │  │  │  ├─ Seat.tsx           # 좌석 하나(버튼)
-│  │  │  │  ├─ SeatFilter.tsx
-│  │  │  │  ├─ SeatSummary.tsx    # AVAILABLE SEATS 12 / 30 + 인원별 집계
-│  │  │  │  ├─ SeatLegend.tsx     # 상태 범례(색 + 아이콘 + 텍스트)
-│  │  │  │  ├─ RecommendedSeat.tsx
-│  │  │  │  ├─ CafeFloorPlan.tsx  # 평면도 캔버스 + 고정 구조물(창문/카운터/출입구/화장실/통로)
-│  │  │  │  ├─ SeatDetailPanel.tsx# 좌석 클릭 시 Side Panel(모바일은 Bottom Sheet)
-│  │  │  │  └─ SeatStatusDevTool.tsx # 개발용 Mock 상태 변경(관리자 기능 미리보기)
+│  │  │  │  ├─ SeatBooking.tsx    # 조립(client) — BookingBar · [SeatCanvas | 패널(일정 선택 → 선택 좌석 → 완료)] · 모달 · 모바일 고정 바
+│  │  │  │  ├─ BookingBar.tsx     # 고른 지점 · 날짜 · 시간대 · 인원 칩 + [일정변경] | SeatSummary
+│  │  │  │  ├─ SeatSummary.tsx    # AVAILABLE SEATS n / 71 전광판 + 빈 테이블 인원별 수 + 마지막 업데이트
+│  │  │  │  ├─ SeatCanvas.tsx     # 어두운 캔버스 — 배율 · 확대/축소 · 미니맵 · 덮개 안내 · [예약대기] + 범례
+│  │  │  │  ├─ CafeFloorPlan.tsx  # 평면도 — 창문 · 바 · 카운터 · 화장실 · 출입구 · 통로 · 구역 알약 · 테이블 · 의자(Chair)
+│  │  │  │  ├─ Chair.tsx          # 의자 하나(버튼) — 상태별 모양 · 아이콘 · aria-label (chairClassName · chairGlyph 는 범례 · 카드 공용)
+│  │  │  │  ├─ SeatLegend.tsx     # 색 + 아이콘 + 텍스트 범례(상태별 의자 수)
+│  │  │  │  ├─ SchedulePanel.tsx  # STEP 1 — DatePicker · 지점 칩 · 인원 1~8 · 시간대 카드(잔여석 · 진행 중 · 매진 · 마감) · [좌석 선택하기] / [예약대기 신청하기]
+│  │  │  │  ├─ DatePicker.tsx     # 달력(월 이동 · 일요일 빨강 · 오늘 · 범위 밖 흐림)
+│  │  │  │  ├─ SelectionPanel.tsx # STEP 2 — 선택 좌석 카드 목록 · [예약하기] + SelectionBar(모바일 고정 바 + Bottom Sheet)
+│  │  │  │  ├─ ReservationDone.tsx# STEP 3 — RESERVED 스탬프 "예약되었습니다." + 예약 내용
+│  │  │  │  ├─ ReserveConfirmModal.tsx # "예약 안내" → [확인하고 예약하기]
+│  │  │  │  ├─ WaitlistModal.tsx  # "원하는 좌석이 없으면? 예약대기를 신청하세요!" → [신청하기]
+│  │  │  │  ├─ icons.tsx          # ✓ · 사람 · 자물쇠 · 공구 · 핀 · 종 · 화살표 · 확대/축소 SVG(currentColor)
+│  │  │  │  ├─ SeatFilter.tsx     # (12단계) 배치도 카드 위쪽 FILTER 줄 — [전체]/[이용 가능만] · 특징 칩 4개 · "N명 기준" · 초기화
+│  │  │  │  ├─ RecommendedSeat.tsx# (12단계) RECOMMENDED 줄 — ★ 카드 3개(누르면 의자 선택) · 안내 · 대안 1개
+│  │  │  │  ├─ SeatStatusDevTool.tsx   # (13단계)
+│  │  │  │  └─ seat.module.css
 │  │  │  ├─ _hooks/
-│  │  │  │  └─ useSeatFilter.ts
+│  │  │  │  ├─ useSeatBooking.ts  # 예약 흐름 단일 State(단계 · 날짜 · 지점 · 인원 · 시간대 · 선택 의자) + 서버 상태와 내 예약 합치기 · 요약 · 예약/대기 호출 · selectChairs(추천)
+│  │  │  │  ├─ useMinuteClock.ts  # 1분 시계(useSyncExternalStore) — 오늘 · 지나간 시간대 판정
+│  │  │  │  └─ useSeatFilter.ts   # (12단계) 필터 State — 전체/이용 가능만 · 특징 토글 · 초기화
 │  │  │  ├─ _lib/
-│  │  │  │  ├─ filter.ts          # 필터 매칭 순수 함수
-│  │  │  │  ├─ recommend.ts       # 추천 점수 계산 순수 함수
-│  │  │  │  ├─ labels.ts          # 구역·상태·특징 enum → 한글 라벨/아이콘
-│  │  │  │  └─ seatService.ts     # 데이터 접근(getSeats, reserveSeat, updateSeatStatus ...)
+│  │  │  │  ├─ geometry.ts        # FLOOR 900×702 · 테이블 크기 · 의자 자리(chairsOf) · chairId
+│  │  │  │  ├─ labels.ts          # 구역·상태·특징 라벨 · chairLabel("T03 3번" · "B07") · chairDescription
+│  │  │  │  ├─ schedule.ts        # 예약 범위 · 시간대 상태(OPEN · LIVE · CLOSED) · 달력 칸 · sameSlot · 시간대 범위 필터
+│  │  │  │  ├─ mockStatus.ts      # 지점|날짜|시간대 시드의 결정적 의자 상태(서버가 붙으면 지운다)
+│  │  │  │  ├─ summary.ts         # summarize(의자 상태 → 잔여 · 상태별 수 · 빈 테이블 인원별)
+│  │  │  │  ├─ filter.ts          # (12단계) 순수 함수: matchesFilter · freeChairIds · fitsPeople · FILTER_FEATURES
+│  │  │  │  ├─ recommend.ts       # (12단계) 순수 함수: recommendSeats(점수 · 상위 3개 · 바석 묶음 · 대안)
+│  │  │  │  └─ seatService.ts     # getBranches · getSeats · getFloorPlan · getTimeBlocks · getChairStatuses · getSlotAvailability · reserveChairs · joinWaitlist · cancelReservation · getSeatSummary
 │  │  │  ├─ _data/
-│  │  │  │  ├─ seats.ts
-│  │  │  │  └─ floorPlan.ts       # 창문·카운터·출입구 등 구조물 좌표
-│  │  │  └─ _types.ts             # Seat, SeatStatus, SeatFeature, FloorFixture ...
+│  │  │  │  ├─ seats.ts           # 30자리(테이블 17 · 바석 13 = 의자 71), x·y %
+│  │  │  │  ├─ floorPlan.ts       # 구역 4 + 구조물(창문 · 바 · 카운터 · 화장실 · 출입구 · 통로)
+│  │  │  │  ├─ branches.ts        # 지점 3곳(마포 본점 · 강남점 · 성수점)
+│  │  │  │  └─ schedule.ts        # TIME_BLOCKS(2시간 6개) · BOOKING_DAYS 14 · MAX_PEOPLE 8
+│  │  │  └─ _types.ts             # Seat, Chair, FloorFixture, FloorSection, FloorPlan, Branch, TimeBlock, SeatSlot, ChairStatusMap, SlotAvailability ...
 │  │  │
 │  │  ├─ menu/                    # /menu
 │  │  │  ├─ page.tsx
@@ -156,7 +174,7 @@ frontend/
 │  │     │  ├─ MyCoupons.tsx      # 쿠폰 — 얻는 법 · 교환 준비 중 안내 + CouponHistory
 │  │     │  ├─ CouponHistory.tsx  # 쿠폰 적립·사용 내역 — Race Ticket 스타일 줄, 최근 5건 + 전체 보기
 │  │     │  ├─ MyRaces.tsx        # 내 레이스 기록 — Race Ticket 줄(경주 STUB ┊ 고른 말 · 돌려받은 쿠폰 ┊ 순위), 최근 5경주 + 전체 보기
-│  │     │  ├─ PlannedSection.tsx # 준비 중 섹션 자리(좌석 예약 내역)
+│  │     │  ├─ MySeats.tsx        # 좌석 예약 내역(11단계) — 날짜 · 시간대 STUB ┊ 지점 · 좌석 · 인원 ┊ 예약됨 · 대기 중 · 이용 완료 + 취소, 최근 5건 + 전체 보기
 │  │     │  ├─ MySection.tsx      # SectionHead · SectionEmpty · ShowMoreButton
 │  │     │  └─ my.module.css
 │  │     ├─ _hooks/
@@ -204,18 +222,18 @@ frontend/
 │  ├─ Scoreboard.tsx              # 전광판 스타일 숫자 박스(카운트다운·좌석 수 공용, 어두운 배경용 onDark)
 │  ├─ RacePhaseBadge.tsx          # SOON(테두리) · LIVE(빨강 + 깜빡이는 점) 배지 — 메인 히어로 · /race 공용
 │  ├─ HorseAvatar.tsx             # 말 마스코트(SVG, 대표색 주입) — 메인 Hero · /race 공용
-│  ├─ UserProvider.tsx            # "내 것" Context(쿠폰 · 쿠폰 내역 · 찜 · 주문 내역 · 내 레이스 기록(내가 건 말 · 정산)) + useUser() 훅
+│  ├─ UserProvider.tsx            # "내 것" Context(쿠폰 · 쿠폰 내역 · 찜 · 주문 내역 · 내 레이스 기록(내가 건 말 · 정산) · 좌석 예약 · 예약대기) + useUser() 훅
 │  ├─ CartProvider.tsx            # 장바구니 Context + useCart() 훅 (Header · /menu/[id] · /cart)
 │  ├─ RaceProvider.tsx            # 레이스 진행 Context(이 세션에서 확정된 경주 결과 · 결과 모달을 띄운 경주 번호 · 진행 중 시뮬레이션 ref) + useRaceSession() 훅
 │  ├─ RaceSettlement.tsx          # 화면 없는 정산기 — 내가 건 경주의 결과를 받아(getRaceResult, 동적 import) 어느 페이지에서든 쿠폰을 돌려준다
 │  ├─ QuantityStepper.tsx         # 수량 − / + (/menu/[id] 담기 · /cart 공용)
-│  ├─ ComingSoon.tsx              # 아직 구현 전인 사용자 페이지의 임시 화면 (전 페이지 구현 후 삭제)
-│  ├─ layout.module.css           # Header · Footer · 사이트 골격
+│  ├─ layout.module.css           # Header · Footer · 사이트 골격 · 안내 상자(404 · SCRATCHED) — ComingSoon 은 10단계에서 마지막 페이지(/seat)를 채우며 지웠다
 │  └─ ui.module.css               # Modal · TicketBadge · Scoreboard · HorseAvatar · QuantityStepper
 │
 ├─ lib/                           # 2개 이상 페이지가 쓰는 공용 로직
 │  ├─ cart.ts                     # 장바구니 순수 함수(담기 합치기 · 수량 1~20 · 총 수량 · 합계)
 │  ├─ time.ts                     # 순수 함수: RACE_TIMES(KST) · 다음/진행 중 경주 · SOON/LIVE 단계 · 카운트다운 포맷 · formatRaceDate(/race · /my 공용)
+│  ├─ kst.ts                      # 순수 함수: KST 날짜("YYYY-MM-DD") · 분 · 요일 · formatYmdKo("2026.10.17(토)") — /seat · /my 공용
 │  └─ useCountdown.ts             # 공용 1초 시계(useSyncExternalStore) — useNow · useRaceCountdown · useRacePhase
 │
 ├─ types/
@@ -383,11 +401,11 @@ frontend/
 | 파일 | 타입 |
 |---|---|
 | `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `Gates`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
-| `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `FloorFixture` |
+| `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `Chair`, `FloorFixture`, `FloorSection`, `FloorPlan`, `Branch`, `TimeBlock`, `BlockState`, `SlotAvailability`, `SeatSlot`, `ChairStatusMap`, `ReservationRequest`, `WaitlistRequest` |
 | `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
 | `app/(site)/event/_types.ts` | `CafeEvent` |
 | `app/(site)/my/_types.ts` | `UserProfile` |
-| `types/common.ts` | `CouponReason`, `CouponLog`, `Order`, `RaceEntry`, `UserState` (Header·메인·/race·/menu/[id]·/cart·/my 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
+| `types/common.ts` | `CouponReason`, `CouponLog`, `Order`, `RaceEntry`, `SeatReservation`(`SeatReservationKind`), `UserState` (Header·메인·/race·/menu/[id]·/cart·/seat·/my 공용), `CartLine`, `CartItem`, `CartState` (Header·/menu/[id]·/cart 공용) |
 
 ```ts
 // ===== app/(site)/race/_types.ts =====
@@ -443,30 +461,41 @@ export interface RaceEventMessage {
 }
 
 // ===== app/(site)/seat/_types.ts =====
+// 좌석 데이터는 테이블(2~8인) · 바석(1인) 단위, 예약은 테이블을 의자로 쪼갠 "의자 단위"(사용자 결정 2026-10-13).
+// 상태는 지점 · 날짜 · 2시간 시간대마다 달라 Seat 에 두지 않고 ChairStatusMap 으로 따로 받는다.
 export type SeatSection = "TRACKSIDE" | "GRANDSTAND" | "PADDOCK" | "LOUNGE";
 export type SeatType = "TABLE" | "BAR";
 export type SeatStatus = "AVAILABLE" | "USING" | "RESERVED" | "REPAIR";
 export type SeatFeature = "WINDOW" | "OUTLET" | "QUIET" | "GROUP" | "NEAR_COUNTER" | "BAR";
 
-export interface Seat {
-  id: string;              // "T03"
+export interface Seat {            // 테이블 · 바 자리 하나
+  id: string;              // "T03" · "B01"
   section: SeatSection;
   type: SeatType;
-  capacity: number;
-  status: SeatStatus;
-  x: number;               // 평면도 기준 % (0~100, 좌석 중심)
-  y: number;               // 평면도 기준 % (0~100)
-  w?: number;              // 폭 % (없으면 type/capacity 기본값)
-  h?: number;              // 높이 %
+  capacity: number;        // 의자 수 — 의자 id 는 `${id}-${n}`(1~capacity, 윗줄 왼쪽부터), 바석은 1
+  x: number;               // 평면도(900×702) 기준 % (테이블 중심)
+  y: number;
   features: SeatFeature[];
 }
+export interface Chair { id: string; seat: Seat; no: number; x: number; y: number }  // 화면 전용 — geometry.chairsOf 가 만든다(논리 px)
 
-export interface FloorFixture {   // 창문·카운터·출입구 등 고정 구조물
+export interface FloorFixture {   // 창문 · 바 · 카운터 · 출입구 · 화장실 · 통로 — % (좌상단 · 폭 · 높이)
   id: string;
-  kind: "WINDOW" | "COUNTER" | "ENTRANCE" | "RESTROOM" | "AISLE" | "WALL";
-  label: string;
-  x: number; y: number; w: number; h: number; // %
+  kind: "WINDOW" | "COUNTER" | "ENTRANCE" | "RESTROOM" | "AISLE" | "BAR";
+  label: string; labelKo?: string;
+  x: number; y: number; w: number; h: number;
 }
+export interface FloorSection { section: SeatSection; x: number; y: number; w: number; h: number }  // 구역 영역
+export interface FloorPlan { sections: FloorSection[]; fixtures: FloorFixture[] }
+
+export interface Branch { id: string; name: string; address: string }         // 지점
+export interface TimeBlock { start: string; end: string }                      // "13:00" "15:00"
+export type BlockState = "OPEN" | "LIVE" | "CLOSED";                           // 예약 가능 · 지금 진행 중(오늘) · 지남
+export interface SlotAvailability extends TimeBlock { state: BlockState; available: number; total: number }
+export interface SeatSlot { branchId: string; date: string; start: string; end: string }  // 상태를 묻는 단위(지점 · KST 날짜 · 시간대)
+export type ChairStatusMap = Readonly<Record<string, SeatStatus>>;             // 의자 id → 상태(없으면 AVAILABLE)
+export interface ReservationRequest { slot: SeatSlot; branchName: string; people: number; chairIds: string[]; chairLabels: string[] }
+export type WaitlistRequest = Omit<ReservationRequest, "chairIds" | "chairLabels">;
 
 // ===== app/(site)/menu/_types.ts =====
 // 카테고리는 관리자가 추가·수정하므로 enum 이 아니라 데이터로 관리한다.
@@ -546,6 +575,19 @@ export interface RaceEntry extends RaceBet {  // 내 레이스 기록 한 건 �
   settledAt: string | null;// ISO — 정산 시각
 }
 
+export type SeatReservationKind = "RESERVED" | "WAITING";   // 예약 · 예약대기
+export interface SeatReservation {  // 좌석 예약 한 건(11단계) — 지점 · 날짜 · 시간대 · 의자. 결제 · 쿠폰 없음
+  id: string;              // "S-0001"
+  kind: SeatReservationKind;
+  branchId: string; branchName: string;   // 지점 이름도 남긴다(지점 데이터를 다시 안 봐도 되게)
+  date: string;            // "2026-10-17"(KST)
+  start: string; end: string;             // "13:00" "15:00"
+  people: number;
+  chairIds: string[];      // "T03-1" — 예약대기는 빈 배열
+  chairLabels: string[];   // 표시용 "T03 1번" · "B07"
+  reservedAt: string;      // ISO
+}
+
 export interface UserState {     // "내 것" — 마이페이지에 모인다
   coupons: number;                                                   // 보유 쿠폰
   couponHistory: CouponLog[];                                        // 쿠폰 증감 내역, 최신순
@@ -558,6 +600,9 @@ export interface UserState {     // "내 것" — 마이페이지에 모인다
   races: RaceEntry[];                                                // 내가 참여한 경주, 최신순
   joinRace: (bet: RaceBet, gate: number) => boolean;                 // 건 경주 기록, 그 경주에 이미 걸었으면 false
   settleRace: (raceNo: number, rank: number, payout: number) => boolean; // 정산 기록, 이미 정산했으면 false(경주당 한 번)
+  seatReservations: SeatReservation[];                               // 좌석 예약 · 예약대기, 최신순
+  addSeatReservation: (reservation: SeatReservation) => void;
+  cancelSeatReservation: (id: string) => boolean;                    // 목록에서 지운다 — 없으면 false
 }
 
 export interface CartLine {      // 같은 메뉴·같은 사이즈는 한 줄
@@ -616,21 +661,23 @@ export interface CartState {
 
 이름·설정 수정은 이 파일만 고치면 되도록 한다. 표의 No 는 말 식별자(`Horse.id`)이고 게이트 번호가 아니다 — 게이트 번호는 경주마다 지난 경주 도착 순서대로 다시 매긴다(8.2 "게이트 번호 규칙"). 대표색은 이미지에서 잰 조끼 색이고, 번호 배지 글자는 흰 글자 대비가 3:1 미만이면(노랑) 짙은 색이다(`textOn`). 이미지를 바꾸려면 `scripts/split-horses.mjs` 의 `PICKS` 를 고치고 다시 실행한다.
 
-### 5.2 seats.ts — 총 30석 (지시서의 "12 / 30" 과 맞춤)
+### 5.2 seats.ts — 30자리 = 의자 71석 (2026-10-13 의자 단위로 재구성)
 
-| 구역 | 한글 | 좌석 | 비고 |
+| 구역 | 한글 | 자리(의자 수) | 비고 |
 |---|---|---|---|
-| TRACKSIDE | 창가 좌석 | T01(2) T02(2) T03(4) T04(2) T05(2) T06(4) | WINDOW, 일부 OUTLET |
-| GRANDSTAND | 일반 좌석 | T07(4) T08(2) T09(2) T10(4) T11(2) T12(2) T13(4) T14(2) | 일부 QUIET / NEAR_COUNTER |
-| LOUNGE | 단체 좌석 | T15(6) T16(6) T17(8) | GROUP |
-| PADDOCK BAR | 바 좌석 | B01 ~ B13 (각 1인) | BAR, 전부 OUTLET |
+| TRACKSIDE | 창가 좌석 | T01(2) T02(2) T03(4) T04(2) T05(2) T06(4) | WINDOW, 일부 OUTLET · QUIET |
+| GRANDSTAND | 일반 좌석 | T07(4) T08(2) T09(2) T10(4) T11(2) T12(2) T13(4) T14(2) | 일부 QUIET / OUTLET / NEAR_COUNTER |
+| LOUNGE | 단체 좌석 | T15(6) T16(6) T17(8) | GROUP, 일부 OUTLET |
+| PADDOCK BAR | 바 좌석 | B01 ~ B13 (각 1) | BAR, 전부 OUTLET, B12 · B13 NEAR_COUNTER |
 
-- 초기 상태는 AVAILABLE 12석이 되도록 분배하고, USING/RESERVED/REPAIR 를 골고루 섞는다.
-- `x, y` 는 평면도 컨테이너 기준 **퍼센트**. 위치 변경은 이 값만 고친다.
+- **상태는 데이터에 없다.** 지점 · 날짜 · 시간대마다 `_lib/mockStatus.ts` 가 결정적으로 만든다(시간대별 점유율 × 지점 계수 + 주말 보너스, 지점마다 한 자리 수리 중). 서버가 붙으면 `GET /api/seats/status` 로 바뀐다.
+- `x, y` 는 평면도(900×702) 기준 **퍼센트**(테이블 중심). 위치 변경은 이 값만 고친다. 테이블 크기 · 의자 자리는 인원수로 자동(`_lib/geometry.ts`).
 
-### 5.3 floorPlan.ts — 구조물
+### 5.3 floorPlan.ts · branches.ts · schedule.ts
 
-WINDOW(상단 벽 전체), COUNTER(우측 중단), ENTRANCE(좌하단), RESTROOM(우하단), AISLE(중앙 세로·하단 가로 통로), 벽체. 좌석과 마찬가지로 % 좌표.
+- **평면도**: 구역 4개(TRACKSIDE 위 한 줄 · GRANDSTAND 가운데 두 줄 · LOUNGE 아래 · PADDOCK BAR 오른쪽 세로) + WINDOW(위쪽 벽 전체), BAR(오른쪽 벽 세로 바 테이블), COUNTER · RESTROOM(오른쪽 아래), ENTRANCE(왼쪽 아래 벽 끊김), AISLE(가로 · 세로 점선). 모두 % 좌표. 세 지점이 같은 평면도를 쓴다(사용자 결정).
+- **지점**: 마포 본점(트랙길 7 — Footer 주소) · 강남점 · 성수점. 첫 번째가 기본 선택.
+- **시간대**: `TIME_BLOCKS` 1시간 블록 13개(09–10 … 21–22, 영업 시간 전부), `BOOKING_DAYS = 14`(오늘 포함), `MAX_PEOPLE = 8`. 카드 범위 필터(전체 · 오전 <12시 · 오후 12~18시 · 저녁 ≥18시)는 `_lib/schedule.ts` 의 `TIME_FILTERS`.
 
 ### 5.4 menus.ts
 
@@ -661,19 +708,22 @@ Race #8 ~ #12 의 과거 결과(최신이 앞, `ranking` 7개 전체 저장, REC
 ```ts
 // app/(site)/seat/_lib/seatService.ts — 현재(Mock)
 import { SEATS } from "../_data/seats";
-import type { Seat } from "../_types";
+import type { ChairStatusMap, Seat, SeatSlot } from "../_types";
 
 export async function getSeats(): Promise<Seat[]> {
   return structuredClone(SEATS);
 }
-export async function reserveSeat(id: string): Promise<{ ok: true }> {
-  return { ok: true };   // 실제 요청 없음
+export async function getChairStatuses(slot: SeatSlot, now: number): Promise<ChairStatusMap> {
+  return mockChairStatuses(SEATS, slot, blockState(slot.date, block, now));   // 결정적 Mock
+}
+export async function reserveChairs(req: ReservationRequest): Promise<SeatReservation> {
+  return { id: "S-0001", kind: "RESERVED", ...req.slot, ... };   // 실제 요청 없음 — 반영은 호출한 쪽의 UserProvider 가
 }
 
 // 추후(API) — 컴포넌트 변경 없이 이 파일만 교체
-// export async function getSeats() {
-//   const res = await fetch(`${API_BASE}/api/seats`);
-//   return res.json() as Promise<Seat[]>;
+// export async function getChairStatuses(slot: SeatSlot) {
+//   const res = await fetch(`${API_BASE}/api/seats/status?branch=${slot.branchId}&date=${slot.date}&start=${slot.start}`);
+//   return res.json() as Promise<ChairStatusMap>;
 // }
 ```
 
@@ -683,7 +733,7 @@ export async function reserveSeat(id: string): Promise<{ ok: true }> {
 | 파일 | 함수 | 추후 API (예상) |
 |---|---|---|
 | `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(raceNo, startsAt, horseId)` → `RaceBet`, `getRaceResult(raceNo, startsAt)` → `RaceResult \| null`(확정 전 null — Mock 은 출발 + `RACE_SETTLE_MS` 뒤 결정적 시뮬레이션) | GET /api/horses, GET /api/races/history, POST /api/races/{raceNo}/bets, GET /api/races/{raceNo}/result |
-| `app/(site)/seat/_lib/seatService.ts` | `getSeats()`, `getSeatSummary()`, `getFloorFixtures()`, `reserveSeat(id)`, `updateSeatStatus(id, status)` | GET /api/seats, POST /api/seats/{id}/reservations, PATCH /api/admin/seats/{id} |
+| `app/(site)/seat/_lib/seatService.ts` | `getBranches()`, `getSeats()`, `getFloorPlan()`, `getTimeBlocks()`, `getChairStatuses(slot, now)` → `ChairStatusMap`, `getSlotAvailability(branchId, date, now)` → 시간대별 잔여석, `reserveChairs(req)` → `SeatReservation`, `joinWaitlist(req)` → `SeatReservation`(WAITING), `cancelReservation(id)`, `getSeatSummary(now)`(메인 대시보드 — 본점 · 지금 시간대), (13단계) `updateSeatStatus(slot, chairId, status)` | GET /api/branches, GET /api/seats, GET /api/seats/floor-plan, GET /api/seats/status?branch&date&start, GET /api/seats/availability?branch&date, POST /api/seats/reservations, POST /api/seats/waitlist, DELETE /api/seats/reservations/{id}, PATCH /api/admin/seats/{id} |
 | `app/(site)/menu/_lib/menuService.ts` | `getMenus(categoryId?)`, `getTodayWinnerMenu()`, `getCategories()`, `getMenuImageOptions()` | GET /api/menus, GET /api/categories, (이미지 업로드 API 생기면 교체) |
 | 〃 (관리자) | `createMenu(input)`, `updateMenu(id, input)`, `deleteMenu(id)`, `updateMenuStatus(id, status)` | POST /api/admin/menus, PUT·DELETE /api/admin/menus/{id}, PATCH /api/admin/menus/{id}/status |
 | 〃 (관리자) | `createCategory(input, order)`, `updateCategory(id, input, order)`, `deleteCategory(id)`, `reorderCategories(ids)` | POST /api/admin/categories, PUT·DELETE /api/admin/categories/{id}, PUT /api/admin/categories/order |
@@ -717,11 +767,15 @@ interface UserState {
   races: RaceEntry[];                    // 내 레이스 기록(내가 건 말 + 정산 결과), 최신순
   joinRace: (bet, gate) => boolean;      // 건 경주 기록, 경주당 한 번
   settleRace: (raceNo, rank, payout) => boolean; // 정산 기록, 경주당 한 번(이미 했으면 false)
+  seatReservations: SeatReservation[];   // 좌석 예약 · 예약대기, 최신순(11단계)
+  addSeatReservation: (reservation) => void;
+  cancelSeatReservation: (id) => boolean;
 }
 ```
 
-- "내 것"(쿠폰 · 찜 · 주문 내역 · 내 레이스 기록)을 한 Context 에 둔다. 모두 마이페이지에 모이고, 로그인이 붙으면 같은 사용자 단위로 서버에서 불러오기 때문이다.
-- Header(쿠폰 수), 메인 대시보드, `/race`(걸기 · 내가 건 말), `RaceSettlement`(정산), `/menu/[id]`(찜), `/cart`(주문 적립 · 내역 기록), `/my` 가 같은 값을 본다.
+- "내 것"(쿠폰 · 찜 · 주문 내역 · 내 레이스 기록 · 좌석 예약)을 한 Context 에 둔다. 모두 마이페이지에 모이고, 로그인이 붙으면 같은 사용자 단위로 서버에서 불러오기 때문이다.
+- Header(쿠폰 수), 메인 대시보드, `/race`(걸기 · 내가 건 말), `RaceSettlement`(정산), `/menu/[id]`(찜), `/cart`(주문 적립 · 내역 기록), `/seat`(예약 · 같은 시간대의 내 예약을 배치도에 겹치기), `/my` 가 같은 값을 본다.
+- 좌석 예약이 루트에 있는 이유도 레이스와 같다 — `/seat` 는 배치도에 내 예약을 겹쳐 그리고 `/my` 는 목록 · 취소를 맡는데, 둘이 같은 값을 봐야 취소한 자리가 돌아왔을 때 풀려 있다.
 - 쿠폰 수가 바뀌는 곳은 `spendCoupon` · `earnCoupons` 두 함수뿐이고, 둘 다 `couponHistory` 맨 앞에 내역을 한 줄 남긴다.
 - 새로고침 시 초기화되어도 무방(프로토타입). 원하면 `localStorage` 동기화를 옵션으로.
 
@@ -745,7 +799,7 @@ interface UserState {
 
 - 수량은 **우선값**이다. 게임을 구현해 본 뒤 조율하므로 `race/_lib/payout.ts` 의 `RACE_PAYOUT = { 1: 4, 2: 3, 3: 2 }`(원금 포함) 한 곳에서만 바꾼다. 참고로 지금 값은 무작위로 골라도 경주당 평균 +2/7 ≈ +0.29장이라 반복할수록 쌓인다.
 - 참여는 **경주당 1회**다 — 경주가 정해진 시각(`RACE_TIMES`)에만 열리므로(8단계 시간 기반 재구성) 하루 참여 수는 경주 수만큼으로 저절로 제한된다. 지시서의 "다시 하기(바로 다음 경주)"는 없어졌고, 결과 모달의 [다음 경주 출전표 보기]가 그 자리를 맡는다. 더 강한 제한(하루 1회 등)은 위 조율 때 함께 정한다.
-- 좌석 상태는 `/seat` 페이지 State 로 충분하다(다른 페이지는 요약 숫자만 service 에서 읽는다).
+- 시간대별 좌석 상태(서버 몫)는 `/seat` 페이지 State 로 충분하다(다른 페이지는 요약 숫자만 service 에서 읽는다). 내 예약만 루트(`seatReservations`)에 있다.
 
 **레이스 진행 — `components/RaceProvider.tsx`(7단계, 사용자 결정 · 8단계에서 시간 기반으로 재구성 · 9단계에서 내가 건 말을 UserProvider 로)**: `CartProvider` 안쪽을 감싸고 `useRaceSession()` 으로 꺼낸다. 값은 `results`(이 세션에서 확정된 경주 — 끝까지 본 경주 + 내가 건 경주의 결과, 최신순) · `resultSeenUpTo`(결과 모달을 띄운 마지막 경주 번호) · `runRef`(진행 중 시뮬레이션 `RaceRun`, ref) · `recordResult(result)`(같은 번호가 없으면 맨 앞에 추가 — ref 로 확인해 두 번 불려도 한 번만) · `markResultSeen(raceNo)`.
 - **단계는 Provider 에 없다.** WAIT · RUNNING · FINISHED 는 경주 시각(`lib/time`)과 1초 시계로 `useRace` 가 매초 계산한다(8.2 상태 머신). 그래서 모든 사용자가 같은 시각에 같은 단계가 된다.
@@ -966,99 +1020,142 @@ LEAD_BATTLE: (a, b) => `🏁 ${a}와 ${b}의 치열한 선두 경쟁!`
 
 ### 8.3 `/seat` — 핵심 ②
 
-목표: "12자리 남았구나"가 아니라 **"창가 T03이 비어 있네", "콘센트 자리는 B04", "4명이면 T07"** 을 판단할 수 있게 한다.
+> **2026-10-13 재설계**(10 · 11단계 구현 때 사용자 결정).
+> 원래 설계("지금 상태"만 보는 평면도 + 필터 · 추천)에서 **날짜 · 지점 · 2시간 시간대를 고른 뒤 의자 단위로 예약하는 흐름**으로 바뀌었다. 평면도(창문 · 카운터 · 출입구 · 화장실 · 통로 · 구역명 · 30자리 · x,y 좌표 · 상태 4종 · 범례 · 요약)는 지시서 12~22절 그대로 그 안에 들어 있다.
+
+목표: "12자리 남았구나"가 아니라 **"내일 13시엔 창가 T03 3번이 비어 있네"** 를 보고 그 자리를 바로 잡게 한다.
+
+#### 사용자 결정 (2026-10-13)
+
+| 항목 | 결정 |
+|---|---|
+| 시간대 | **1시간 블록 13개** 09–10 … 21–22(`_data/schedule.ts`, 처음 고른 2시간 6개를 같은 날 1시간으로 바꿈). 카드가 많아 **전체 · 오전 · 오후 · 저녁** 범위 필터를 위에 둔다. 오늘부터 14일. 지나간 시간대는 CLOSED(마감), 오늘 진행 중이면 LIVE(예약 가능 · "사용 중" 의자가 보인다). **오늘 시간대가 다 지났으면 기본 날짜는 내일**(마감 카드만 보이는 화면 금지) |
+| 지점 | Mock 3곳 — 마포 본점 · 강남점 · 성수점. 평면도는 공유하고 좌석 상태만 지점별로 다르다 |
+| 좌석 단위 | **의자 단위** — 테이블을 의자로 쪼개 인원 수만큼 고른다. 의자 id `T03-1`(표시 "T03 1번"), 바석은 의자 하나라 "B07". 30자리 = 의자 71석 |
+| 점유 표시 | 색 + SVG 아이콘(✓ 선택 · 사람 사용 중 · 자물쇠 예약 · 공구 수리 중) + 텍스트(aria-label · title). 이미지 에셋 없음 |
+| 결제 | 없음(무료 예약). 예약대기도 무료 |
 
 #### 레이아웃 (PC)
 
 ```
-┌───────────────────────── SeatSummary (전광판) ─────────────────────────┐
-│ AVAILABLE SEATS  12 / 30   · 2인석 4 · 4인석 2 · 6인석 1 · 바 5     최종 업데이트 17:32 │
-└─────────────────────────────────────────────────────────────────────────┘
- SeatLegend:  ✓ 이용 가능  ● 사용 중  🔒 예약  🔧 수리 중
-
-┌── SeatFilter (좌, 260px) ──┐ ┌──────── CafeFloorPlan (중앙) ────────┐ ┌ SeatDetailPanel (우) ┐
-│ [전체] [이용 가능만]        │ │  ═════════ WINDOW ═════════           │ │ T03                  │
-│ 인원 [1~2명 ▼]             │ │  TRACKSIDE 창가 좌석                  │ │ 4인 테이블            │
-│ □ 콘센트  □ 창가            │ │  [T01] [T02] [T03] [T04] [T05] [T06]  │ │ 현재 상태 ✓ AVAILABLE │
-│ □ 조용한 자리  □ 단체석      │ │  GRANDSTAND 일반 좌석                 │ │ 위치  창가            │
-│ [초기화]                    │ │  [T07] [T08] ...        ┌─COUNTER─┐   │ │ 👥 최대 4명           │
-│                            │ │                          │ ☕ 주문 │   │ │ 🔌 콘센트 있음         │
-│ RecommendedSeat            │ │  LOUNGE 단체 좌석        └─────────┘   │ │ 🪟 창가 자리           │
-│ ★ T03                       │ │  [T15] [T16] [T17]                    │ │ ☕ 카운터와 가까움      │
-│ 창가 · 콘센트 · 2인 이용 가능 │ │  PADDOCK BAR 바 좌석 🔌               │ │ [이 좌석 예약하기]     │
-└────────────────────────────┘ │  [B01][B02]...[B13]                   │ └──────────────────────┘
-                               │  ENTRANCE ▸            RESTROOM 🚻    │
-                               └───────────────────────────────────────┘
- (개발용) SeatStatusDevTool — 접이식 패널
+┌ BookingBar ──────────────────────────────────────────────────────────────────────────────┐
+│ [📍 마포 본점] [2026.10.17(토)] [13:00~15:00] [2명] [일정변경]   AVAILABLE SEATS [5][3]/[7][1]  │
+│                                                       빈 테이블 2인석 6 · 4인석 4 · … · 바 7 · 마지막 업데이트 17:32 │
+└────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────── SeatCanvas (어두운 면 --brand-900) ────────────┐ ┌──── 패널 360px ─────────────┐
+│ FLOOR PLAN  좌석 배치도 · 마포 본점            [🔔 예약대기] │ │ STEP 1 · SCHEDULE  일정 선택   │
+│ ┌미니맵┐ ═══════════════ WINDOW 창가 ═══════════════        │ │ 날짜   ‹ 2026.10 ›            │
+│ └─────┘  (TRACKSIDE · 창가 좌석)       (PADDOCK BAR · 바 좌석)│ │   일 월 화 수 목 금 토          │
+│   [1]  [1][2]  [1]   …     ┃ B01 B02 … B13 ║BAR║           │ │   … 13(오늘) ●14 15 …          │
+│   T01   T03    T04   …     ┃                               │ │ 지점 [📍마포 본점][강남점][성수점]│
+│   [🔒] [3][4]  [2]   …     ┃                               │ │ 인원 [1][2][3][4][5][6][7][8] ↻ │
+│  (GRANDSTAND · 일반 좌석)  T07 … T10 / T11 … T14            │ │ 시간대 [09:00~11:00 53/71석]    │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ 통로 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─               │ │        [11:00~13:00 43/71석] … │
+│  (LOUNGE · 단체 좌석) T15 T16 T17  [COUNTER 주문] [RESTROOM] │ │ ─────────────────────────────│
+│  ENTRANCE →                                    [+][−][⤢]   │ │ 2명 · 배치도에서 자리를 고를 차례예요 │
+│ 범례 [1] 이용 가능(53) [✓] 선택 [🔒] 내 예약 [●] 사용 중(0) [🔒] 예약(17) [🔧] 수리 중(1) │ │ [     좌석 선택하기     ]       │
+└─────────────────────────────────────────────────────────────┘ └──────────────────────────────┘
 ```
 
-- 태블릿: 필터를 평면도 위 가로 바로, 상세는 모달.
-- 모바일: 필터는 접이식, 평면도는 가로 스크롤(최소 폭 720px 유지), 상세는 Bottom Sheet.
+- **패널은 단계에 따라 바뀐다**(`useSeatBooking.step`):
+  1. **일정 선택**(`SchedulePanel`) — 달력(월 이동 · 일요일 빨강 · "오늘" · 범위 밖 흐림 · 고른 날 짙은 원) → 지점 칩(고른 지점 검정 + 핀, 주소) → 인원 1~8(↻ 초기화) → 시간대 범위 필터(전체 · 오전 · 오후 · 저녁) + 1시간 카드 13개(`09:00~10:00` · `잔여 53/71석` · 진행 중 · 매진 · 마감) → [좌석 선택하기]. 매진 시간대면 [예약대기 신청하기]. **이미 고른 날짜 · 지점 · 시간대를 다시 눌러도 풀리지 않는다**(풀리면 골라 둔 의자까지 사라져 버그처럼 보인다 — 2026-10-13 수정).
+  2. **선택 좌석**(`SelectionPanel`) — ‹ 일정 선택 · "선택 좌석 n/N" · 전체삭제 · 의자 카드(✓ 견본 · `T03 3번` · `창가 좌석 · 4인 테이블 · 창가 · 콘센트` · ×) · 안내("1석 더 골라 주세요" / 인원 초과 · 찬 자리 안내) · 일정 요약 · [예약하기](N석 다 골라야 켜짐).
+  3. **완료**(`ReservationDone`) — RESERVED 스탬프(기울어진 이중 테두리) "예약되었습니다." · 예약 번호 · 지점 · 일시 · 좌석 · 인원 · [마이페이지에서 보기 → /my#seats] [다른 좌석 예약하기].
+- **BookingBar** — 고른 지점 · 날짜 · 시간대 · 인원 칩(안 고른 건 점선), 일정 선택 밖에서는 [일정변경] | `SeatSummary`(AVAILABLE SEATS 전광판 `Scoreboard` · 빈 테이블 인원별 수 · 바 · 마지막 업데이트). 시간대 전엔 `--/71` + "시간대를 고르면 좌석 현황이 보여요".
+- **캔버스**는 시간대를 고르기 전엔 덮개 안내, 시간대를 고르면 바로 의자를 누를 수 있다 — 일정 선택 단계에서 빈 자리를 누르면 그 의자가 선택되며 선택 좌석 단계로 넘어간다([좌석 선택하기]는 같은 일을 버튼으로). 인원을 안 골랐으면 "인원을 먼저 골라 주세요" 안내(2026-10-13 수정: 미리보기로 `disabled` 해 두니 "클릭이 안 된다"로 보였다). 완료 화면에서만 누를 수 없다. 완료 뒤엔 내 자리가 "내 예약"(자물쇠 + 흰 점선)으로 남는다. 오른쪽 위 [🔔 예약대기]는 시간대 · 인원을 고르면 켜진다. 제목 아래 한 줄(`caption`)은 안내(`hint`)가 있으면 그것을 보여 준다 — 모바일에선 패널이 멀어서다.
+- **예약 안내 모달**(`ReserveConfirmModal`) — 지점 · 일시 · 좌석 · 인원 + 유의 사항(10분 전 도착 · 1시간 이용 · 결제 없는 데모) → [확인하고 예약하기]. **예약대기 모달**(`WaitlistModal`) — "원하는 좌석이 없으면? 예약대기를 신청하세요!" · 종 · 대기 일정 · 인원 · 이용 요금 무료 · 신청 취소 · 신청 종료 → [신청하기] → "예약대기를 신청했어요". 같은 시간대에 이미 신청했으면 막는다.
+- 태블릿(≤1023px): 한 열 — 일정 선택 · 완료 패널은 캔버스 **위**, 선택 좌석 단계는 캔버스 + **화면 아래 고정 바**(`SelectionBar`: "선택 좌석 1/2 ▴ · T03 3번" [예약하기]) → 누르면 목록 Bottom Sheet(공용 `Modal`, ESC · 배경 탭으로 닫힘, 일정 변경 · 예약하기).
+- 모바일(<768px): 같은 구조. 배치도는 최소 720px 폭을 유지하고 가로 스크롤, 미니맵은 작게.
+
+#### 데이터 흐름 — 좌석 상태의 단일 소스
+
+```
+seatService.getChairStatuses(slot, now)    ─┐  결정적 Mock(지점|날짜|시작 시각 시드 — _lib/mockStatus.ts)
+UserProvider.seatReservations(같은 시간대) ─┴→ useSeatBooking: statuses = 서버 상태 + 내 예약(RESERVED · mine)
+      ├→ SeatCanvas · CafeFloorPlan(의자 71개) · SeatLegend(상태별 수)
+      ├→ SeatSummary(AVAILABLE n/71 · 빈 테이블 인원별 · 마지막 업데이트 = 서버 응답 시각과 내 마지막 예약 중 나중 것)
+      └→ 시간대 카드 잔여석 = getSlotAvailability(지점 · 날짜) − 그 시간대의 내 예약 의자 수
+```
+
+- 별도 카운트 State 는 없다. 예약하면(`addSeatReservation`) 배치도 · 요약 · 잔여석이 그 자리에서 바뀌고(53 → 51), `/my` 에서 취소하면(`cancelSeatReservation`) 돌아왔을 때 자리가 풀려 있다.
+- Mock 점유율: 시작 시각별 기본값(12~13시 0.7 · 18시 0.68 이 높고 9시 · 21시 0.3 이 낮다) × 지점 계수(0.9 · 1.0 · 1.1) + 주말 +0.15, 최대 0.92. 4인 이상 테이블은 일부만 차기도 한다. 지점마다 한 자리는 수리 중. OPEN ↔ LIVE 가 바뀌어도 같은 자리가 차 있고, LIVE 일 때만 찬 자리의 70% 가 "사용 중"으로 보인다.
+- 시계는 `_hooks/useMinuteClock.ts`(1분, `useSyncExternalStore`, 마운트 전 null) — 오늘(KST) · 지나간 시간대 판정은 분 단위면 충분하고, 1초 시계(`lib/useCountdown`)를 쓰면 의자 71개가 매초 다시 그려진다. 날짜 계산은 `lib/kst.ts`(/my 도 쓴다).
+- 고른 시간대가 지나가면(자정 · 시간대 종료) 시간대 · 선택이 비고 일정 선택으로 돌아간다 — effect 가 아니라 **파생값**(`block = 고른 시간대가 CLOSED 가 아닐 때만`)으로 계산한다. 날짜도 범위를 벗어나면 기본 날짜(오늘, 오늘 시간대가 다 지났으면 내일 — `hasOpenBlock`)로 돌아온다.
+- 다른 페이지를 다녀오면(`Activity` 숨김) 날짜 · 지점 · 인원은 남고, 완료 화면이었으면 일정 선택으로(`SeatBooking` 의 `useLayoutEffect` 정리). 모달도 닫는다.
+- 고른 의자는 `selectedRef` 로도 들고 있어 같은 틱에 두 번 눌려도 둘 다 들어간다(UserProvider 지갑과 같은 패턴). 인원 초과 · 찬 자리 · 수리 중 · 내 예약은 거부하고 2.6초 안내(`hint`, `role="status"`).
 
 #### CafeFloorPlan 구현
 
-- 컨테이너: `position: relative; aspect-ratio: 16 / 10; min-width: 720px;`
-- 구조물(`FloorFixture`)과 좌석(`Seat`)을 모두 `position: absolute; left: x%; top: y%; width: w%; height: h%; transform: translate(-50%, -50%)` 로 배치. **좌표만 바꾸면 위치가 바뀐다.**
-- 구역(Section)은 반투명 배경 영역 + 좌상단 라벨 `TRACKSIDE / 창가 좌석` (경기장 좌석 안내도 느낌).
-- 바닥: 크림 바탕, 통로는 점선, 창문은 상단 하늘색 얇은 띠 + `WINDOW` 라벨, 출입구는 벽 끊김 + 화살표.
-- 테이블 모양: 2인 정사각, 4인 직사각, 6~8인 큰 직사각/원형, 바 좌석은 작은 원(스툴) + 길쭉한 바 테이블 구조물.
+- 논리 크기 `FLOOR = 900 × 680`(`_lib/geometry.ts`). 구조물 · 구역은 데이터의 % 를 그대로 `left/top/width/height: %` 로, 테이블 · 의자는 geometry 가 px 로 바꿔 `position: absolute` 로 놓는다. **좌표만 바꾸면 위치가 바뀐다.**
+- `SeatCanvas` 가 이 상자를 통째로 `transform: scale(폭에 맞춘 기본 배율 × 확대 단계 1 · 1.35 · 1.75 · 2.25)` 한다. 넘치면 스크롤 + 왼쪽 위 미니맵(같은 `CafeFloorPlan` 을 `compact` 로 0.16배, 보이는 영역 흰 사각형). 오른쪽 아래 [+][−][원래 크기] — 확대해도 화면 가운데가 같은 자리를 본다. 좁은 화면은 최소 720px(`scrollbar-gutter: stable`).
+- 테이블 크기는 인원수로 정해진다(2인 52×52 · 4인 88 · 6인 124 · 8인 160, 세로 52). 의자(28px, 간격 8)는 윗줄 ⌈n/2⌉ · 아랫줄 나머지, 번호는 윗줄 왼쪽부터. 바석은 스툴(원) 하나 + 오른쪽 벽의 세로 BAR 구조물.
+- 구역 이름표는 구역 윗선 가운데에 걸친 알약(`TRACKSIDE · 창가 좌석`, 아래로 11px) — 각 구역의 첫 의자 줄은 윗선에서 16px 아래부터 시작해 이름표와 4px 이상 떨어지고, 구역 사이는 14px(바닥 줄 앞은 통로를 두고 22px), 이름표와 윗줄(창문 띠 · 윗 구역의 아랫줄 의자) 사이는 6px 이상이다(`seats.ts` · `floorPlan.ts` 의 y 가 그렇게 잡혀 있다, 2026-10-14). 창문은 위쪽 벽 전체(빛나는 선), 출입구는 아래쪽 벽이 끊긴 자리 + 화살표, 통로는 점선, 카운터는 ☕ 아이콘.
+- 의자 · 테이블 · 구조물 글자는 11~13px(2026-10-14 사용자 요청으로 2px 키움) — 기본 배율(PC 약 0.85 · 모바일 0.8)에서 읽히고 확대하면 커진다. 평면도 높이는 640 → 680.
 - **HTML `<table>` 사용 금지.**
 
-#### Seat 컴포넌트
+#### Chair(의자) 컴포넌트
 
-| status | 배경/테두리 | 아이콘 | 텍스트 | 클릭 |
-|---|---|---|---|---|
-| AVAILABLE | 짙은 회색(`--seat-available`) 테두리, 크림 배경 | ✓ | 이용 가능 | 가능 |
-| USING | 브라운 채움 | ● (사람 아이콘) | 사용 중 | 상세만 |
-| RESERVED | 금색 빗금 패턴 | 🔒 | 예약 | 상세만 |
-| REPAIR | 회색 + 대각 스트라이프 | 🔧 | 수리 중 | 상세만 |
+| 상태 | 모양(어두운 캔버스 위) | 아이콘 | 클릭 |
+|---|---|---|---|
+| AVAILABLE | 흰 테두리만, 안에 번호(바석은 `B07`) | — | 선택 토글 |
+| 선택 | 흰 채움 + 바깥 흰 링, 살짝 확대 | ✓ | 선택 해제 |
+| 내 예약 | 흰 점선 테두리 + 반투명 채움 | 🔒 | 안내 "내가 이미 예약한 자리예요" |
+| USING | 짙은 채움(#2e2e33) | 사람 | 안내 "이미 예약되었거나 사용 중인 자리예요" |
+| RESERVED | 짙은 채움 | 🔒 | 안내 〃 |
+| REPAIR | 빗금 | 🔧 | 안내 "수리 중인 자리예요" |
 
-- 좌석 안에 `T03` + 상태 아이콘 + 인원(`4`)을 표시.
-- 필터 불일치: `opacity: 0.3` (숨기지 않음).
-- 추천 좌석: 금색 glow + 별 배지 + 은은한 pulse.
-- 선택된 좌석: 두꺼운 `--brand-900` 외곽선 + 바깥 간격 링(이용 가능의 얇은 회색 테두리와 굵기로 구분).
-- 최소 터치 영역 44×44px (바 좌석 포함). 작으면 `::before` 로 히트 영역 확장.
-- `<button aria-label="T03, 4인 테이블, 이용 가능, 창가·콘센트">`.
+- `<button aria-label="T03 3번, 창가 좌석 · 4인 테이블 · 창가 · 콘센트, 이용 가능" aria-pressed title>`. 찬 자리는 `aria-disabled`(눌러서 안내는 받는다). 상태를 모를 때(시간대 전) · 완료 단계만 `disabled`. `React.memo`.
+- 히트 영역은 `.floor .chair::before`(절대 배치된 진짜 의자에만) 로 의자 사이 간격까지 넓힌다(28 + 5×2 px). 기본 배율에서 약 24px, 확대하면 30~54px. 44px 는 확대로 얻는다(좌석이 71개라 기본 배율에서 44px 를 다 주면 평면도가 화면을 넘는다).
+- 범례 · 선택 좌석 카드의 견본은 같은 `chairClassName` · `chairGlyph` 를 흐름 배치(`.legendSwatch` · `.selSwatch`, `position: relative` · `::before` 없음 · `z-index: auto` · transition 없음)로 쓴다.
+  > **2026-10-13 버그 기록**: 견본에도 `::before { position: absolute; inset: -5px }` 가 붙어 있었다. 견본은 `position: static` 이라 그 가짜 요소의 기준이 뷰포트가 되어 **화면 전체를 덮는 투명 상자**가 됐고, 견본이 flex item 이라 `.chairSelected` 의 `z-index: 1` 이 살아 달력 · 의자 버튼 위로 올라왔다. 그 위에 마우스가 오면 `:hover` 로 `transform: scale(1.08)` 이 걸려 상자가 견본 크기로 줄고 → hover 가 풀려 다시 커지는 진동(transition 0.12s 주기)이 생겨 커서가 깜빡이고 클릭이 절반쯤 빠졌다(달력 8번 중 2번 적중). `el.click()` 기반 E2E 는 히트 테스트를 거치지 않아 못 잡았다 — 클릭 경로 검증은 CDP `Input.dispatchMouseEvent` 실제 마우스로 한다.
 
-#### 필터 (`app/(site)/seat/_lib/filter.ts`, `_hooks/useSeatFilter.ts`)
+#### 필터 (12단계 — `app/(site)/seat/_lib/filter.ts`, `_hooks/useSeatFilter.ts`, `SeatFilter.tsx`)
+
+> 2026-10-14 구현(사용자 결정): 필터 줄과 추천 줄은 **배치도 카드 안, 제목과 배치도 사이**(지시서처럼 배치도 영역과 함께). 인원은 필터에 따로 두지 않고 **일정에서 고른 인원을 그대로** 쓴다(필터엔 "2명 기준" 표시만). 특징은 지시서 19절의 네 가지(콘센트 · 창가 · 조용한 자리 · 단체석).
+
+```
+FILTER  [전체] [이용 가능만] │ [콘센트] [창가] [조용한 자리] [단체석]            2명 기준  ↻ 초기화
+RECOMMENDED  [★ T03  창가 · 콘센트 · 2인 이용 가능 · 빈 의자 4/4] [★ T01 …] [★ B03 · B04 …]
+```
 
 ```ts
 interface SeatFilterState {
-  onlyAvailable: boolean;
-  people: "ANY" | "1-2" | "3-4" | "5+";
-  features: SeatFeature[];   // OUTLET, WINDOW, QUIET, GROUP
+  onlyAvailable: boolean;    // [전체] / [이용 가능만]
+  features: SeatFeature[];   // OUTLET, WINDOW, QUIET, GROUP — 모두 포함(AND)
 }
-matchesFilter(seat, filter): boolean
-// - onlyAvailable → status === "AVAILABLE"
-// - people → 인원 수를 수용 가능한 좌석 (1-2명: capacity >= 1, 3-4명: >= 3, 5+: >= 5)
-//   단 너무 큰 자리는 감점이 아니라 추천 점수에서 처리
-// - features → 선택한 특징을 모두 포함(AND)
+isFilterActive(filter)  // 둘 중 하나라도 골랐을 때만 배치도를 흐린다
+matchesFilter(seat, filter, people, statuses): boolean   // 자리(테이블 · 바석) 단위로 판정해 그 자리의 의자를 반투명하게
+// - features → 고른 특징을 모두 포함
+// - people(일정 인원) → 앉을 수 있는 크기(1~2명은 바석도 통과, 3명 이상은 capacity ≥ 인원)
+// - onlyAvailable → 빈 의자가 있고, 테이블이면 인원만큼 비어 있다
 ```
+- 맞지 않는 자리는 테이블 · 의자 모두 `opacity: 0.3`(숨기지 않는다, 지시서 19절). 의자 버튼에 `data-dim` · aria-label 에 "필터와 맞지 않음". 고른 의자는 흐리지 않는다.
+- 필터 State 는 페이지 로컬(`useSeatFilter`) — 다른 페이지를 다녀와도 남는다.
 
-#### 추천 (`app/(site)/seat/_lib/recommend.ts`)
+#### 추천 (12단계 — `app/(site)/seat/_lib/recommend.ts`, `RecommendedSeat.tsx`)
 
 ```ts
-recommendSeats(seats, filter): { seat: Seat; reasons: string[] }[]   // 상위 3개
+recommendSeats(seats, statuses, filter, people): { picks: Recommendation[]; fallback: Recommendation | null }
+// Recommendation = { key, seat, chairIds, label, reasons, detail, score } — 상위 3개
 ```
-- 대상: AVAILABLE 만.
-- 점수: 선택 특징 일치 +3씩 / 인원 정확히 맞음 +2, 1~2명 여유 +1, 과하게 큼(예: 2명에 8인석) −2 / QUIET 보너스 +0.5(동점 정리용).
-- 결과 문구: `창가 · 콘센트 · 2인 이용 가능` (`app/(site)/seat/_lib/labels.ts` 의 한글 라벨 조합).
-- 조건을 하나도 안 골랐으면 "인원을 선택하면 맞춤 좌석을 추천해 드려요" 안내.
-- 추천 0개면 "조건에 맞는 빈 좌석이 없어요. 조건을 줄여 보세요" + 가장 가까운 대안 1개.
+- 대상: 고른 시간대에 **인원만큼 빈 의자가 있고 필터 특징을 가진 자리**. 테이블은 빈 의자 번호 순으로 인원만큼, 바석은 위에서 아래로 **나란히 비어 있는 스툴 묶음**(`B03 · B04`). 누르면 그 의자들로 선택이 바뀌고 선택 좌석 단계로 넘어간다(= 상세가 열린다). 그새 찬 자리는 빼고 안내.
+- 점수: 크기 — 딱 맞음 +2 · 1~2석 여유 +1 · 3석 0 · 4석 이상(2명에 8인석) −2 / 테이블이 통째로 비어 있으면 +1 / QUIET +0.5(동점 정리) / 바석은 혼자면 +2, 여럿이면 +1(테이블보다 한 단계 아래). 동점이면 작은 자리 · id 순. 그래서 "4명"이면 4인석이 6 · 8인석보다 먼저다.
+- 카드: ★ + 자리 이름 + `창가 · 콘센트 · 2인 이용 가능` + `빈 의자 4/4`(바석은 `바 좌석 · 나란히 2석`). 배치도에서는 추천 테이블에 **금색 glow + ★ 배지 + 은은한 pulse**(사용자 결정 — 금색을 쓰는 두 번째 곳, "오늘의 우승 자리"), 추천 바석은 금색 테두리. `prefers-reduced-motion` 이면 pulse 없음.
+- 시간대 전: "시간대를 고르면 맞춤 좌석을 추천해 드려요". 인원 전: "인원을 선택하면 맞춤 좌석을 추천해 드려요". 추천 0개: "조건에 맞는 빈 좌석이 없어요. 조건을 줄여 보세요" + **특징 조건을 뺀 가장 가까운 대안 1개**(≈ 점선 카드). 완료 화면에서는 필터 · 추천 줄을 숨긴다.
 
-#### 좌석 상세 & 예약
+#### 예약 · 예약대기 (11단계)
 
-- `SeatDetailPanel`: 지시서 17절 항목 그대로(ID, 타입·인원, 상태, 위치(구역 한글), 특징 아이콘 목록).
-- 위치 설명은 section + features 에서 파생(예: TRACKSIDE → "창가", NEAR_COUNTER → "카운터와 가까움").
-- [이 좌석 예약하기] → `seatService.reserveSeat()` → 로컬 State 에서 status 를 `RESERVED` 로 변경 → "예약되었습니다." 확인 UI(티켓 스탬프 연출). 요약·추천도 즉시 재계산.
-- AVAILABLE 이 아니면 버튼 대신 상태 안내.
+- 의자 카드가 지시서 17절의 좌석 상세를 맡는다(ID · 타입 · 인원 · 위치(구역 한글) · 특징). 별도 `SeatDetailPanel` 은 두지 않는다.
+- [예약하기] → 예약 안내 모달 → `seatService.reserveChairs(req)` → `addSeatReservation` → 완료 스탬프. 같은 시간대의 내 예약이 배치도 · 잔여석에 바로 반영된다. 서버가 붙으면 `reserveChairs` 가 `POST /api/seats/reservations` 가 되고, 실패(남이 먼저 잡음)는 모달의 오류 줄로 보여 준다.
+- 예약대기: `seatService.joinWaitlist(req)` → `addSeatReservation`(kind `WAITING`, 의자 없음) → `/my` 에 "대기 중". 알림은 준비 중(안내만).
+- 취소는 `/my` 에서만(`cancelReservation` → `cancelSeatReservation`). 8.10.
 
-#### 관리자 대비 구조 & 개발용 상태 변경
+#### 관리자 대비 구조 & 개발용 상태 변경 (13단계)
 
-- 좌석 상태의 **단일 소스**는 `/seat` 의 `seats` State. Summary·Legend·FloorPlan·추천은 모두 여기서 파생(별도 카운트 State 금지).
-- `SeatStatusDevTool`: 좌석 선택 → 라디오(이용 가능 / 사용 중 / 예약 / 수리 중) → `updateSeatStatus` → 즉시 반영. `process.env.NODE_ENV !== "production"` 일 때만 렌더.
+- 좌석 상태의 **단일 소스**는 "시간대 서버 상태 + 내 예약"(위 데이터 흐름). 요약 · 범례 · 배치도 · 잔여석 · 추천은 모두 여기서 파생(별도 카운트 State 금지).
+- `SeatStatusDevTool`: 의자 선택 → 라디오(이용 가능 / 사용 중 / 예약 / 수리 중) → `updateSeatStatus(slot, chairId, status)` → 고른 시간대의 덮어쓰기로 즉시 반영. `process.env.NODE_ENV !== "production"` 일 때만 렌더.
 - 추후 관리자 페이지는 같은 `updateSeatStatus` service 를 호출하면 된다.
-- "마지막 업데이트" 시각은 State 가 바뀔 때마다 갱신.
+- "마지막 업데이트" 시각은 서버 상태를 다시 받거나 내 예약이 바뀔 때마다 갱신.
 
 ### 8.4 `/menu` — 경마 티켓 스타일 메뉴판
 
@@ -1195,7 +1292,7 @@ MY SEATS  좌석 예약 내역                                   [준비 중]
 - **찜한 메뉴**: `favorites` 순서대로, page 가 메뉴 Service 에서 받은 **메뉴판에 보이는 메뉴**만 그린다(숨김 메뉴 · 숨김 카테고리는 상세가 없어 빠진다). 품절은 흐리게 + `SOLD OUT`. 찜 해제는 상세의 ♡ 에서만 한다. 비어 있으면 "메뉴 상세에서 ♡ 찜하기를 누르면 여기에 모여요".
 - **쿠폰**: 얻는 법 · 교환 준비 중 안내 + `couponHistory`. 쿠폰 교환은 규칙이 정해질 때까지 안내 문구만 둔다(버튼 없음).
 - **내 레이스 기록(`MyRaces`, 9단계)**: `races`(최신순). 한 줄 = 경주 STUB(`RACE #14` · 출발 시각 KST `10/13 18:00`) ┊ 말 이미지 · `5번 CARAMEL 캐러멜` · "쿠폰 4장 돌려받음"/"돌려받은 쿠폰 없음" ┊ 순위 알약(1~3위 금색). 정산 전이면 "결과 대기" + "경주가 끝나면 결과가 기록돼요" — 정산은 어느 페이지에서든 되므로(7절 "정산") `/my` 를 보고 있어도 경주가 끝나면 바로 바뀐다. 말 정보는 page 가 `raceService.getHorses()` 로 받아 넘긴다. 최근 5경주 + 전체 보기. 비어 있으면 "아직 참여한 레이스가 없어요" + [출전표 보기].
-- **좌석 예약 내역**: 지금은 `PlannedSection`(점선 상자 + "준비 중" + 좌석 페이지 링크). 11단계에서 실제 목록으로 바꾼다.
+- **좌석 예약 내역(`MySeats`, 11단계)**: `seatReservations`(최신순). 한 줄 = 날짜 · 시간대 STUB(`10.17(토)` · `13:00~15:00`) ┊ 지점 · 인원 · 좌석(`T03 1번 · T03 2번`, 예약대기는 "예약대기 · 자리가 나면 알려드려요") ┊ 상태 알약(예약됨 · 대기 중, 시간대가 끝났으면 이용 완료 · 대기 종료로 흐리게) + [예약 취소]/[대기 취소](인라인 확인 "취소할까요? 취소 · 아니요"). 취소하면 `seatService.cancelReservation` 뒤 `cancelSeatReservation` 으로 목록에서 지우고, `/seat` 로 돌아가면 그 자리가 풀려 있다. 최근 5건 + 전체 보기. 비어 있으면 "아직 예약한 좌석이 없어요" + [좌석 예약하기]. `/seat` 완료 화면의 [마이페이지에서 보기]가 `#seats` 로 온다.
 - 섹션은 `scroll-margin-top` 으로 #앵커 이동 시 헤더에 가리지 않는다.
 - 프로필 · 메뉴 목록 · 출전마는 모두에게 같아 page 에 `"use cache"`, 쿠폰 · 찜 · 주문 · 레이스 기록은 클라이언트 컴포넌트가 `useUser()` 로 읽는다. 시각은 클라이언트에서 만든 값이라 하이드레이션이 어긋나지 않는다.
 
@@ -1210,7 +1307,7 @@ MY SEATS  좌석 예약 내역                                   [준비 중]
 | Mobile | < 768px | 1열, 햄버거 내비, Bottom Sheet |
 
 - **경마 트랙(경기 화면)**: 캔버스가 컨테이너 폭을 채우고 높이는 `clamp(260px, 32vw, 440px)`(모바일 `clamp(240px, 62vw, 320px)`). 장면의 치수가 모두 폭 · 높이 비율이라 가로 스크롤이 없다. 말 폭은 PC 12% · 모바일 15%, 번호 배지는 모바일 0.78배.
-- **좌석 배치도**: `min-width: 720px` + 가로 스크롤. 스크롤 가능함을 알리는 그라데이션 힌트.
+- **좌석 배치도**: 평면도(900×702)를 캔버스 폭에 맞춰 통째로 배율 조정하고, 좁은 화면은 `720px` 폭을 유지한 채 가로 스크롤 + 왼쪽 위 미니맵(보이는 영역 사각형)이 스크롤 가능함을 알린다. 확대(+)하면 PC 도 스크롤 + 미니맵. ≤1023px 는 한 열 — 일정 선택 · 완료 패널은 배치도 위, 좌석 고르기는 화면 아래 고정 바 + Bottom Sheet.
 - 좌석·버튼 터치 영역 최소 44px.
 
 ---
@@ -1585,73 +1682,79 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 ---
 
-### 10단계 — 좌석 현황 & 배치도 (`/seat`)
+### 10단계 — 좌석 현황 & 배치도 (`/seat`) ✅ 2026-10-13
 
-설계: 8.3 레이아웃 · CafeFloorPlan · Seat 컴포넌트.
+설계: 8.3(2026-10-13 재설계 — 날짜 · 지점 · 시간대 → 의자 단위 예약).
 
 **구현**
-- [ ] `app/(site)/seat/_types.ts`, `_data/seats.ts`(30석), `_data/floorPlan.ts`(구조물 · 구역)
-- [ ] `_lib/seatService.ts` — `getSeats`, `getFloorPlan`, `getSeatSummary`
-- [ ] `_lib/labels.ts`, `_lib/summary.ts`
-- [ ] `SeatSummary.tsx` — AVAILABLE SEATS 전광판 + 인원별 집계 + 마지막 업데이트
-- [ ] `SeatLegend.tsx` — 색 + 아이콘 + 텍스트 범례
-- [ ] `CafeFloorPlan.tsx` — 창문 · 카운터 · 출입구 · 화장실 · 통로 · 구역 라벨
-- [ ] `Seat.tsx` — 상태별 디자인, 테이블/바 모양, 44px 터치 영역
+- [x] `app/(site)/seat/_types.ts`, `_data/seats.ts`(30자리 = 의자 71석), `_data/floorPlan.ts`(구역 4 · 구조물), `_data/branches.ts`(지점 3), `_data/schedule.ts`(1시간 블록 13개 · 14일 · 최대 8명)
+- [x] `_lib/seatService.ts` — `getBranches` · `getSeats` · `getFloorPlan` · `getTimeBlocks` · `getChairStatuses` · `getSlotAvailability` · `getSeatSummary` (+ `_lib/mockStatus.ts` 결정적 Mock)
+- [x] `_lib/labels.ts`, `_lib/summary.ts`, `_lib/geometry.ts`, `_lib/schedule.ts`, `lib/kst.ts`
+- [x] `BookingBar.tsx` + `SeatSummary.tsx` — 고른 일정 칩 + AVAILABLE SEATS n/71 전광판 + 빈 테이블 인원별 수 + 마지막 업데이트
+- [x] `SeatLegend.tsx` — 색 + SVG 아이콘 + 텍스트 범례(상태별 의자 수)
+- [x] `SeatCanvas.tsx` + `CafeFloorPlan.tsx` — 어두운 캔버스 · 창문 · 바 · 카운터 · 화장실 · 출입구 · 통로 · 구역 알약 · 배율 · 확대/축소 · 미니맵 · 덮개 안내
+- [x] `Chair.tsx` — 의자 버튼: 상태별 모양(테두리 · 흰 채움 · 짙은 채움 · 빗금 · 점선), 바석은 원, `::before` 히트 영역
+- [x] `SchedulePanel.tsx` + `DatePicker.tsx` — 달력 · 지점 칩 · 인원 1~8 · 시간대 범위 필터 + 1시간 카드(잔여석 · 진행 중 · 매진 · 마감)
+- [x] 2026-10-13 후속 수정: 2시간 6개 → 1시간 13개, 오늘 시간대가 다 지났으면 기본 날짜 내일, 시간대만 고르면 의자를 바로 누를 수 있음(일정 선택 → 선택 좌석 자동 전환), 고른 날짜 · 지점 · 시간대 재클릭은 무시
 
 **완료 확인**
-- [ ] 요약 숫자(12/30 등)가 seats 데이터에서 계산된 값과 같다
-- [ ] `seats.ts` 의 x, y 만 바꿔도 배치도 위치가 바뀐다
-- [ ] HTML `<table>` 없이 평면도로 그려진다
-- [ ] 상태를 색 없이도(아이콘·텍스트로) 구분할 수 있다
+- [x] 요약 숫자(53/71 등)가 시간대 의자 상태에서 계산된 값과 같고, 시간대 카드의 잔여석과도 같다
+- [x] `seats.ts` 의 x, y 만 바꿔도 배치도 위치가 바뀐다(테이블 크기 · 의자 자리는 인원수로 자동)
+- [x] HTML `<table>` 없이 평면도로 그려진다
+- [x] 상태를 색 없이도(아이콘 · aria-label · title 로) 구분할 수 있다
+- [x] 오늘 지나간 시간대는 "마감", 진행 중이면 "진행 중"(사용 중 의자가 보인다), 자정이 지나면 날짜가 오늘로 돌아온다
 
 ---
 
-### 11단계 — 좌석 상세 & 예약
+### 11단계 — 좌석 상세 & 예약 ✅ 2026-10-13
 
-설계: 8.3 좌석 상세 & 예약.
+설계: 8.3 선택 좌석 · 예약 · 예약대기, 8.10 좌석 예약 내역.
 
 **구현**
-- [ ] 좌석 클릭 → 선택 상태
-- [ ] `SeatDetailPanel.tsx` — ID · 타입 · 상태 · 위치 · 특징 목록, PC 사이드 패널 / 모바일 Bottom Sheet
-- [ ] `seatService.reserveSeat` → 상태 RESERVED, "예약되었습니다." 스탬프
-- [ ] AVAILABLE 이 아니면 예약 버튼 대신 상태 안내
-- [ ] 좌석 예약 내역 — 내가 예약한 좌석을 페이지를 넘나드는 값(`UserState`)으로 남기고, `/my` 의 MY SEATS 를 `PlannedSection` 에서 실제 목록으로 교체
+- [x] 의자 클릭 → 선택 상태(인원 수만큼, 넘기면 안내 · 찬 자리는 안내) — `useSeatBooking.toggleChair`
+- [x] `SelectionPanel.tsx` — 선택 좌석 카드(ID · 구역 · 테이블 · 특징 · ×) · 전체삭제 · [예약하기], PC 사이드 패널 / ≤1023px 아래 고정 바 + Bottom Sheet(`SelectionBar`)
+- [x] `ReserveConfirmModal.tsx`("예약 안내") → `seatService.reserveChairs` → `addSeatReservation` → `ReservationDone.tsx` "예약되었습니다." RESERVED 스탬프, 배치도에 "내 예약"
+- [x] `WaitlistModal.tsx` — 매진 · 원하는 자리가 없을 때 예약대기(무료) → `joinWaitlist` → `/my` 에 "대기 중"
+- [x] 좌석 예약 내역 — `UserState.seatReservations`(루트), `/my` 의 MY SEATS 를 `PlannedSection` 에서 `MySeats.tsx`(목록 · 취소 · 이용 완료)로 교체, `PlannedSection` · `ComingSoon` 삭제
 
 **완료 확인**
-- [ ] 예약하면 배치도 · 요약 숫자가 즉시 바뀐다
-- [ ] 예약한 좌석이 `/my` 좌석 예약 내역에 보인다
-- [ ] 사용 중 · 예약 · 수리 중 좌석은 예약할 수 없다
-- [ ] 모바일에서 시트가 열리고 ESC · 배경 탭으로 닫힌다
+- [x] 예약하면 배치도 · 요약 숫자 · 시간대 잔여석이 즉시 바뀐다(53 → 51)
+- [x] 예약한 좌석이 `/my` 좌석 예약 내역에 보이고, 취소하면 `/seat` 에서 그 자리가 풀려 있다
+- [x] 사용 중 · 예약 · 수리 중 · 내 예약 자리는 고를 수 없다(안내 문구)
+- [x] 모바일에서 시트가 열리고 ESC · 배경 탭으로 닫힌다
+- [x] 다른 페이지를 다녀와도 날짜 · 지점 · 인원은 남고, 완료 화면이었으면 일정 선택으로 돌아온다(`Activity` 숨김 때 되돌림)
+- [x] `npm run build` · `npm run lint` 통과, headless Chrome E2E(PC 1440 · 모바일 390) 31/31
 
 ---
 
-### 12단계 — 좌석 필터 & 추천
+### 12단계 — 좌석 필터 & 추천 ✅ 2026-10-14
 
-설계: 8.3 필터 · 추천.
+설계: 8.3 필터 · 추천(지시서 19 · 20절 원안 기준). **의자 단위 예약 위에서 동작한다** — 필터는 자리(의자의 `seat`) 단위로 판정해 맞지 않는 의자를 반투명하게, 추천은 고른 시간대에 인원만큼 빈 의자가 있는 자리를 고른다(`statuses` 는 `useSeatBooking` 에서 받는다).
 
 **구현**
-- [ ] `_lib/filter.ts` — `matchesFilter` (이용 가능만 · 인원 · 특징 AND)
-- [ ] `_lib/recommend.ts` — 점수 계산, 상위 3개, 추천 사유 문구
-- [ ] `_hooks/useSeatFilter.ts`
-- [ ] `SeatFilter.tsx` — 전체/이용 가능만, 인원 select, 특징 체크박스, 초기화
-- [ ] `RecommendedSeat.tsx` — 추천 목록, 조건 미선택 안내, 결과 없음 + 대안 1개
-- [ ] 배치도: 불일치 좌석 반투명, 추천 좌석 금색 강조 + ★
+- [x] `_lib/filter.ts` — `matchesFilter`(이용 가능만 · 일정 인원 · 특징 AND) · `freeChairIds` · `fitsPeople`
+- [x] `_lib/recommend.ts` — 점수 계산, 상위 3개, 바석 나란히 묶음, 추천 사유 문구, 특징을 뺀 대안 1개
+- [x] `_hooks/useSeatFilter.ts`
+- [x] `SeatFilter.tsx` — [전체]/[이용 가능만] · 특징 칩 4개 · "N명 기준" · 초기화(배치도 카드 위쪽 줄)
+- [x] `RecommendedSeat.tsx` — 추천 카드 3개(누르면 그 의자들 선택 → 선택 좌석 단계), 시간대 · 인원 전 안내, 결과 없음 + 대안 1개
+- [x] 배치도: 불일치 자리 반투명(`.tableDim` · `.chairDim`), 추천 테이블 금색 glow + ★ + pulse, 추천 바석 금색 테두리
 
 **완료 확인**
-- [ ] "이용 가능만 + 콘센트 + 1~2명"에서 맞는 좌석만 선명하게 보인다
-- [ ] 맞지 않는 좌석도 사라지지 않고 흐리게 남는다
-- [ ] 추천 항목을 누르면 해당 좌석의 상세가 열린다
-- [ ] "4명" 조건에서 4인석이 6·8인석보다 먼저 추천된다
+- [x] "이용 가능만 + 콘센트 + 2명"에서 맞는 자리만 선명하게 보인다(E2E: 흐려진 의자엔 콘센트가 없고, 선명한 빈 의자엔 모두 콘센트가 있다)
+- [x] 맞지 않는 자리도 사라지지 않고 흐리게 남는다(의자 71개 그대로)
+- [x] 추천 항목을 누르면 그 의자들이 선택되고 선택 좌석 패널(상세 카드)이 열린다
+- [x] "4명" 조건에서 4인석이 6·8인석보다 먼저 추천된다
+- [x] 추천도 필터를 따른다(콘센트 필터면 콘센트 있는 자리만)
 
 ---
 
 ### 13단계 — 좌석 상태 관리 (개발용)
 
-추후 관리자 좌석 관리의 미리보기. 설계: 8.3 관리자 대비 구조.
+추후 관리자 좌석 관리의 미리보기. 설계: 8.3 관리자 대비 구조. 좌석 상태가 시간대 단위(결정적 Mock)이므로, 개발용 변경은 **고른 시간대의 덮어쓰기**(`slotKey → { chairId → status }`)를 서버 상태 위에 겹치는 방식으로 둔다.
 
 **구현**
-- [ ] `seatService.updateSeatStatus`
-- [ ] `SeatStatusDevTool.tsx` — 좌석 선택 + 상태 라디오, 개발 모드에서만 렌더
+- [ ] `seatService.updateSeatStatus(slot, chairId, status)`
+- [ ] `SeatStatusDevTool.tsx` — 의자 선택 + 상태 라디오, 개발 모드에서만 렌더
 
 **완료 확인**
 - [ ] 상태를 바꾸면 요약 · 배치도 · 추천 · 상세가 모두 즉시 바뀐다
@@ -1669,7 +1772,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] NEXT RACE 슬라이드에 카운트다운 연결(6단계에서 함께 함 — `HeroRaceClock`)
 - [ ] 히어로 슬라이드 추가 — 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트 (각 Service 값으로 page 가 조립)
 - [ ] `DashboardCard.tsx` — 이용 가능 좌석 · 오늘의 인기 메뉴 · 내 쿠폰 · 다음 경주 (슬라이드로 흡수할지 별도 섹션으로 둘지 결정)
-- [ ] `app/(site)/page.tsx` — `getSeatSummary`, `getTodayWinnerMenu` 를 각 라우트 Service 에서 가져와 조립
+- [ ] `app/(site)/page.tsx` — `getSeatSummary(now)`(10단계에서 만듦 — 본점 · 지금 시간대의 빈 의자 수, 영업 전이면 첫 시간대), `getTodayWinnerMenu` 를 각 라우트 Service 에서 가져와 조립
 
 **완료 확인**
 - [ ] 카드 4개가 각각 `/seat`, `/menu`, `/my#coupons`(내 쿠폰), `/race` 로 이동한다
