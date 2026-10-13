@@ -36,6 +36,13 @@ out/
 ### VS Code ###
 .vscode/
 
+### Hidden Files ###
+.DS_Store
+*.pem
+*.key
+*.p12
+*.jks
+
 ### Environment ###
 application.properties
 application-local.properties
