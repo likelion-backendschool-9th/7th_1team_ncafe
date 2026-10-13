@@ -579,6 +579,147 @@
   }
 }
 
+/* ----- 경주 결과(트랙 무대와 출전표 사이) — 1~7위, 내 말 강조 ----- */
+.result {
+  margin-bottom: 20px;
+  padding: 18px 24px 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+
+.resultHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px dashed var(--border-strong);
+}
+
+.resultTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.resultDate {
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.resultMine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 0.92rem;
+  color: var(--text-body);
+}
+
+.resultMine strong {
+  color: var(--text-strong);
+}
+
+.resultVerdict {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-100);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-strong);
+}
+
+.resultVerdictHit {
+  background: var(--gold-500);
+}
+
+.resultList {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.resultRow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  text-align: center;
+}
+
+.resultTop {
+  background: var(--brand-100);
+}
+
+.resultRow:first-child {
+  box-shadow: inset 0 0 0 2px var(--gold-500);
+}
+
+.resultRowMine {
+  outline: 2px solid var(--brand-900);
+  outline-offset: -2px;
+}
+
+.resultRank {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+.resultRank small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.resultRow:first-child .resultRank {
+  color: var(--gold-500);
+}
+
+.resultName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+
+.resultName small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.resultLabel {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--brand-600);
+}
+
 /* ----- 쿠폰 걸기 확인창 ----- */
 .confirm {
   display: flex;
@@ -643,6 +784,10 @@
   .cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .resultList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
@@ -663,9 +808,30 @@
     padding: 16px 20px;
   }
 
-  .stageAction {
-    align-items: stretch;
-    width: 100%;
+  .result {
+    padding: 16px 16px 16px;
+  }
+
+  /* 한 줄에 한 마리 — 순위 · 배지 · 이름 · 라벨 · MY PICK 이 가로로 */
+  .resultList {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .resultRow {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .resultRank {
+    width: 36px;
+  }
+
+  .resultName {
+    flex: 1;
   }
 
   .field {

@@ -18,11 +18,9 @@ export interface Horse {
 // 최근 성적은 말 데이터에 두지 않고 경주 기록(RaceResult)에서 계산한다 — _lib/records.ts
 
 // ---- Race ----
-export type RacePhase = "BETTING" | "READY" | "RUNNING" | "FINISHED";
-
 export interface RaceResult {
   raceNo: number;
-  date: string; // ISO
+  date: string; // ISO — 출발 시각(RACE_TIMES 의 한 칸). 시드의 재료이기도 하다
   ranking: number[]; // horseId 를 1위~7위 순서로
 }
 
@@ -31,6 +29,21 @@ export interface RaceBet {
   raceNo: number;
   horseId: number;
   placedAt: string; // ISO
+}
+
+/**
+ * 트랙 무대의 상태 — 사용자의 버튼이 아니라 시계(경주 시각)로 정해진다(사용자 결정 2026-10-13: 경주 시각에 모두 동시에 출발 · 종료).
+ * WAIT: 출발 전(쿠폰을 걸었으면 READY, 아니면 관람 대기 · gateClosed 면 마감) · RUNNING: 경주 중 · FINISHED: 방금 끝난 경주(LIVE 창 동안)
+ */
+export type RaceStageKind = "WAIT" | "RUNNING" | "FINISHED";
+
+export interface RaceStage {
+  kind: RaceStageKind;
+  raceNo: number;
+  startedAt: number; // 출발 시각(epoch ms) — 시뮬레이션 시드 · 경과 시간의 기준
+  bet: RaceBet | null; // 이 경주에 내가 건 말(없으면 관람)
+  result: RaceResult | null; // FINISHED 일 때 그 경주의 결과
+  gateClosed: boolean; // 출발 RACE_GATE_CLOSE_MS 전부터 true — 더는 걸 수 없다
 }
 
 export type RaceEventType = "BOOST" | "SLOW" | "SPURT" | "OVERTAKE" | "STUMBLE" | "LEAD_BATTLE";
@@ -48,7 +61,8 @@ export interface RunnerState {
   horseId: number;
   trait: HorseTrait;
   progress: number; // 0 ~ 1 (1 = 결승). 통과한 뒤에도 화면 밖으로 달려 나가도록 조금 더 늘어난다
-  baseSpeed: number; // 진행도/ms — 출발 때 무작위로 정한다
+  prevProgress: number; // 직전 스텝의 진행도 — 스텝 사이를 그릴 때 보간
+  baseSpeed: number; // 진행도/ms — 출발 때 시드 난수로 정한다
   drift: number; // 완만한 속도 흔들림 배율(0.95 ~ 1.05) — 엎치락뒤치락의 바탕
   modifier: number; // 이벤트로 생긴 일시 속도 배율(1 = 정상)
   modifierUntil: number; // 경주 경과 ms — 지나면 modifier 가 1 로 돌아온다
@@ -59,7 +73,8 @@ export interface RunnerState {
 export interface RaceRun {
   raceNo: number;
   startedAt: number; // epoch ms — 경과 0(출발) 이 되는 순간. 카운트다운 동안은 경과가 음수
-  elapsed: number; // 시뮬레이션이 반영한 경과 ms
+  rng: number; // 시드 난수 상태(mulberry32) — raceNo · startedAt 에서 만들어 모든 사용자가 같은 경주를 본다
+  elapsed: number; // 시뮬레이션이 반영한 경과 ms(STEP_MS 의 배수)
   runners: RunnerState[]; // 게이트 번호 순
   ranking: number[]; // 도착 순서(horseId) — 7마리 모두 들어오면 완성
   doneAt: number | null; // 마지막 말이 들어온 경과 ms

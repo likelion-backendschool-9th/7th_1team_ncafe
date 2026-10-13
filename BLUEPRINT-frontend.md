@@ -63,6 +63,7 @@ frontend/
 │  │  │  │  ├─ HorseTrack.tsx     # 트랙 무대 — 머리띠(READY · [경주 시작] · LIVE · FINISH) + 경기 화면(PixiJS 캔버스, _lib/trackScene) + HUD(순위 · 남은 거리) + 카운트다운 · 토스트(DOM)
 │  │  │  │  ├─ RaceCountdown.tsx  # 상단 전광판(다음 경기 · 남은 시간 · 내 쿠폰)
 │  │  │  │  ├─ RaceEventMessage.tsx # 경기 중 이벤트 토스트(캔버스 위 DOM, 1.5초)
+│  │  │  │  ├─ RaceResult.tsx     # 경주 결과 — 최근 경주 1~7위(트랙 무대와 출전표 사이), 내 말 MY PICK · WIN/PLACE/SHOW
 │  │  │  │  ├─ RaceResultModal.tsx
 │  │  │  │  ├─ RaceHistory.tsx    # RECENT RACES
 │  │  │  │  └─ race.module.css    # /race 스타일(전광판부터 7~9단계에서 이어 붙임)
@@ -73,12 +74,13 @@ frontend/
 │  │  │  │  ├─ messages.ts        # 이벤트 메시지 템플릿
 │  │  │  │  ├─ trackScene.ts      # PixiJS 장면(잔디 · 울타리 · 말 · 결승선 · 먼지) + 카메라(cameraFor) — React 와 무관
 │  │  │  │  ├─ payout.ts          # RACE_ENTRY_COUPONS · RACE_PAYOUT · payoutFor · payoutTable · payoutSummary
-│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks(기록 → 최근 성적) · TRAIT_LABEL · textOn
+│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충) · mergeHistory · formatRaceDate · rankLabel · TRAIT_LABEL · textOn
 │  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet)
 │  │  │  ├─ _data/
 │  │  │  │  ├─ horses.ts          # 7마리(이미지 · 조끼 색)
 │  │  │  │  └─ raceHistory.ts     # Race #8~#12, 경주마다 7마리 전체 순위
-│  │  │  └─ _types.ts             # Horse, RacePhase, RaceResult, RaceBet, RaceEventMessage ...
+│  │  │  ├─ _types.ts             # Horse, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
+│  │  │  └─ lab/                  # /race/lab 개발용 실험실(시드 · 배속 · 되감기 · 이벤트 강제) — 쿠폰 · 단계와 무관, noindex
 │  │  │
 │  │  ├─ seat/                    # /seat  ★ 핵심
 │  │  │  ├─ page.tsx
@@ -378,7 +380,7 @@ frontend/
 
 | 파일 | 타입 |
 |---|---|
-| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RacePhase`, `RaceResult`, `RaceBet`, `RaceEventMessage` |
+| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
 | `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `FloorFixture` |
 | `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
 | `app/(site)/event/_types.ts` | `CafeEvent` |
@@ -405,11 +407,20 @@ export interface Horse {
 // 기록과 카드가 늘 맞고, 9단계에서 경주가 끝나면 성적도 바로 바뀐다.
 
 // ---- Race ----
-export type RacePhase = "BETTING" | "READY" | "RUNNING" | "FINISHED";
+// 단계는 사용자의 버튼이 아니라 경주 시각 + 시계로 정해진다(사용자 결정 2026-10-13). useRace 가 매초 계산한다.
+export type RaceStageKind = "WAIT" | "RUNNING" | "FINISHED";
+export interface RaceStage {
+  kind: RaceStageKind;
+  raceNo: number;
+  startedAt: number;       // 출발 시각(epoch ms) — 시뮬레이션 시드 · 경과 시간의 기준
+  bet: RaceBet | null;     // 이 경주에 내가 건 말(없으면 관람)
+  result: RaceResult | null; // FINISHED 일 때 그 경주의 결과
+  gateClosed: boolean;     // 출발 10초 전부터 true — 더는 걸 수 없다
+}
 
 export interface RaceResult {
   raceNo: number;
-  date: string;            // ISO
+  date: string;            // ISO — 출발 시각(RACE_TIMES 의 한 칸). 시드의 재료
   ranking: number[];       // horseId 순서대로 1위~7위
 }
 
@@ -624,6 +635,8 @@ Race #8 ~ #12 의 과거 결과(최신이 앞, `ranking` 7개 전체 저장, REC
 - events: `DAILY RACE`(매일 12:30 · 18:00 → /race), `ORDER STAMP`(상시, 주문 1회 쿠폰 1장 → /menu), `WELCOME TICKET`(첫 방문 쿠폰 5장 → /my). 화면에서 실제로 동작하지 않는 혜택(메뉴 할인 등)은 넣지 않는다.
 - 쿠폰 초기값: `UserProvider` 의 `INITIAL_COUPONS = 5`. 주문 적립은 `ORDER_COUPON_REWARD = 1`(`orderService.ts`), 레이스 보상은 `RACE_PAYOUT`(`race/_lib/payout.ts`) — 수량 조율은 이 상수들만 고친다.
 - 레이스 시각: `RACE_TIMES = ["12:30", "18:00"]` 처럼 배열로 두고 `lib/time.ts` 가 "지금 이후 가장 가까운 시각"을 계산한다(오늘 다 지났으면 내일 첫 경주). 카페가 서울에 있으므로 브라우저 시간대와 상관없이 **KST(UTC+9)** 기준이다. 메인 히어로 · Footer · `/event` 의 시각 문구도 모두 `formatRaceTimes()` 로 이 배열에서 만든다.
+  - 테스트 · 발표 때는 빌드 환경변수 `NEXT_PUBLIC_RACE_TIMES="12:30,18:00,15:20"` 로 바꾼다(형식이 틀리면 기본값). 경주는 이 시각에 **모든 사용자가 동시에** 출발하므로 실행 중에 사용자마다 바꾸는 기능은 두지 않는다(사용자 결정 2026-10-13).
+  - 출발 10초 전(`RACE_GATE_CLOSE_MS`)부터 마감 — 그 뒤 들어온 사람은 관람만 한다.
 - 경주 단계: 시작 10분 전(`RACE_SOON_MS`)부터 `SOON`, 시작 후 10분(`RACE_LIVE_MS`)은 `LIVE`, 나머지는 `UPCOMING`. LIVE 동안의 "다음 경주"는 그다음 경주(18:00 LIVE 면 내일 12:30).
 
 ---
@@ -662,7 +675,7 @@ export async function reserveSeat(id: string): Promise<{ ok: true }> {
 | `app/(site)/cart/_lib/orderService.ts` | `placeOrder(lines)` → `Order` | POST /api/orders (주문 내역 저장 · 쿠폰 적립은 서버가 처리) |
 | `app/(site)/event/_lib/eventService.ts` | `getEvents()` | GET /api/events |
 | `app/(site)/my/_lib/myService.ts` | `getProfile()` | GET /api/my/profile |
-| `lib/time.ts` | `getRaceSchedule(now)` · `getNextRaceTime(now)` · `getLiveRaceTime(now)` (순수 함수, 입력은 `RACE_TIMES`) | GET /api/races/next (응답의 경주 시각을 `RACE_TIMES` 대신 넣는다) |
+| `lib/time.ts` | `getRaceSchedule(now)` · `getNextRaceTime(now)` · `getLiveRaceTime(now)` · `getRaceStartsBetween(after, until)` (순수 함수, 입력은 `RACE_TIMES`) | GET /api/races/next (응답의 경주 시각을 `RACE_TIMES` 대신 넣는다) |
 
 - 메인(`/`)의 `_data/` 에는 히어로 슬라이드 문구(`heroSlides.ts`)만 둔다. 좌석 수·인기 메뉴 같은 대시보드 값은 위 Service 들을 import 해서 모은다.
 - 관리자 페이지(`/admin/*`)도 자기 `_data/` 가 없다. 메뉴·카테고리는 `app/(site)/menu/_lib/menuService.ts` 하나로만 읽고 쓴다.
@@ -716,10 +729,11 @@ interface UserState {
 - 데모는 참여 횟수 제한 없음("다시 하기"로 바로 다음 경주). 경주 시각당 1회 같은 제한은 위 조율 때 함께 정한다.
 - 좌석 상태는 `/seat` 페이지 State 로 충분하다(다른 페이지는 요약 숫자만 service 에서 읽는다).
 
-**레이스 진행 — `components/RaceProvider.tsx`(7단계, 사용자 결정)**: `CartProvider` 안쪽을 감싸고 `useRaceSession()` 으로 꺼낸다. 값은 `phase`(BETTING · READY · RUNNING · FINISHED) · `bet`(내가 건 `RaceBet`) · `ranking`(이번 경주 도착 순서, FINISHED 에서 확정) · `results`(이 세션에 끝난 경주, 9단계) · `runRef`(진행 중 시뮬레이션 `RaceRun`, ref) · `enterGate(bet)`(BETTING → READY) · `startRace(run)`(READY → RUNNING) · `finishRace(ranking)`(RUNNING → FINISHED). 전환 함수는 현재 단계를 ref 로 확인해 같은 틱에 두 번 불려도 한 번만 바뀐다.
+**레이스 진행 — `components/RaceProvider.tsx`(7단계, 사용자 결정 · 8단계에서 시간 기반으로 재구성)**: `CartProvider` 안쪽을 감싸고 `useRaceSession()` 으로 꺼낸다. 값은 `bets`(경주 번호 → 내가 건 `RaceBet`) · `results`(이 세션에서 끝까지 본 경주, 최신순) · `runRef`(진행 중 시뮬레이션 `RaceRun`, ref) · `placeBet(bet)`(그 경주에 아직 안 걸었으면 기록) · `recordResult(result)`(같은 번호가 없으면 맨 앞에 추가). 둘 다 ref 로 확인해 같은 틱에 두 번 불려도 한 번만 반영된다.
+- **단계는 Provider 에 없다.** WAIT · RUNNING · FINISHED 는 경주 시각(`lib/time`)과 1초 시계로 `useRace` 가 매초 계산한다(8.2 상태 머신). 그래서 모든 사용자가 같은 시각에 같은 단계가 된다.
 - 왜 루트인가: `/race` 는 Activity 로 최근 3개 경로까지만 State 가 남는다. 페이지 State 에 두면 쿠폰을 건 뒤 다른 페이지를 3곳 이상 다녀왔을 때 **쿠폰만 빠지고 내 선택이 사라진다**. 루트에 두면 어느 페이지를 다녀와도 남는다(새로고침하면 초기화 — 쿠폰과 같은 수준).
-- 쿠폰 차감 · 서비스 호출은 `race/_hooks/useRace.ts` 가 하고, Provider 는 단계 전환만 맡는다. 9단계의 결과도 여기에 둔다.
-- 8단계: 진행 중 시뮬레이션(`RaceRun` — 출발 시각 · 말마다 진행도)은 매 프레임 바뀌므로 State 가 아니라 **ref**(`runRef`)에 둔다. Context 소비자를 매 프레임 다시 그리지 않고, 페이지가 숨겨졌다 돌아오거나 다시 마운트돼도 여기서 이어 간다. 그리기용 스냅샷은 `useRaceRun` 의 로컬 State.
+- 쿠폰 차감 · 서비스 호출은 `race/_hooks/useRace.ts` 가 하고, Provider 는 값 보관만 맡는다. 9단계의 정산 여부도 여기에 둔다.
+- 진행 중 시뮬레이션(`RaceRun` — 출발 시각 · 난수 상태 · 말마다 진행도)은 매 프레임 바뀌므로 State 가 아니라 **ref**(`runRef`)에 둔다. Context 소비자를 매 프레임 다시 그리지 않고, 페이지가 숨겨졌다 돌아오거나 다시 마운트돼도 여기서 이어 간다(경주가 바뀌면 새로 만든다). 그리기용 스냅샷은 `useRaceRun` 의 로컬 State.
 
 **장바구니 — `components/CartProvider.tsx`**: `app/layout.tsx` 에서 `UserProvider` 안쪽을 감싸고 `useCart()` 로 꺼낸다(타입 `CartState`).
 - Header(총 수량), `/menu/[id]`(담기), `/cart`(목록·수량·삭제·합계)가 같은 값을 본다.
@@ -769,20 +783,23 @@ interface UserState {
 
 ### 8.2 `/race` — 핵심 ①
 
-#### 상태 머신 (상태: `components/RaceProvider.tsx` · 전환 로직: `app/(site)/race/_hooks/useRace.ts`)
+#### 상태 머신 (값: `components/RaceProvider.tsx` · 단계 계산: `app/(site)/race/_hooks/useRace.ts`)
+
+> **사용자 결정 2026-10-13**: 경주는 사용자가 버튼을 눌러 시작하는 것이 아니라 **경주 시각(`RACE_TIMES`)에 모든 사용자가 동시에 출발하고 동시에 끝난다.** 참여하지 못한 사람은 관람만 한다. 그래서 단계는 "내가 무엇을 했나"가 아니라 "지금이 몇 시인가 + 이 경주에 걸었나"로 정해진다. 7단계의 BETTING → READY → RUNNING → FINISHED 버튼 흐름과 [경주 시작] 버튼은 없앴다.
 
 ```
-BETTING ──(말 선택 + 모달 확인 + 쿠폰 1장 차감)──▶ READY
-READY   ──(START 버튼 / 3·2·1 카운트)──────────▶ RUNNING
-RUNNING ──(7마리 모두 결승 통과)─────────────────▶ FINISHED  → 쿠폰 정산 → Result Modal
-FINISHED ──(다시 하기)──────────────────────────▶ BETTING
+시각(KST)            T−10분       T−10초        T(출발)  T+3초 … 전원 도착 +1.5초        T+10분
+                      SOON         마감(gate)     3·2·1 → 경주                            LIVE 끝
+무대(stage)   없음 ─▶ WAIT ──────▶ WAIT(gateClosed) ─▶ RUNNING ─────▶ FINISHED(결과 기록) ─▶ 없음
+출전표        다음 경주 #N 에 걸 수 있음 ─────▶ 걸 수 없음(관람) ──────────────▶ 다음 경주 #N+1 에 걸 수 있음
 ```
 
-- 쿠폰은 7절 "쿠폰 규칙"을 따른다. 차감은 BETTING → READY 전환 때, 정산은 FINISHED 진입 때 **경주당 한 번만**(`raceNo` 로 이미 정산했는지 확인 — StrictMode 의 effect 재실행이나 페이지 재진입에도 두 번 지급되지 않게).
-- READY 이후에는 취소가 없다(건 쿠폰은 결과로만 돌아온다).
-
-> 프로토타입이므로 실제 18:00 를 기다리지 않는다. READY 에서 **"경주 시작" 버튼**(데모용)으로 즉시 출발할 수 있게 한다. 상단 카운트다운은 실제 다음 경주 시각을 계속 보여준다.
-> 8단계 구현: [경주 시작] 을 누르면 `startedAt = 지금 + 3초`(RACE_COUNTDOWN_MS)로 RUNNING 이 되고, 경과가 음수인 동안 3 · 2 · 1 → GO! 를 보여 준다. 7마리가 모두 들어오고 1.5초(FINISH_HOLD_MS) 뒤에 FINISHED.
+- **무대(`RaceStage`)**: LIVE 창(출발 뒤 10분)이고 그 경주 결과가 아직 없으면 RUNNING, 있으면 FINISHED. 그 밖에는 다음 경주를 기다리는 WAIT — 내가 걸었거나(READY 표시) SOON 이면 무대를 보여 주고, 아니면 무대 없이 출전표만. 쿠폰을 건 사람은 "응원", 안 건 사람은 "관람"으로 같은 화면을 본다.
+- **기록**: 이 세션에서 끝까지 본 경주(`results`) + **지나간 경주 자동 보충**(`backfillHistory` — Mock 기록의 마지막 경주 뒤부터 확실히 끝난(출발 + 19.5초) 출발 시각마다 결정적 시뮬레이션, 사용자 결정) + Mock 기록. 다음 경주 번호는 그 다음 번호라 누가 언제 들어와도 같다. 백엔드가 붙으면 서버 기록이 이 자리를 맡는다.
+- **같은 경주**: 시뮬레이션이 경주 번호 + 출발 시각으로 시드되고 20ms 고정 간격으로만 진행하므로(8.2 레이스 시뮬레이션) 어느 기기에서든 같은 순위 · 같은 시각에 끝난다. 늦게 들어오거나 탭이 뒤에 있다 돌아와도 그 시각까지 따라잡는다.
+- 쿠폰은 7절 "쿠폰 규칙"을 따른다. 차감은 걸 때(마감 전까지, 경주당 한 번), 정산은 FINISHED 때 **경주당 한 번만**(9단계 — `raceNo` 로 이미 정산했는지 확인). 건 뒤에는 취소가 없다(건 쿠폰은 결과로만 돌아온다).
+- 3 · 2 · 1 카운트다운은 출발 3초 전(RACE_COUNTDOWN_MS)부터, 7마리가 모두 들어오고 1.5초(FINISH_HOLD_MS) 뒤에 결과를 기록한다(FINISHED).
+- 실제 12:30 · 18:00 을 기다리지 않고 보려면 `NEXT_PUBLIC_RACE_TIMES` 로 시각을 바꿔 빌드한다(5.6). 개발 중 시뮬레이션 · 화면만 보려면 `/race/lab`.
 
 #### 화면 구성 (위→아래)
 
@@ -804,9 +821,16 @@ FINISHED ──(다시 하기)────────────────�
    ```
    - 최근 성적은 스크린리더용으로 "최근 경기부터 4위, 2위, 3위" 를 함께 둔다. 선택 버튼 이름은 "이 말 선택하기 — 3번 MOCHA".
    - 쿠폰 0장이면 버튼 7개 모두 비활성 + 출전표 위에 "쿠폰이 부족합니다 — 메뉴를 주문하면 1장 적립돼요 [메뉴 보러 가기 ›]".
+   - **마감(사용자 결정 2026-10-13)**: 출발 10초 전(`RACE_GATE_CLOSE_MS`)부터 경주가 끝날 때까지 버튼 7개 비활성 + "마감 — 출발 10초 전부터 경주가 끝날 때까지는 걸 수 없어요. 트랙에서 관람해 주세요." 끝나면 다음 경주(번호 +1) 출전표가 바로 열리고, 카드의 MY PICK 은 다음 경주에 건 말을 뜻한다. 걸고 나면 그 경주 카드는 버튼 없이 "출발 대기 중"(경주 중에는 "경주 중").
    - 모바일(1열)은 이미지 최대 폭 260px 로 카드 높이를 줄인다.
 3. **BetConfirmModal**: `RACE #13 · MY PICK` · 말 이미지 · `(3) 3번 MOCHA` · "MOCHA에 쿠폰 1장을 사용하시겠습니까?" + 보상 안내 + "4위 이하면 쿠폰은 돌아오지 않아요 · 보유 5장 → 4장" [취소] [사용하기](모바일 Bottom Sheet). [사용하기] → `placeBet(raceNo, horseId)` → `spendCoupon("RACE_BET", "Race #13 · 3번 MOCHA 참가")` → `enterGate(bet)` 로 READY. 처리 중에는 버튼 · 배경 닫기를 막고, ref 로 같은 틱의 두 번째 클릭도 막는다(쿠폰 1장만). 취소하면 아무것도 바뀌지 않는다. 다른 페이지로 가면(Activity) 열려 있던 확인창은 닫는다.
-3-1. **트랙 무대 머리띠 (READY 이후, `HorseTrack` 상단)**: 출전표 위 짙은 무대의 첫 줄 — READY: `READY · 게이트 입장 완료 [SOON]` · "Race #13 · 3번 MOCHA에 쿠폰 1장을 걸었어요" · 보상 요약 · [경주 시작] "누르면 3초 뒤 출발해요". RUNNING: `NOW RACING [● LIVE]` · "3번 MOCHA 응원 중" · "현재 N위". FINISHED: `FINISH · 경주 종료` · "N위로 들어왔어요" · "결과를 정리하고 있어요"(9단계 모달 자리). 걸고 나면 포커스를 이 제목으로 옮긴다(누른 카드 버튼이 사라지므로). 취소 버튼은 없다. (7단계의 ReadyPanel 을 8단계에서 이것으로 바꿨다.)
+3-1. **트랙 무대 머리띠 (`HorseTrack` 상단)**: 출전표 위 짙은 무대의 첫 줄 — 단계 × 참여 여부로 문구가 다르다. 버튼은 없다(출발은 시각이 정한다).
+   | 단계 | 걸었을 때 | 안 걸었을 때(관람) |
+   |---|---|---|
+   | WAIT | `READY · 게이트 입장 완료 [SOON]` · "Race #14 · 1번 THUNDER에 쿠폰 1장을 걸었어요" · "출발까지 00:00:25 · 1위 4장 …" | `SPECTATOR · 관람 대기 [SOON]` · "Race #14 · 출발까지 00:00:28" · "지금 말을 고르면 참여할 수 있어요 — 출발 10초 전 마감." / 마감 뒤: `SPECTATOR · 마감` · "곧 출발합니다" · "이번 경주는 관람만 할 수 있어요…" |
+   | RUNNING | `NOW RACING [● LIVE]` · "1번 THUNDER 응원 중" · "현재 N위" | `NOW RACING [● LIVE]` · "Race #14 · 관람 중" · "선두 5번 CARAMEL" |
+   | FINISHED | `FINISH · 경주 종료` · "1번 THUNDER 5위로 들어왔어요" · "아래에서 순위를 확인하세요." | `FINISH · 경주 종료` · "Race #14 · 1위 5번 CARAMEL" · "다음 경주 출전표가 열렸어요." |
+   걸고 나면 포커스를 이 제목으로 옮긴다(누른 카드 버튼이 사라지므로). 취소 버튼은 없다. (7단계의 ReadyPanel → 8단계 트랙 + [경주 시작] → 같은 날 시간 기반으로 바뀌며 버튼 제거.)
 4. **HorseTrack 경기 화면 (READY/RUNNING/FINISHED) — 사용자 결정 2026-10-13(아케이드 경마 레퍼런스 2장)**
    - **PixiJS v8(WebGL) 캔버스**(`_lib/trackScene.ts`)로 그린다. 머리띠 · HUD · 카운트다운 · 토스트는 DOM(접근성 · 디자인 토큰 · 반응형 유지). 렌더러 선택지(PixiJS · Three.js · 순수 WebGL) 중 2D 스프라이트에 코드가 가장 적은 PixiJS. `/race` 에서만 동적 import 하므로 다른 페이지 번들에는 들어가지 않는다. WebGL 을 만들 수 없으면 캔버스 자리에 안내 문구, 순위는 HUD 로 계속 본다.
    - **선두 추적 카메라**: 트랙 전체 길이는 화면 폭의 260%(`COURSE`). 선두는 화면의 66% 지점에 고정되고(출발 직후 24% → 66% 로 옮겨 가며 카메라가 붙는다) 나머지는 그 뒤에서 엎치락뒤치락. 잔디 · 울타리가 뒤로 흐르고(먼 울타리 0.75배 · 생울타리 0.5배 · 가까운 울타리 1.25배 시차) 막판에 결승선(체크무늬 띠 + FINISH 표지)이 오른쪽에서 들어온다. 선두가 결승을 지나면 카메라가 결승선에 멈추고 나머지가 들어온다. 통과한 말은 화면 밖까지 더 달려 나간다. 값은 시뮬레이션의 선두 ↔ 꼴찌 간격(p90 ≈ 0.21)이 화면 안에 들어오도록 잡았다.
@@ -815,7 +839,8 @@ FINISHED ──(다시 하기)────────────────�
    - **카운트다운**: [경주 시작] 뒤 3 · 2 · 1 · GO! 를 캔버스 위 가운데에(DOM).
    - `RaceEventMessage`: 캔버스 위 상단(생울타리 띠) 가운데에 1.5초 표시 후 fade-out. 동시에 여러 개 오면 큐로 순차 표시(최대 1개 노출), 3초 넘게 지난 메시지는 버린다.
    - 추가 에셋(사용자 요청 "필요한 이미지를 검색해서 알려 달라" · 유료 무료 무관): 잔디 · 생울타리 · 울타리는 2D 캔버스로 그린 타일 텍스처라 `trackScene.ts` 의 `turfTexture · hedgeTexture · railTexture` 만 바꾸면 이미지로 교체된다. 말 달리기 프레임은 기존 말에셋(AI 생성 치비)과 같은 스타일이어야 하므로 기성 팩보다 같은 도구로 생성하는 쪽을 권했다(12절 8단계 참고).
-5. **RaceResultModal (FINISHED)**
+4-1. **RaceResult — 경주 결과(트랙 무대와 출전표 사이, 사용자 요청 2026-10-13)**: 가장 최근에 끝난 경주의 1~7위. 머리 `RACE RESULT / Race #14 순위 · 10/13 18:00 출발` + 오른쪽 "내 말 1번 THUNDER · 5위 [NEXT TIME!]"(1~3위면 금색 [WIN!] [PLACE!] [SHOW!], 안 걸었으면 "이번 경주에는 참여하지 않았어요."). 칸 7개(PC 7열 · 태블릿 4열 · 모바일 1열 가로 줄): 순위 · 게이트 번호 배지 · 이름 · 한글 이름 · 1~3위 라벨, 1위 칸은 금색 테두리, 내 말 칸은 짙은 테두리 + MY PICK. 경주 중(RUNNING)에는 숨긴다. 쿠폰 정산 문구는 9단계에서 붙인다(사용자 결정: 지금은 순위만).
+5. **RaceResultModal (FINISHED, 9단계)** — 순위 표시는 4-1 결과 섹션이 맡으므로 모달은 정산 알림(돌려받은 쿠폰 · 보유 수 · confetti) 위주로 줄여도 된다.
    ```
    RACE RESULT
    🥇 3번 MOCHA   🥈 7번 COOKIE   🥉 1번 THUNDER
@@ -853,23 +878,26 @@ FINISHED ──(다시 하기)────────────────�
 
 #### 레이스 시뮬레이션 (`app/(site)/race/_lib/simulation.ts`)
 
-순수 함수로 작성하고 `useRaceRun` 이 rAF 루프에서 호출한다. 무작위는 `random` 인자로 주입한다(테스트 · 추후 서버 결과 재생 모드).
+순수 함수로 작성하고 `useRaceRun` 이 rAF 루프에서 호출한다. **결정적(deterministic)이다** — 난수는 경주 번호 + 출발 시각으로 시드한 mulberry32 이고 그 상태(`rng`)를 `run` 안에 들고 다니며, 시간은 `STEP_MS = 20` 고정 간격으로만 진행한다(프레임 길이와 무관). 같은 입력이면 어느 기기에서든 같은 경주가 나온다(사용자 결정 2026-10-13: 모두 같은 경주를 동시에).
 
 ```ts
 interface RunnerState {
   horseId: number; trait: HorseTrait;
   progress: number;        // 0 ~ 1 (1 = 결승). 통과 뒤에도 1.6 까지 더 늘어 화면 밖으로 달려 나간다
-  baseSpeed: number;       // 진행도/ms — 출발 때 무작위
+  prevProgress: number;    // 직전 스텝 — 스텝 사이는 그리기 쪽이 선형 보간
+  baseSpeed: number;       // 진행도/ms — 출발 때 시드 난수로
   drift: number;           // 완만한 속도 흔들림(0.95~1.05, 300ms 마다 랜덤워크) — 엎치락뒤치락의 바탕
   modifier: number; modifierUntil: number;  // 이벤트의 일시 배율(경과 ms 기준)
   spurted: boolean;        // 막판 스퍼트는 경주당 한 번
   finishedAt: number | null;
 }
-interface RaceRun { raceNo; startedAt /* epoch ms, 경과 0 = 출발 */; elapsed; runners; ranking; doneAt; … 메시지 스로틀 상태 }
+interface RaceRun { raceNo; startedAt /* epoch ms, 경과 0 = 출발 */; rng /* 난수 상태 */; elapsed; runners; ranking; doneAt; … 메시지 스로틀 상태 }
 
-createRace(horses, raceNo, startedAt, random): RaceRun
-step(run, dtMs ≤ 50, random, names): { run, events }        // 한 스텝 — 경과가 0 미만(카운트다운)이면 움직이지 않는다
-advanceTo(run, targetElapsedMs, random, names): { run, events }  // 50ms 단위로 targetElapsed 까지 따라잡는다
+seedFor(raceNo, startedAt): number                       // 32비트 시드
+createRace(horses, raceNo, startedAt): RaceRun
+step(run, names): { run, events }                        // 한 스텝(20ms) — 경과가 0 이하(카운트다운)면 움직이지 않는다
+advanceTo(run, targetElapsedMs, names): { run, events }  // 스텝을 넘지 않는 나머지는 남긴다(보간용)
+simulateRace(horses, raceNo, startedAt): { ranking, doneAt }  // 끝까지 — 지나간 경주 보충 · 테스트
 liveOrder(runners) · leaderProgress(runners)
 ```
 
@@ -893,11 +921,11 @@ liveOrder(runners) · leaderProgress(runners)
 5. **순위 기록**: `progress >= 1` 이 되는 스텝에 `finishedAt` 기록 → 도착 순서대로 `ranking` push(같은 스텝에 둘 이상이면 더 멀리 간 말이 먼저). 7마리 모두 도착하면 `doneAt`, 1.5초 뒤 FINISHED.
 6. **안전장치**: 18초가 지나도 도착하지 못한 말은 남은 진행도 순으로 강제 마감.
 
-**결과(2026-10-13, 4,000회)**: 7마리 완주 11.2~14.9초(중앙값 12.7초, 강제 마감 0회) · 선두 첫 도착 9.2~12.1초 · 우승률 12.5~16.0%(가장 높은 추입형 MOCHA 16%) · 경주당 선두 교체 2.4회 · 메시지 5.8개 · 선두 ↔ 꼴찌 최대 간격 p50 0.15 · p90 0.21 · p99 0.26.
+**결과(2026-10-13, 시드 버전 3,000회)**: 7마리 완주 11.5~15.4초(중앙값 12.7초, 강제 마감 0회) · 선두 첫 도착 9.3~12.2초 · 우승률 11.4~17.4%(가장 높은 추입형 MOCHA) · 경주당 선두 교체 2.4회 · 메시지 5.8개 · 선두 ↔ 꼴찌 최대 간격 p50 0.15 · p90 0.21 · p99 0.25. **결정성**: 같은 시드를 한 번에 · 프레임처럼 잘게(16.7 · 33 · 250 · 1200ms 섞어) · 큰 덩어리로 따라잡아도 순위 · 도착 시각이 300/300 일치. 지나간 경주 40개 보충에 25ms.
 
 **렌더링(8단계 구현 — 사용자 결정으로 지시서의 "위치는 React State 관리"에서 벗어남)**
-- 경기 화면은 PixiJS 캔버스. `useRaceRun` 의 rAF 콜백이 매 프레임 `advanceTo(run, Date.now() − startedAt)` 로 시뮬레이션을 진행시키고 `scene.update(프레임)` 로 캔버스를 직접 갱신한다. React State(HUD 순위 · 남은 거리 · 카운트다운 · 토스트)는 **순위 · 토스트가 바뀌거나 100ms 마다**만 갱신한다(DOM 을 60fps 로 다시 그리지 않게).
-- 진행도는 프레임 누적이 아니라 **출발 시각 기준 경과 시간**이다. Cache Components 가 `/race` 를 `<Activity>` 로 숨기면 effect cleanup 으로 rAF 와 캔버스가 정리되고, 돌아오면 effect 가 다시 돌며 `runRef` 의 상태를 그 시각까지 50ms 단위로 따라잡는다 — "다른 페이지에 갔다 돌아와도 경주가 이어진다"(검증: 3초 떠난 사이 496m → 130m). 탭이 뒤로 가도 같다.
+- 경기 화면은 PixiJS 캔버스. 무대가 WAIT · RUNNING 인 동안 `useRaceRun` 이 루프를 돈다 — 출발 3초 전까지는 타이머로 기다리고(관람 대기), 그 뒤 rAF 콜백이 매 프레임 `advanceTo(run, Date.now() − startedAt)` 로 시뮬레이션을 진행시키고 `scene.update(프레임)` 로 캔버스를 직접 갱신한다(20ms 스텝 사이는 `prevProgress` 와 선형 보간). React State(HUD 순위 · 남은 거리 · 카운트다운 · 토스트)는 **순위 · 토스트가 바뀌거나 100ms 마다**만 갱신한다(DOM 을 60fps 로 다시 그리지 않게).
+- 진행도는 프레임 누적이 아니라 **출발 시각 기준 경과 시간**이다. Cache Components 가 `/race` 를 `<Activity>` 로 숨기면 effect cleanup 으로 rAF 와 캔버스가 정리되고, 돌아오면 effect 가 다시 돌며 `runRef` 의 상태를 그 시각까지 따라잡는다 — "다른 페이지에 갔다 돌아와도 경주가 이어진다"(검증: 3초 떠난 사이 571m → 227m). 탭이 뒤에 있어 rAF 가 멈춰도 같다. 그 사이 경주가 끝나 버리면(백그라운드 탭 · 늦은 입장) 자동 보충된 결과로 FINISHED 무대(`finishedFrame`)를 그린다 — 끝까지 본 스냅샷(`doneAt`)이 있을 때만 그 스냅샷을 쓴다.
 - 캔버스는 보일 때마다 만들고(텍스처는 `Assets` 캐시) 숨겨지면 `destroy`. StrictMode 의 effect 재실행은 `cancelled` 플래그로 처리.
 - 언마운트 / 페이지 이탈 시 `cancelAnimationFrame` · 장면 `destroy` 필수.
 
@@ -1180,7 +1208,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 - `lib/` 에 `API_BASE = process.env.NEXT_PUBLIC_API_BASE` 와 공용 fetch 헬퍼(`lib/api.ts`)를 추가하고, 각 라우트의 `*Service.ts` 가 그것을 쓰도록 교체한다. 교체가 끝나면 `_data/` 폴더는 지운다.
 - 좌석 실시간 반영은 처음엔 polling(`setInterval` 로 `getSeats()` 재호출) → 이후 WebSocket/SSE 로 확장. 컴포넌트는 `seats` 배열만 받으므로 바뀌지 않는다.
-- 레이스 결과는 최종적으로 서버가 결정해야 한다(클라이언트 랜덤은 데모용). 그때는 서버가 `ranking` + 이벤트 타임라인을 내려주고, 프론트는 그것을 **재생**만 하도록 `simulation.ts` 를 "결과 지정 모드"로 확장한다. 지금부터 `useRace` 가 시뮬레이터를 주입받는 구조로 만들어 두면 교체가 쉽다.
+- 레이스 결과는 최종적으로 서버가 결정해야 한다. 지금은 경주 번호 + 출발 시각으로 시드한 결정적 시뮬레이션이라 모든 클라이언트가 같은 결과를 내지만, 서버가 붙으면 (1) 서버가 경주마다 시드(또는 `ranking` + 이벤트 타임라인)를 내려주고 프론트는 그것을 **재생**하며, (2) 지나간 경주 자동 보충(`backfillHistory`)은 `GET /api/races/history` 로 대체한다. 시계 어긋남이 문제가 되면 서버 시각을 한 번 받아 보정한다.
 - 쿠폰 차감·정산도 그때 서버로 옮긴다. `placeBet` 이 서버에서 1장을 빼고, 결과 확정 시 서버가 `RACE_PAYOUT` 만큼 돌려준 뒤, 프론트는 `UserProvider` 를 서버 값으로 다시 불러온다. 참여 횟수 제한(경주 시각당 1회 등)을 두기로 하면 그것도 서버에서 건다.
 
 ---
@@ -1472,6 +1500,26 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] 경주 중 추월이 눈에 보이고 이벤트 메시지가 1~2초 보였다 사라진다 — 경주당 선두 교체 2.4회, 브라우저에서 토스트 "🔥 COOKIE가 속도를 올립니다!" · "🏁 THUNDER와 ESPRESSO의 치열한 선두 경쟁!" 확인
 - [x] 다른 페이지에 갔다 돌아와도 경주가 이어진다 — 경주 중 HOME 으로 갔다 3초 뒤 RACE 로 복귀: 남은 거리 496m → 130m, 캔버스 다시 생성
 - [x] `npm run build`(`/race` 정적) · `npm run lint` · `tsc` 통과, 콘솔 오류 · 경고 0 · headless Chrome(SwiftShader WebGL) 1440 · 390 에서 READY · 카운트다운 · RUNNING · FINISHED 확인
+
+**추가 — 경기 후 순위 표시 · 경주 시각 동시 출발 · 관람(사용자 요청 2026-10-13 저녁)**
+
+사용자 결정: 지나간 경주는 결정적 시뮬레이션으로 자동 기록(누가 언제 들어와도 번호 · 최근 성적이 같게) / 결과 섹션은 순위만(쿠폰 정산 · 내 레이스 기록은 9단계 그대로).
+
+- [x] `lib/time.ts` — `NEXT_PUBLIC_RACE_TIMES` 환경변수 · `RACE_GATE_CLOSE_MS`(10초) · `getRaceStartsBetween`
+- [x] `_lib/simulation.ts` — 시드 난수(mulberry32, `seedFor`) · 20ms 고정 스텝 · `prevProgress` 보간 · `simulateRace` · `RACE_SETTLE_MS`
+- [x] `_lib/records.ts` — `backfillHistory`(최근 40경주까지 시뮬레이션, 그보다 오래된 번호는 건너뜀) · `mergeHistory` · `formatRaceDate` · `rankLabel`
+- [x] `components/RaceProvider.tsx` — `bets`(경주 번호별) · `results` · `placeBet` · `recordResult` · `runRef`. 단계 · [경주 시작] 제거
+- [x] `useRace` — 1초 시계로 `RaceStage`(WAIT · RUNNING · FINISHED) 계산, 마감 · 쿠폰 부족 잠금(`lock`), 지나간 경주 보충(확실히 끝난 마지막 출발 시각이 바뀔 때만 다시 계산) / `useRaceRun` — 출발 3초 전까지 타이머 대기 → rAF, 경주가 바뀌면 run 새로, 끝나면 `recordResult`
+- [x] `HorseTrack` — 머리띠 문구 표(8.2 화면 구성 3-1), 버튼 없음, 끝까지 본 스냅샷이 없으면 확정 순위로 결승 장면
+- [x] `RaceResult.tsx` — 최근 경주 1~7위(트랙과 출전표 사이), 내 말 MY PICK · WIN/PLACE/SHOW · 경주 중에는 숨김
+- [x] `RaceBoard` — 마감 안내 · 버튼 잠금 · 다음 경주 번호 · 건 카드 문구
+- [x] `/race/lab`(실험실 — 팀원 작성) 호출부를 바뀐 API(시드 내장 · 고정 스텝)에 맞춤: 시드 입력을 가짜 출발 시각(분)으로
+
+**완료 확인**
+- [x] 두 탭(참여자 A · 관람자 B)의 시계를 17:59:30 으로 맞춰 실행: 들어오자마자 지나간 12:30 경주가 "Race #13 순위"로 보충돼 있고 출전표는 #14 · 17:59:50 마감 뒤 B 의 버튼 7개 비활성("DISABLED") · 18:00 에 두 탭 모두 NOW RACING(같은 순위 진행) · 18:00:20 쯤 두 탭 모두 FINISH, **결과 섹션의 1~7위가 두 탭에서 같음**(5 · 2 · 6 · 7 · 1 · 4 · 3) · 끝나면 출전표가 #15 로 바뀌고 버튼이 다시 열림 · 콘솔 오류 0
+- [x] 백그라운드 탭(rAF 정지)은 경주가 끝난 뒤 자동 보충 결과로 FINISHED 무대 · 결과 섹션을 보여 준다(처음에는 멈춘 프레임의 순위를 머리띠 · HUD 에 썼던 문제를 고침)
+- [x] 순수 함수: 시드 결정성 300/300 · 시드가 다르면 다른 경주 · 보충 40경주 25ms
+- [ ] (9단계) 결과 섹션에 쿠폰 정산 문구 · 내 레이스 기록
 
 ---
 

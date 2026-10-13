@@ -4,13 +4,29 @@
 // 카페가 서울에 있으므로 경주 시각은 브라우저 시간대와 상관없이 한국 시간(KST, UTC+9 · 서머타임 없음) 기준이다.
 // 백엔드 연결 시 getRaceSchedule 의 입력(RACE_TIMES)을 GET /api/races/next 결과로 바꾼다.
 
-/** 매일 열리는 경주 시각(KST, "HH:MM", 이른 순) */
-export const RACE_TIMES = ["12:30", "18:00"] as const;
+const DEFAULT_RACE_TIMES = ["12:30", "18:00"];
+
+/** "12:30,18:00" 같은 문자열 → 검증 · 정렬된 시각 목록. 형식이 하나라도 틀리면 null(기본값 사용) */
+function parseRaceTimes(value: string | undefined): string[] | null {
+  if (!value) return null;
+  const times = value.split(",").map((t) => t.trim()).filter(Boolean);
+  if (times.length === 0 || !times.every((t) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(t))) return null;
+  return [...new Set(times.map((t) => t.padStart(5, "0")))].sort();
+}
+
+/**
+ * 매일 열리는 경주 시각(KST, "HH:MM", 이른 순).
+ * 테스트 · 발표 때는 빌드 환경변수 NEXT_PUBLIC_RACE_TIMES="12:30,18:00,15:20" 로 바꾼다(메인 · Header · Footer · /race 모두 따라간다).
+ * 모든 사용자가 같은 시각에 같은 경주를 보므로(사용자 결정 2026-10-13) 실행 중에 사용자마다 바꾸는 기능은 두지 않는다.
+ */
+export const RACE_TIMES: readonly string[] = parseRaceTimes(process.env.NEXT_PUBLIC_RACE_TIMES) ?? DEFAULT_RACE_TIMES;
 
 /** 시작 전 이만큼은 SOON(곧 출발) */
 export const RACE_SOON_MS = 10 * 60 * 1000;
 /** 시작 후 이만큼은 LIVE(경주 중) */
 export const RACE_LIVE_MS = 10 * 60 * 1000;
+/** 출발 전 이만큼은 쿠폰을 걸 수 없다(게이트 마감) — 그 뒤 들어온 사람은 관람만 */
+export const RACE_GATE_CLOSE_MS = 10 * 1000;
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
@@ -68,6 +84,19 @@ export function getNextRaceTime(now: number): RaceSlot {
 /** 시작 후 RACE_LIVE_MS 안에 있는 경주, 없으면 null */
 export function getLiveRaceTime(now: number): RaceSlot | null {
   return slotsAround(now).find((s) => s.at <= now && now < s.at + RACE_LIVE_MS) ?? null;
+}
+
+/** afterMs 뒤 ~ untilMs 까지(둘 다 epoch ms, after 제외 · until 포함)의 경주 출발 시각을 이른 순으로 — 지나간 경주 기록 보충용 */
+export function getRaceStartsBetween(afterMs: number, untilMs: number): number[] {
+  if (!(untilMs > afterMs)) return [];
+  const starts: number[] = [];
+  for (let day = kstMidnight(afterMs); day <= untilMs; day += DAY) {
+    for (const time of RACE_TIMES) {
+      const at = day + minutesOf(time) * MINUTE;
+      if (at > afterMs && at <= untilMs) starts.push(at);
+    }
+  }
+  return starts;
 }
 
 export function getRaceSchedule(now: number): RaceSchedule {

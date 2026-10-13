@@ -7,7 +7,7 @@ import { HORSES } from "../_data/horses";
 import { lineupFrame, type RaceFrame } from "../_hooks/useRace";
 import { messageFor } from "../_lib/messages";
 import { TRAIT_LABEL, textOn } from "../_lib/records";
-import { advanceTo, BASE_FINISH_MS, createRace, leaderProgress, liveOrder, RACE_MAX_MS, step } from "../_lib/simulation";
+import { advanceTo, BASE_FINISH_MS, createRace, leaderProgress, liveOrder, RACE_MAX_MS, step, STEP_MS } from "../_lib/simulation";
 import { cameraFor, COURSE, TrackScene, type SceneHorse } from "../_lib/trackScene";
 import type { RaceEventMessage as Message, RaceEventType, RaceRun } from "../_types";
 import styles from "./lab.module.css";
@@ -16,8 +16,9 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const COUNTDOWN_MS = 3000;
 const TOAST_MS = 1500;
 const UI_INTERVAL_MS = 100;
-const STEP_MS = 50;
 const NAMES = (id: number) => HORSES.find((h) => h.id === id)?.name.toUpperCase() ?? String(id);
+/** 실험실의 "시드" 는 가짜 출발 시각(분)으로 넣는다 — simulation.ts 가 경주 번호 + 출발 시각으로 시드를 만들기 때문 */
+const seedRace = (seed: number) => createRace(HORSES, 1, seed * 60000);
 
 /** simulation.ts 의 EVENT_EFFECT 와 같은 값 — 강제 발생 버튼용 */
 const FORCE = {
@@ -28,18 +29,6 @@ const FORCE = {
 } as const;
 type ForceType = keyof typeof FORCE;
 const FORCE_TYPES = Object.keys(FORCE) as ForceType[];
-
-/** 시드 고정 난수(mulberry32) — 같은 시드면 같은 경주가 나와 되감기 · 비교가 된다 */
-function seeded(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function toFrame(run: RaceRun): RaceFrame {
   return {
@@ -73,9 +62,8 @@ export default function RaceLab() {
   const [myId, setMyId] = useState(3);
   const [playing, setPlaying] = useState(false);
 
-  // 시뮬레이션 상태는 매 프레임 바뀌므로 ref, 화면용 스냅샷은 100ms 마다
+  // 시뮬레이션 상태(난수 상태 포함)는 매 프레임 바뀌므로 ref, 화면용 스냅샷은 100ms 마다
   const runRef = useRef<RaceRun | null>(null);
-  const rngRef = useRef<() => number>(Math.random);
   const logRef = useRef<Message[]>([]);
   const playingRef = useRef(false);
   const speedRef = useRef(speed);
@@ -111,9 +99,7 @@ export default function RaceLab() {
   /** 처음부터 다시 — 같은 시드면 같은 경주 */
   const restart = useCallback(
     (autoplay: boolean) => {
-      const rng = seeded(seed);
-      rngRef.current = rng;
-      const created = createRace(HORSES, 1, 0, rng);
+      const created = seedRace(seed);
       runRef.current = { ...created, elapsed: withCountdown ? -COUNTDOWN_MS : 0 };
       logRef.current = [];
       setPlay(autoplay);
@@ -126,11 +112,9 @@ export default function RaceLab() {
   /** 시각 t(ms)로 이동 — 같은 시드로 처음부터 다시 계산한다(강제 발생시킨 이벤트는 반영되지 않는다) */
   const seekTo = useCallback(
     (t: number) => {
-      const rng = seeded(seed);
-      rngRef.current = rng;
-      const created = createRace(HORSES, 1, 0, rng);
+      const created = seedRace(seed);
       const start = { ...created, elapsed: withCountdown ? -COUNTDOWN_MS : 0 };
-      const { run, events } = advanceTo(start, t, rng, NAMES);
+      const { run, events } = advanceTo(start, t, NAMES);
       runRef.current = run;
       logRef.current = events;
       setPlay(false);
@@ -144,7 +128,7 @@ export default function RaceLab() {
     if (!runRef.current) restart(false);
     const run = runRef.current;
     if (!run) return;
-    const result = step(run, STEP_MS, rngRef.current, NAMES);
+    const result = step(run, NAMES);
     runRef.current = result.run;
     logRef.current = [...logRef.current, ...result.events];
     setPlay(false);
@@ -217,7 +201,7 @@ export default function RaceLab() {
       const run = runRef.current;
       if (playingRef.current && run) {
         const target = run.elapsed + dt * speedRef.current;
-        const { run: next, events } = advanceTo(run, target, rngRef.current, NAMES);
+        const { run: next, events } = advanceTo(run, target, NAMES);
         runRef.current = next;
         if (events.length) logRef.current = [...logRef.current, ...events];
         sceneRef.current?.update(toFrame(next));
