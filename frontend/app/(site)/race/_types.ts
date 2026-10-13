@@ -5,7 +5,7 @@
 export type HorseTrait = "FAST_START" | "STEADY" | "LATE_SPURT" | "WILDCARD" | "BALANCED";
 
 export interface Horse {
-  id: number; // 1~7 (= 게이트 번호)
+  id: number; // 1~7 — 말 식별자. 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매긴다(Gates, records.gatesFor)
   name: string; // "Mocha" — 화면에는 대문자로
   nameKo: string; // "모카"
   color: string; // 대표색 hex = 이미지의 번호 조끼 색 — 번호 배지 · 내 말 레인 강조
@@ -16,6 +16,12 @@ export interface Horse {
   description: string; // "막판 스퍼트가 강한 말"
 }
 // 최근 성적은 말 데이터에 두지 않고 경주 기록(RaceResult)에서 계산한다 — _lib/records.ts
+
+/**
+ * 한 경주의 게이트 표 — 말 id → 그 경주의 게이트 번호(1~7). BLUEPRINT 8.2 "게이트 번호 규칙"(팀 협의 2026-10-13):
+ * 지난 경주에 들어온 순서대로 1번부터. 화면 표시 전용이다 — 시뮬레이션에 넘기는 말 순서(말 id 순)와는 상관없다.
+ */
+export type Gates = Readonly<Record<number, number>>;
 
 // ---- Race ----
 export interface RaceResult {
@@ -76,7 +82,7 @@ export interface RaceRun {
   startedAt: number; // epoch ms — 경과 0(출발) 이 되는 순간. 카운트다운 동안은 경과가 음수
   rng: number; // 시드 난수 상태(mulberry32) — raceNo · startedAt 에서 만들어 모든 사용자가 같은 경주를 본다
   elapsed: number; // 시뮬레이션이 반영한 경과 ms(STEP_MS 의 배수)
-  runners: RunnerState[]; // 게이트 번호 순
+  runners: RunnerState[]; // 받은 말 배열 순서(말 id 순) — 난수를 이 순서로 쓰므로 바꾸면 순위가 달라진다. 게이트 번호와 무관
   ranking: number[]; // 도착 순서(horseId) — 7마리 모두 들어오면 완성
   doneAt: number | null; // 마지막 말이 들어온 경과 ms
   // 이벤트 · 메시지 상태

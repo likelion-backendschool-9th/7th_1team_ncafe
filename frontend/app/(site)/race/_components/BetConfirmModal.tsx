@@ -10,6 +10,7 @@ import styles from "./race.module.css";
 
 interface BetConfirmModalProps {
   horse: Horse | null; // null 이면 닫힘
+  gate: number; // 이번 경주의 게이트 번호
   raceNo: number;
   coupons: number;
   busy: boolean;
@@ -19,7 +20,7 @@ interface BetConfirmModalProps {
 }
 
 /** "MOCHA에 쿠폰 1장을 사용하시겠습니까?" + 보상 안내 + 4위 이하 안내 — [취소] [사용하기] */
-export default function BetConfirmModal({ horse, raceNo, coupons, busy, error, onCancel, onConfirm }: BetConfirmModalProps) {
+export default function BetConfirmModal({ horse, gate, raceNo, coupons, busy, error, onCancel, onConfirm }: BetConfirmModalProps) {
   const name = horse?.name.toUpperCase() ?? "";
 
   return (
@@ -30,8 +31,8 @@ export default function BetConfirmModal({ horse, raceNo, coupons, busy, error, o
           <div className={styles.confirmHorse}>
             <Image src={horse.image} alt="" width={168} height={120} />
             <span className={styles.confirmHorseName}>
-              <GateBadge horse={horse} size="sm" />
-              {horse.id}번 {name}
+              <GateBadge horse={horse} gate={gate} size="sm" />
+              {gate}번 {name}
             </span>
           </div>
           <h2 className={styles.confirmTitle}>

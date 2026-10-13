@@ -1,7 +1,7 @@
 // 경주 기록 · 표시용 순수 함수.
 import { getRaceStartsBetween } from "@/lib/time";
-import type { Horse, HorseTrait, RaceResult } from "../_types";
-import { RACE_SETTLE_MS, simulateRace } from "./simulation";
+import type { Gates, Horse, HorseTrait, RaceResult } from "../_types";
+import { RACE_SETTLE_MS, seededShuffle, seedFor, simulateRace } from "./simulation";
 
 /** 다음 경주 번호 — 기록의 가장 큰 번호 + 1 (기록이 없으면 1) */
 export function nextRaceNo(history: RaceResult[]): number {
@@ -53,6 +53,33 @@ export function mergeHistory(...sources: RaceResult[][]): RaceResult[] {
     }
   }
   return merged.sort((a, b) => b.raceNo - a.raceNo);
+}
+
+/**
+ * 경주 raceNo 의 게이트 번호(BLUEPRINT 8.2 "게이트 번호 규칙", 팀 협의 2026-10-13) — 지난 경주(raceNo − 1)에 들어온 순서대로 1번부터.
+ * 지난 경주 기록이 없으면 경주 번호로 시드한 무작위 순서(사용자 결정 2026-10-13 — 모두에게 같고, 렌더 · 페이지 이동에도 바뀌지 않으며,
+ * 렌더 중 Math.random 이 없어 정적 셸과 하이드레이션이 맞는다). 지난 경주에 없던 말은 그 뒤에 id 순으로 붙인다.
+ * 한 경주의 번호는 지난 경주 결과로만 정해지므로 그 경주가 끝난 뒤에도 같다(결과 · 지난 경주 기록에 "그 경주 당시 번호"를 그린다).
+ */
+export function gatesFor(raceNo: number, history: RaceResult[], horses: Horse[]): Gates {
+  const prev = history.find((r) => r.raceNo === raceNo - 1);
+  return gatesAfter(prev?.ranking ?? null, horses, seedFor(raceNo, 0));
+}
+
+/**
+ * 도착 순서(말 id, 1위부터) → 그다음 경주의 게이트 표. 도착 순서가 없으면 seed 로 섞은 순서.
+ * gatesFor(실제 경주) · /race/lab(직전 실험 경주)이 함께 쓴다.
+ */
+export function gatesAfter(ranking: number[] | null, horses: Horse[], seed: number): Gates {
+  const ids = horses.map((h) => h.id);
+  const order = ranking ? ranking.filter((id) => ids.includes(id)) : seededShuffle(ids, seed);
+  for (const id of ids) if (!order.includes(id)) order.push(id);
+  return Object.fromEntries(order.map((id, i) => [id, i + 1]));
+}
+
+/** 게이트 번호 순(1번부터)으로 정렬한 새 배열 — 출전표 카드 · 트랙 줄. 시뮬레이션에는 넘기지 않는다(말 id 순 그대로) */
+export function byGate(horses: Horse[], gates: Gates): Horse[] {
+  return [...horses].sort((a, b) => gates[a.id] - gates[b.id]);
 }
 
 /** 순위 → 경마 용어(1 · 2 · 3착) */

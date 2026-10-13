@@ -7,13 +7,14 @@ import Modal from "@/components/Modal";
 import type { RaceEntry } from "@/types/common";
 import { payoutBreakdown, RACE_ENTRY_COUPONS } from "../_lib/payout";
 import { rankLabel } from "../_lib/records";
-import type { Horse, RaceResult } from "../_types";
+import type { Gates, Horse, RaceResult } from "../_types";
 import GateBadge from "./GateBadge";
 import styles from "./race.module.css";
 
 interface RaceResultModalProps {
   entry: RaceEntry | null; // 정산된 내 경주 — null 이면 닫힘
   result: RaceResult | null; // 그 경주의 순위(1~3위 줄)
+  gates: Gates; // 그 경주 당시 게이트 번호
   horses: Horse[];
   coupons: number; // 정산 뒤 보유 수
   onClose: () => void;
@@ -25,7 +26,7 @@ interface RaceResultModalProps {
  * YOUR HORSE 순위 · WIN!/PLACE!/SHOW!/NEXT TIME! + 돌려받은 쿠폰(원금 + 추가) · 보유 수 + 1~3위 한 줄. 1~3위면 confetti.
  * 1~7위 전체는 트랙 아래 결과 섹션이 보여 준다. 관람만 한 경주에는 뜨지 않는다(사용자 결정 2026-10-13).
  */
-export default function RaceResultModal({ entry, result, horses, coupons, onClose, onNext }: RaceResultModalProps) {
+export default function RaceResultModal({ entry, result, gates, horses, coupons, onClose, onNext }: RaceResultModalProps) {
   const byId = (id: number) => horses.find((h) => h.id === id) ?? null;
   const horse = entry ? byId(entry.horseId) : null;
   const rank = entry?.rank ?? 0;
@@ -43,7 +44,7 @@ export default function RaceResultModal({ entry, result, horses, coupons, onClos
             <Image src={horse.image} alt="" width={168} height={120} />
             <span className={styles.settleLabel}>YOUR HORSE</span>
             <span className={styles.confirmHorseName}>
-              <GateBadge horse={horse} size="sm" />
+              <GateBadge horse={horse} gate={entry.gate} size="sm" />
               {entry.gate}번 {name}
             </span>
           </div>
@@ -67,7 +68,7 @@ export default function RaceResultModal({ entry, result, horses, coupons, onClos
                 return (
                   <li key={id} className={id === entry.horseId ? styles.podiumMine : undefined}>
                     <span className={styles.podiumRank}>{i + 1}위</span>
-                    <GateBadge horse={h} size="sm" />
+                    <GateBadge horse={h} gate={gates[id]} size="sm" />
                     {h.name.toUpperCase()}
                   </li>
                 );

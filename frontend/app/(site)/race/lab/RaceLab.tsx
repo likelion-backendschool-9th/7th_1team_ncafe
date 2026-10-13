@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RaceEventMessage from "../_components/RaceEventMessage";
 import raceStyles from "../_components/race.module.css";
 import { HORSES } from "../_data/horses";
-import { lineupFrame, type RaceFrame } from "../_hooks/useRace";
+import { lineupFrame, toFrame } from "../_hooks/useRace";
 import { messageFor } from "../_lib/messages";
-import { TRAIT_LABEL, textOn } from "../_lib/records";
-import { advanceTo, BASE_FINISH_MS, createRace, leaderProgress, liveOrder, RACE_MAX_MS, step, STEP_MS } from "../_lib/simulation";
+import { byGate, gatesAfter, TRAIT_LABEL, textOn } from "../_lib/records";
+import { advanceTo, BASE_FINISH_MS, createRace, RACE_MAX_MS, seedFor, step, STEP_MS } from "../_lib/simulation";
 import { cameraFor, COURSE, TrackScene, type SceneHorse } from "../_lib/trackScene";
-import type { RaceEventMessage as Message, RaceEventType, RaceRun } from "../_types";
+import type { Gates, RaceEventMessage as Message, RaceEventType, RaceRun } from "../_types";
 import styles from "./lab.module.css";
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
@@ -19,6 +19,12 @@ const UI_INTERVAL_MS = 100;
 const NAMES = (id: number) => HORSES.find((h) => h.id === id)?.name.toUpperCase() ?? String(id);
 /** 실험실의 "시드" 는 가짜 출발 시각(분)으로 넣는다 — simulation.ts 가 경주 번호 + 출발 시각으로 시드를 만들기 때문 */
 const seedRace = (seed: number) => createRace(HORSES, 1, seed * 60000);
+/**
+ * 실험 경주의 게이트 번호(BLUEPRINT 8.2 "게이트 번호 규칙"을 실험실 안에서 재현 — 사용자 결정 2026-10-13):
+ * 직전 실험 경주(끝까지 돌렸거나 결과까지 건너뛴 경주)의 도착 순서대로 1번부터, 없으면 그 시드로 섞은 순서.
+ * 시뮬레이션에는 늘 말 id 순(HORSES)으로 넘기므로 같은 시드면 번호와 상관없이 같은 경주다.
+ */
+const labGates = (lastRanking: number[] | null, seed: number): Gates => gatesAfter(lastRanking, HORSES, seedFor(1, seed * 60000));
 
 /** simulation.ts 의 EVENT_EFFECT 와 같은 값 — 강제 발생 버튼용 */
 const FORCE = {
@@ -30,26 +36,20 @@ const FORCE = {
 type ForceType = keyof typeof FORCE;
 const FORCE_TYPES = Object.keys(FORCE) as ForceType[];
 
-function toFrame(run: RaceRun): RaceFrame {
-  return {
-    elapsed: run.elapsed,
-    leader: leaderProgress(run.runners),
-    runners: run.runners.map((r) => ({ horseId: r.horseId, progress: r.progress, finishedAt: r.finishedAt })),
-    running: run.elapsed >= 0 && run.doneAt === null,
-    order: liveOrder(run.runners),
-    doneAt: run.doneAt,
-  };
-}
-
 interface Snapshot {
   run: RaceRun | null;
+  clock: number; // 그 순간의 가상 시계(ms) — 스텝 사이 보간용
   log: Message[];
   toast: Message | null;
 }
 
 /**
  * 경주 실험실 — RaceProvider · 쿠폰 없이 simulation.ts + TrackScene 을 직접 돌린다.
- * 실제 /race 의 Date.now 기준 시계 대신 "실제 경과 × 배속"의 가상 시계를 쓰므로 느리게 · 빠르게 · 한 스텝씩 · 되감기가 된다.
+ * 실제 /race 의 Date.now 기준 시계 대신 "실제 경과 × 배속"의 가상 시계(clockRef)를 쓰므로 느리게 · 빠르게 · 한 스텝씩 · 되감기가 된다.
+ * 가상 시계는 소수점까지 따로 쌓고 시뮬레이션은 그 시각까지 STEP_MS 단위로 따라잡는다 — run.elapsed(스텝 배수)에 프레임 시간을
+ * 더해 목표로 삼으면 스텝보다 짧은 나머지가 매 프레임 버려져 배속이 틀어지고, 60Hz 화면의 ×1 · ×0.5 는 아예 멈춘다.
+ * 그리기는 /race 와 같은 toFrame 으로 스텝 사이를 보간한다(×0.25 슬로모션도 부드럽게).
+ * 게이트 번호는 경주를 시작할 때 정하고(labGates) 그 경주 동안은 바뀌지 않는다 — 되감아도 같은 번호.
  */
 export default function RaceLab() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -62,16 +62,26 @@ export default function RaceLab() {
   const [myId, setMyId] = useState(3);
   const [playing, setPlaying] = useState(false);
 
-  // 시뮬레이션 상태(난수 상태 포함)는 매 프레임 바뀌므로 ref, 화면용 스냅샷은 100ms 마다
+  // 시뮬레이션 상태(난수 상태 포함) · 가상 시계는 매 프레임 바뀌므로 ref, 화면용 스냅샷은 100ms 마다
   const runRef = useRef<RaceRun | null>(null);
+  const clockRef = useRef(0);
   const logRef = useRef<Message[]>([]);
   const playingRef = useRef(false);
   const speedRef = useRef(speed);
-  const [snap, setSnap] = useState<Snapshot>({ run: null, log: [], toast: null });
+  const [snap, setSnap] = useState<Snapshot>({ run: null, clock: 0, log: [], toast: null });
+
+  // 게이트 번호 — 직전 실험 경주의 도착 순서(lastRanking)로 다음 경주 번호(nextGates)를 정하고, 시작할 때 raceGates 로 고정한다
+  const [lastRanking, setLastRanking] = useState<number[] | null>(null);
+  const lastRankingKey = useRef("");
+  const nextGates = useMemo(() => labGates(lastRanking, seed), [lastRanking, seed]);
+  const [raceGates, setRaceGates] = useState<Gates>(nextGates);
+  // 화면의 번호: 경주가 있으면 그 경주의 번호, 아직 시작 전이면 다음 경주 번호
+  const gates = snap.run ? raceGates : nextGates;
 
   const sceneHorses = useMemo<SceneHorse[]>(
-    () => HORSES.map((h) => ({ id: h.id, image: h.image, color: h.color, textColor: textOn(h.color), mine: h.id === myId })),
-    [myId],
+    () =>
+      byGate(HORSES, gates).map((h) => ({ id: h.id, gate: gates[h.id], image: h.image, color: h.color, textColor: textOn(h.color), mine: h.id === myId })),
+    [gates, myId],
   );
 
   useEffect(() => {
@@ -83,12 +93,26 @@ export default function RaceLab() {
     const log = logRef.current;
     const last = log[log.length - 1];
     const toast = run && last && run.elapsed - last.at < TOAST_MS ? last : null;
-    setSnap({ run, log: [...log], toast });
+    setSnap({ run, clock: clockRef.current, log: [...log], toast });
+    // 7마리가 모두 들어온 경주는 "직전 실험 경주" — 다음 경주의 게이트 번호가 된다(지금 경주의 번호는 그대로)
+    if (run && run.doneAt !== null && run.ranking.length === HORSES.length) {
+      const key = run.ranking.join(",");
+      if (key !== lastRankingKey.current) {
+        lastRankingKey.current = key;
+        setLastRanking(run.ranking);
+      }
+    }
+  }, []);
+
+  /** 번호 초기화 — 다음 경주부터 다시 시드로 섞은 순서 */
+  const resetGates = useCallback(() => {
+    lastRankingKey.current = "";
+    setLastRanking(null);
   }, []);
 
   const draw = useCallback(() => {
     const run = runRef.current;
-    sceneRef.current?.update(run ? toFrame(run) : lineupFrame(HORSES));
+    sceneRef.current?.update(run ? toFrame(run, clockRef.current) : lineupFrame(HORSES));
   }, []);
 
   const setPlay = useCallback((v: boolean) => {
@@ -96,32 +120,36 @@ export default function RaceLab() {
     setPlaying(v);
   }, []);
 
-  /** 처음부터 다시 — 같은 시드면 같은 경주 */
+  /** 처음부터 다시 — 같은 시드면 같은 경주. 새 경주이므로 게이트 번호를 다시 정한다 */
   const restart = useCallback(
     (autoplay: boolean) => {
       const created = seedRace(seed);
       runRef.current = { ...created, elapsed: withCountdown ? -COUNTDOWN_MS : 0 };
+      clockRef.current = runRef.current.elapsed;
       logRef.current = [];
+      setRaceGates(nextGates);
       setPlay(autoplay);
       draw();
       publish();
     },
-    [seed, withCountdown, setPlay, draw, publish],
+    [seed, withCountdown, nextGates, setPlay, draw, publish],
   );
 
-  /** 시각 t(ms)로 이동 — 같은 시드로 처음부터 다시 계산한다(강제 발생시킨 이벤트는 반영되지 않는다) */
+  /** 시각 t(ms)로 이동 — 같은 시드로 처음부터 다시 계산한다(강제 발생시킨 이벤트는 반영되지 않는다). 게이트 번호는 지금 경주 그대로 */
   const seekTo = useCallback(
     (t: number) => {
+      if (!runRef.current) setRaceGates(nextGates); // 시작 전에 끌었다면 이것이 첫 경주
       const created = seedRace(seed);
       const start = { ...created, elapsed: withCountdown ? -COUNTDOWN_MS : 0 };
       const { run, events } = advanceTo(start, t, NAMES);
       runRef.current = run;
+      clockRef.current = Math.max(t, start.elapsed);
       logRef.current = events;
       setPlay(false);
       draw();
       publish();
     },
-    [seed, withCountdown, setPlay, draw, publish],
+    [seed, withCountdown, nextGates, setPlay, draw, publish],
   );
 
   const stepOnce = useCallback(() => {
@@ -130,6 +158,8 @@ export default function RaceLab() {
     if (!run) return;
     const result = step(run, NAMES);
     runRef.current = result.run;
+    // 보간은 [elapsed − STEP, elapsed] 구간을 그리므로 한 스텝 앞으로 맞춰 방금 계산한 위치를 그대로 보여 준다
+    clockRef.current = result.run.elapsed + STEP_MS;
     logRef.current = [...logRef.current, ...result.events];
     setPlay(false);
     draw();
@@ -178,7 +208,7 @@ export default function RaceLab() {
         created = scene;
         sceneRef.current = scene;
         const run = runRef.current;
-        scene.update(run ? toFrame(run) : lineupFrame(HORSES));
+        scene.update(run ? toFrame(run, clockRef.current) : lineupFrame(HORSES));
       })
       .catch(() => {
         if (!cancelled) setSceneFailed(true);
@@ -190,7 +220,8 @@ export default function RaceLab() {
     };
   }, [sceneHorses]);
 
-  // 가상 시계 rAF 루프 — 실제 경과 × 배속만큼 진행(탭이 멈췄다 오면 한 번에 100ms 까지만)
+  // 가상 시계 rAF 루프 — 실제 경과 × 배속만큼 시계를 쌓고(탭이 멈췄다 오면 한 번에 100ms 까지만) 시뮬레이션은 그 시각까지 따라잡는다.
+  // 일시정지 중에는 시계도 멈춘다
   useEffect(() => {
     let raf = 0;
     let prev = performance.now();
@@ -200,11 +231,11 @@ export default function RaceLab() {
       prev = now;
       const run = runRef.current;
       if (playingRef.current && run) {
-        const target = run.elapsed + dt * speedRef.current;
-        const { run: next, events } = advanceTo(run, target, NAMES);
+        clockRef.current += dt * speedRef.current;
+        const { run: next, events } = advanceTo(run, clockRef.current, NAMES);
         runRef.current = next;
         if (events.length) logRef.current = [...logRef.current, ...events];
-        sceneRef.current?.update(toFrame(next));
+        sceneRef.current?.update(toFrame(next, clockRef.current));
         const ended = next.doneAt !== null && next.elapsed - next.doneAt >= 1500;
         if (ended) {
           playingRef.current = false;
@@ -221,12 +252,13 @@ export default function RaceLab() {
     return () => cancelAnimationFrame(raf);
   }, [publish]);
 
-  const { run, log, toast } = snap;
-  const frame = run ? toFrame(run) : null;
+  const { run, clock, log, toast } = snap;
+  const frame = run ? toFrame(run, clock) : null;
   const leader = frame?.leader ?? 0;
   const elapsed = run?.elapsed ?? 0;
   const countNum = run && run.elapsed < 0 ? String(Math.ceil(-run.elapsed / 1000)) : run && run.elapsed < 800 ? "GO!" : null;
-  const order = frame?.order ?? HORSES.map((h) => h.id);
+  const byGateHorses = byGate(HORSES, gates);
+  const order = frame?.order ?? byGateHorses.map((h) => h.id);
   const finished = run?.doneAt != null;
   const scrubMin = withCountdown ? -COUNTDOWN_MS : 0;
   const positions = run?.runners.map((r) => r.progress) ?? [0];
@@ -303,9 +335,9 @@ export default function RaceLab() {
             내 말(MY 표식)
           </label>
           <select id="lab-my" className={styles.input} value={myId} onChange={(e) => setMyId(Number(e.target.value))}>
-            {HORSES.map((h) => (
+            {byGateHorses.map((h) => (
               <option key={h.id} value={h.id}>
-                {h.id}번 {h.name}
+                {gates[h.id]}번 {h.name}
               </option>
             ))}
           </select>
@@ -315,6 +347,18 @@ export default function RaceLab() {
               {t}
             </button>
           ))}
+        </div>
+        <div className={styles.row}>
+          <span className={styles.label}>다음 경주 게이트</span>
+          <span className={styles.hint}>
+            {byGate(HORSES, nextGates)
+              .map((h) => `${nextGates[h.id]}번 ${h.name.toUpperCase()}`)
+              .join(" · ")}{" "}
+            — {lastRanking ? "직전 실험 경주 도착 순서" : "직전 실험 경주가 없어 시드로 섞은 순서"} (&quot;처음부터 다시&quot;부터 적용)
+          </span>
+          <button type="button" className="btn" disabled={!lastRanking} onClick={resetGates}>
+            번호 초기화
+          </button>
         </div>
       </section>
 
@@ -346,7 +390,7 @@ export default function RaceLab() {
                       <td>{i + 1}</td>
                       <td>
                         <span className={styles.dot} style={{ background: horse.color }} />
-                        {id} {horse.name}
+                        {gates[id]}번 {horse.name}
                       </td>
                       <td>{TRAIT_LABEL[horse.trait]}</td>
                       <td className={styles.barCol}>
@@ -384,8 +428,8 @@ export default function RaceLab() {
               <dd>{gap.toFixed(1)}%</dd>
               <dt>상태</dt>
               <dd>{!run ? "대기" : run.elapsed < 0 ? "카운트다운" : finished ? "전원 도착" : "경주 중"}</dd>
-              <dt>도착 순서</dt>
-              <dd>{run && run.ranking.length ? run.ranking.join(" → ") : "-"}</dd>
+              <dt>도착 순서(게이트 번호)</dt>
+              <dd>{run && run.ranking.length ? run.ranking.map((id) => gates[id]).join(" → ") : "-"}</dd>
             </dl>
           </section>
 

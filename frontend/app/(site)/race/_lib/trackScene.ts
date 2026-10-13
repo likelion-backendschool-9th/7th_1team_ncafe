@@ -7,8 +7,10 @@ import type { Application, Container, Graphics, Sprite, Text, Texture, TilingSpr
 
 type Pixi = typeof import("pixi.js");
 
+/** 장면에 세울 말 — 배열 순서가 원근 줄 순서다(게이트 번호 순으로 넘긴다: 1번이 맨 뒤 줄) */
 export interface SceneHorse {
   id: number;
+  gate: number; // 그 경주의 게이트 번호 — 배지 숫자
   image: string;
   color: string; // 번호 배지 바탕(대표색)
   textColor: string; // 배지 글자색(textOn)
@@ -17,7 +19,7 @@ export interface SceneHorse {
 
 export interface SceneFrame {
   leader: number; // 선두 진행도 0~1 — 카메라
-  runners: { horseId: number; progress: number; finishedAt: number | null }[]; // 게이트 번호 순(= 원근 줄)
+  runners: { horseId: number; progress: number; finishedAt: number | null }[]; // 말 id 로 찾으므로 순서는 상관없다
   running: boolean; // 달리는 중(들썩임 · 먼지)
 }
 
@@ -183,7 +185,7 @@ export class TrackScene {
     const tag = new Container();
     const circle = new Graphics().circle(0, 0, 13).fill(horse.color).circle(0, 0, 13).stroke({ width: 2, color: 0xffffff, alpha: 0.6 });
     const num = new Text({
-      text: String(horse.id),
+      text: String(horse.gate),
       style: { fontFamily: FONT, fontSize: 15, fontWeight: "800", fill: horse.textColor },
       resolution: 2,
     });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useLayoutEffect, useState } from "react";
 import { ORDER_COUPON_REWARD } from "../../cart/_lib/orderService";
 import { useRace } from "../_hooks/useRace";
-import { recentRanks } from "../_lib/records";
+import { byGate, recentRanks } from "../_lib/records";
 import type { Horse, RaceResult as Result } from "../_types";
 import BetConfirmModal from "./BetConfirmModal";
 import HorseCard from "./HorseCard";
@@ -22,10 +22,26 @@ const LINEUP_TITLE_ID = "lineup-title";
  * 말을 고르면 확인창 → [사용하기] 로 쿠폰 1장을 건다. 경주는 경주 시각(RACE_TIMES)에 모두 함께 출발하고,
  * 출발 10초 전부터 끝날 때까지는 걸 수 없다(관람). 끝나면 트랙과 출전표 사이에 순위가 보이고 다음 경주 출전표가 열린다.
  * 쿠폰 정산은 루트의 RaceSettlement 가 하고, 정산된 내 경주는 결과 모달로 한 번 알려 준다.
+ * 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매기고(8.2 "게이트 번호 규칙") 출전표 카드도 그 순서로 놓는다.
  */
 export default function RaceBoard({ horses, history: baseHistory }: { horses: Horse[]; history: Result[] }) {
-  const { stage, history, raceNo, coupons, myBet, canBet, lock, confirmBet, lastResult, betFor, announcement, dismissAnnouncement } =
-    useRace(baseHistory, horses);
+  const {
+    stage,
+    history,
+    raceNo,
+    gates,
+    stageGates,
+    gatesOf,
+    coupons,
+    myBet,
+    canBet,
+    lock,
+    confirmBet,
+    lastResult,
+    betFor,
+    announcement,
+    dismissAnnouncement,
+  } = useRace(baseHistory, horses);
   const [selected, setSelected] = useState<Horse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -82,9 +98,11 @@ export default function RaceBoard({ horses, history: baseHistory }: { horses: Ho
           <PayoutGuide />
         </div>
 
-        {stage && <HorseTrack horses={horses} stage={stage} headingId={stageHeadingId} />}
+        {stage && <HorseTrack horses={horses} gates={stageGates} stage={stage} headingId={stageHeadingId} />}
 
-        {lastResult && stage?.kind !== "RUNNING" && <RaceResult result={lastResult} horses={horses} entry={betFor(lastResult)} />}
+        {lastResult && stage?.kind !== "RUNNING" && (
+          <RaceResult result={lastResult} gates={gatesOf(lastResult.raceNo)} horses={horses} entry={betFor(lastResult)} />
+        )}
 
         {!myBet && lock === "GATE_CLOSED" && (
           <p className={styles.noCoupon} role="status">
@@ -101,10 +119,11 @@ export default function RaceBoard({ horses, history: baseHistory }: { horses: Ho
         )}
 
         <ul className={styles.cards}>
-          {horses.map((horse) => (
+          {byGate(horses, gates).map((horse) => (
             <li key={horse.id}>
               <HorseCard
                 horse={horse}
+                gate={gates[horse.id]}
                 recent={recentRanks(history, horse.id)}
                 picked={myBet?.horseId === horse.id}
                 pickedLabel={pickedLabel}
@@ -117,6 +136,7 @@ export default function RaceBoard({ horses, history: baseHistory }: { horses: Ho
 
         <BetConfirmModal
           horse={selected}
+          gate={selected ? gates[selected.id] : 0}
           raceNo={raceNo}
           coupons={coupons}
           busy={busy}
@@ -126,12 +146,13 @@ export default function RaceBoard({ horses, history: baseHistory }: { horses: Ho
         />
       </section>
 
-      <RaceHistory history={history} horses={horses} betFor={betFor} />
+      <RaceHistory history={history} horses={horses} gatesOf={gatesOf} betFor={betFor} />
 
       {/* 확인창이 열려 있는 동안에는 기다렸다가 닫힌 뒤에 띄운다(모달 두 개가 겹치지 않게) */}
       <RaceResultModal
         entry={selected ? null : (announcement?.entry ?? null)}
         result={announcement?.result ?? null}
+        gates={announcement ? gatesOf(announcement.entry.raceNo) : gates}
         horses={horses}
         coupons={coupons}
         onClose={dismissAnnouncement}

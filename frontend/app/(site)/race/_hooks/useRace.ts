@@ -8,10 +8,10 @@ import { useNow } from "@/lib/useCountdown";
 import type { RaceEntry } from "@/types/common";
 import { RACE_ENTRY_COUPONS } from "../_lib/payout";
 import { placeBet as requestBet } from "../_lib/raceService";
-import { backfillHistory, latestRaceAt, mergeHistory, nextRaceNo, settledRaceUntil } from "../_lib/records";
+import { backfillHistory, gatesFor, latestRaceAt, mergeHistory, nextRaceNo, settledRaceUntil } from "../_lib/records";
 import { advanceTo, createRace, FINISH_HOLD_MS, liveOrder, STEP_MS } from "../_lib/simulation";
 import type { SceneFrame, TrackScene } from "../_lib/trackScene";
-import type { Horse, RaceEventMessage, RaceResult, RaceRun, RaceStage } from "../_types";
+import type { Gates, Horse, RaceEventMessage, RaceResult, RaceRun, RaceStage } from "../_types";
 
 export type BetOutcome = "OK" | "NO_COUPON" | "CLOSED" | "BUSY";
 /** 걸 수 없는 이유 — 출전표 위 안내문 · 버튼 비활성 */
@@ -65,6 +65,16 @@ export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
     }
   }
 
+  // 게이트 번호(BLUEPRINT 8.2 "게이트 번호 규칙") — 출전표는 다음 경주(raceNo), 트랙 무대는 그 무대의 경주(FINISHED 면 방금 끝난 경주).
+  // 결과 · 지난 경주 기록은 gatesOf 로 "그 경주 당시 번호"를 그린다(사용자 결정 2026-10-13). history 가 메모돼 있어 1초 시계에도 같은 객체다
+  const gates = useMemo(() => gatesFor(raceNo, history, horses), [raceNo, history, horses]);
+  const stageRaceNo = stage?.raceNo ?? raceNo;
+  const stageGates = useMemo(
+    () => (stageRaceNo === raceNo ? gates : gatesFor(stageRaceNo, history, horses)),
+    [stageRaceNo, raceNo, gates, history, horses],
+  );
+  const gatesOf = (no: number): Gates => (no === raceNo ? gates : no === stageRaceNo ? stageGates : gatesFor(no, history, horses));
+
   const myBet = betOf(raceNo);
   // 걸 수 없는 때: 이미 걸었음 · 마감(출발 10초 전 ~ 경주 끝) · 쿠폰 부족. 시계를 읽기 전(정적 셸)에는 열린 것으로 둔다
   const gateClosed = stage !== null && stage.raceNo === raceNo && (stage.kind === "RUNNING" || stage.gateClosed);
@@ -80,8 +90,8 @@ export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
     placing.current = true;
     try {
       const bet = await requestBet(raceNo, new Date(schedule.next.at).toISOString(), horse.id);
-      // 게이트 번호는 아직 말 id 와 같다(8.2 "게이트 번호 규칙"이 생기면 그 경주의 번호로)
-      const gate = horse.id;
+      // 이 경주의 게이트 번호 — 걸 수 있을 때는 지난 경주 결과가 이미 확정돼 있어 번호가 더 바뀌지 않는다. 내 레이스 기록 · 쿠폰 내역에 그대로 남긴다
+      const gate = gates[horse.id];
       if (!spendCoupon("RACE_BET", `Race #${raceNo} · ${gate}번 ${horse.name.toUpperCase()} 참가`)) return "NO_COUPON";
       joinRace(bet, gate);
       return "OK";
@@ -104,7 +114,23 @@ export function useRace(baseHistory: RaceResult[], horses: Horse[]) {
     if (latestSettled) session.markResultSeen(latestSettled.raceNo);
   };
 
-  return { stage, history, raceNo, coupons, myBet, canBet, lock, confirmBet, lastResult, betFor, announcement, dismissAnnouncement };
+  return {
+    stage,
+    history,
+    raceNo,
+    gates,
+    stageGates,
+    gatesOf,
+    coupons,
+    myBet,
+    canBet,
+    lock,
+    confirmBet,
+    lastResult,
+    betFor,
+    announcement,
+    dismissAnnouncement,
+  };
 }
 
 /** DOM(머리띠 · HUD · 카운트다운)이 쓰는 한 프레임의 스냅샷 — 캔버스가 쓰는 SceneFrame 에 순위 · 경과를 더한 것 */
@@ -114,8 +140,11 @@ export interface RaceFrame extends SceneFrame {
   doneAt: number | null;
 }
 
-/** run 은 STEP_MS 단위로만 진행하므로 그 사이는 직전 스텝과 선형 보간해 그린다 */
-function toFrame(run: RaceRun, elapsed: number): RaceFrame {
+/**
+ * run 은 STEP_MS 단위로만 진행하므로 그 사이는 직전 스텝과 선형 보간해 그린다(elapsed = 그리려는 시각, 보통 run.elapsed ~ +STEP_MS).
+ * /race/lab 의 가상 시계도 이 함수로 그린다.
+ */
+export function toFrame(run: RaceRun, elapsed: number): RaceFrame {
   const alpha = Math.min(1, Math.max(0, (elapsed - run.elapsed) / STEP_MS));
   const runners = run.runners.map((r) => ({
     horseId: r.horseId,

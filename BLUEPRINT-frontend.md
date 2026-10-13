@@ -57,7 +57,7 @@ frontend/
 │  │  │  ├─ _components/
 │  │  │  │  ├─ RaceBoard.tsx      # 출전표 + 보상 안내 + 트랙 무대(READY 이후) + 확인창 조립 (client, useRace)
 │  │  │  │  ├─ HorseCard.tsx      # 출전표 카드(게이트 번호 · 이름 · 말 이미지 · 성향 · 최근 성적 · 선택 버튼)
-│  │  │  │  ├─ GateBadge.tsx      # 게이트 번호 원(대표색 = 조끼 색, 글자색은 대비 계산)
+│  │  │  │  ├─ GateBadge.tsx      # 게이트 번호 원(번호 = 그 경주의 게이트 번호, 대표색 = 조끼 색, 글자색은 대비 계산)
 │  │  │  │  ├─ PayoutGuide.tsx    # "쿠폰 1장으로 참여 · [1위 4장] [2위 3장] [3위 2장] 돌려받기"
 │  │  │  │  ├─ BetConfirmModal.tsx# "MOCHA에 쿠폰 1장을 사용하시겠습니까?"
 │  │  │  │  ├─ HorseTrack.tsx     # 트랙 무대 — 머리띠(READY · [경주 시작] · LIVE · FINISH) + 경기 화면(PixiJS 캔버스, _lib/trackScene) + HUD(순위 · 남은 거리) + 카운트다운 · 토스트(DOM)
@@ -70,17 +70,17 @@ frontend/
 │  │  │  ├─ _hooks/
 │  │  │  │  └─ useRace.ts         # useRace(기록 합치기 · 경주 번호 · 쿠폰 걸기 · 결과 모달 알림) + useRaceRun(rAF 루프 — 캔버스 매 프레임 · DOM 10Hz · 토스트 큐)
 │  │  │  ├─ _lib/
-│  │  │  │  ├─ simulation.ts      # 순수 함수: createRace · step · advanceTo(속도 · 성향 · 이벤트 · 순위 · 18초 안전장치) — UI 의존 없음
+│  │  │  │  ├─ simulation.ts      # 순수 함수: createRace · step · advanceTo(속도 · 성향 · 이벤트 · 순위 · 18초 안전장치) · seededShuffle — UI 의존 없음
 │  │  │  │  ├─ messages.ts        # 이벤트 메시지 템플릿
 │  │  │  │  ├─ trackScene.ts      # PixiJS 장면(잔디 · 울타리 · 말 · 결승선 · 먼지) + 카메라(cameraFor) — React 와 무관
 │  │  │  │  ├─ payout.ts          # RACE_ENTRY_COUPONS · RACE_PAYOUT · payoutFor · payoutTable · payoutSummary · payoutBreakdown · payoutLabel
-│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충) · mergeHistory · rankLabel · TRAIT_LABEL · textOn
+│  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충) · mergeHistory · gatesFor · gatesAfter · byGate(게이트 번호) · rankLabel · TRAIT_LABEL · textOn
 │  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet, getRaceResult)
 │  │  │  ├─ _data/
 │  │  │  │  ├─ horses.ts          # 7마리(이미지 · 조끼 색)
 │  │  │  │  └─ raceHistory.ts     # Race #8~#12, 경주마다 7마리 전체 순위
-│  │  │  ├─ _types.ts             # Horse, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
-│  │  │  └─ lab/                  # /race/lab 개발용 실험실(시드 · 배속 · 되감기 · 이벤트 강제) — 쿠폰 · 단계와 무관, noindex
+│  │  │  ├─ _types.ts             # Horse, Gates, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
+│  │  │  └─ lab/                  # /race/lab 개발용 실험실(시드 · 배속 · 되감기 · 이벤트 강제 · 게이트 번호 = 직전 실험 경주 도착 순서) — 쿠폰 · 단계와 무관, noindex
 │  │  │
 │  │  ├─ seat/                    # /seat  ★ 핵심
 │  │  │  ├─ page.tsx
@@ -382,7 +382,7 @@ frontend/
 
 | 파일 | 타입 |
 |---|---|
-| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
+| `app/(site)/race/_types.ts` | `HorseTrait`, `Horse`, `Gates`, `RaceStage`(`RaceStageKind`), `RaceResult`, `RaceBet`, `RaceEventMessage`, `RunnerState`, `RaceRun` |
 | `app/(site)/seat/_types.ts` | `SeatSection`, `SeatType`, `SeatStatus`, `SeatFeature`, `Seat`, `FloorFixture` |
 | `app/(site)/menu/_types.ts` | `Category`, `MenuStatus`, `MenuBadge`, `MenuSize`, `SizePrices`, `Menu`, `MenuInput`, `CategoryInput` |
 | `app/(site)/event/_types.ts` | `CafeEvent` |
@@ -395,7 +395,7 @@ frontend/
 export type HorseTrait = "FAST_START" | "STEADY" | "LATE_SPURT" | "WILDCARD" | "BALANCED";
 
 export interface Horse {
-  id: number;              // 1~7 — 지금은 게이트 번호와 같다(게이트 번호는 지난 경주 도착 순서로 매기기로 협의, 8.2 "게이트 번호 규칙")
+  id: number;              // 1~7 — 말 식별자. 게이트 번호와는 다르다(경주마다 지난 경주 도착 순서로 다시 매긴다 — Gates, 8.2 "게이트 번호 규칙")
   name: string;            // "Thunder" — 화면에는 대문자
   nameKo: string;          // "썬더"
   color: string;           // 대표색 hex = 이미지의 번호 조끼 색 — 번호 배지 · 내 말 레인 강조
@@ -407,6 +407,8 @@ export interface Horse {
 }
 // 최근 성적은 말 데이터에 두지 않고 경주 기록에서 계산한다(_lib/records.ts 의 recentRanks — 사용자 결정 2026-10-13).
 // 기록과 카드가 늘 맞고, 9단계에서 경주가 끝나면 성적도 바로 바뀐다.
+
+export type Gates = Readonly<Record<number, number>>;  // 한 경주의 게이트 표: 말 id → 번호(1~7). records.gatesFor 가 만든다 — 화면 표시 전용
 
 // ---- Race ----
 // 단계는 사용자의 버튼이 아니라 경주 시각 + 시계로 정해진다(사용자 결정 2026-10-13). useRace 가 매초 계산한다.
@@ -612,7 +614,7 @@ export interface CartState {
 | 6 | Vanilla 바닐라 | 2번 · 흰색 | `#eb526e` 분홍 | STEADY(안정형) | 느긋한 산책가 | 7 · 5 · 6 |
 | 7 | Cookie 쿠키 | 5번 · 밤색 | `#e4362f` 빨강 | WILDCARD(변수형) | 기분파 장난꾸러기 | 1 · 6 · 7 |
 
-이름·설정 수정은 이 파일만 고치면 되도록 한다. 표의 No 는 지금 코드의 고정 번호(`Horse.id`)다 — 게이트 번호는 지난 경주 도착 순서대로 매기기로 협의했다(8.2 "게이트 번호 규칙", 미구현). 대표색은 이미지에서 잰 조끼 색이고, 번호 배지 글자는 흰 글자 대비가 3:1 미만이면(노랑) 짙은 색이다(`textOn`). 이미지를 바꾸려면 `scripts/split-horses.mjs` 의 `PICKS` 를 고치고 다시 실행한다.
+이름·설정 수정은 이 파일만 고치면 되도록 한다. 표의 No 는 말 식별자(`Horse.id`)이고 게이트 번호가 아니다 — 게이트 번호는 경주마다 지난 경주 도착 순서대로 다시 매긴다(8.2 "게이트 번호 규칙"). 대표색은 이미지에서 잰 조끼 색이고, 번호 배지 글자는 흰 글자 대비가 3:1 미만이면(노랑) 짙은 색이다(`textOn`). 이미지를 바꾸려면 `scripts/split-horses.mjs` 의 `PICKS` 를 고치고 다시 실행한다.
 
 ### 5.2 seats.ts — 총 30석 (지시서의 "12 / 30" 과 맞춤)
 
@@ -827,7 +829,7 @@ interface UserState {
 
 1. **헤더 전광판(`RaceCountdown`, 6단계에 만듦)**: `NEXT RACE 오늘 18:00 [SOON]` ┊ `RACE STARTS IN [01]:[24]:[32]` ┊ `MY COUPONS [05]장` 세 칸(모바일은 위아래). LIVE 면 `NOW RACING 18:00 [● LIVE]` ┊ `다음 경주 내일 12:30` ┊ 내 쿠폰 — 카운트다운은 쉰다. 실제 경주는 시각과 상관없이 출전표에서 시작하므로 이 전광판은 실제 일정만 알려 준다.
 2. **출전표 (BETTING, `RaceBoard` · `HorseCard`)**: 머리 `TODAY'S RUNNERS / 출전표 Race #13` + 오른쪽 보상 안내 `쿠폰 1장으로 참여 [1위 4장] [2위 3장] [3위 2장] 돌려받기 (원금 포함)`(`PayoutGuide`, 숫자는 `RACE_PAYOUT`). 그 아래 카드 7장 그리드(PC 4열 / 태블릿 2열 / 모바일 1열), 게이트 번호 순
-   - **게이트 번호 규칙(팀 협의 2026-10-13 · 아직 구현 안 됨)**: 1번~7번 게이트 번호는 **지난 경주에서 들어온 순서대로** 매긴다 — 지난 경주 1위가 1번, 2위가 2번 … 7위가 7번. 아래 "게이트 번호 규칙" 참고. 지금 코드는 말마다 고정 번호(`Horse.id`)를 쓴다.
+   - **게이트 번호 규칙(팀 협의 2026-10-13 · 구현됨)**: 1번~7번 게이트 번호는 **지난 경주에서 들어온 순서대로** 매긴다 — 지난 경주 1위가 1번, 2위가 2번 … 7위가 7번. 경주가 끝나면 카드가 새 번호 순으로 다시 놓인다. 아래 "게이트 번호 규칙" 참고.
    ```
    ┌───────────────────────────────┐
    │ (3) MOCHA            [MY PICK]│  ← 게이트 번호 원(대표색 = 조끼 색) · 이름 · "모카 · 초록 조끼"
@@ -861,7 +863,7 @@ interface UserState {
    - **카운트다운**: [경주 시작] 뒤 3 · 2 · 1 · GO! 를 캔버스 위 가운데에(DOM).
    - `RaceEventMessage`: 캔버스 위 상단(생울타리 띠) 가운데에 1.5초 표시 후 fade-out. 동시에 여러 개 오면 큐로 순차 표시(최대 1개 노출), 3초 넘게 지난 메시지는 버린다.
    - 추가 에셋(사용자 요청 "필요한 이미지를 검색해서 알려 달라" · 유료 무료 무관): 잔디 · 생울타리 · 울타리는 2D 캔버스로 그린 타일 텍스처라 `trackScene.ts` 의 `turfTexture · hedgeTexture · railTexture` 만 바꾸면 이미지로 교체된다. 말 달리기 프레임은 기존 말에셋(AI 생성 치비)과 같은 스타일이어야 하므로 기성 팩보다 같은 도구로 생성하는 쪽을 권했다(12절 8단계 참고).
-4-1. **RaceResult — 경주 결과(트랙 무대와 출전표 사이, 사용자 요청 2026-10-13)**: 가장 최근에 끝난 경주의 1~7위. 머리 `RACE RESULT / Race #14 순위 · 10/13 18:00 출발` + 오른쪽 "내 말 1번 THUNDER · 5위 [NEXT TIME!]"(1~3위면 금색 [WIN!] [PLACE!] [SHOW!], 안 걸었으면 "이번 경주에는 참여하지 않았어요."). 칸 7개(PC 7열 · 태블릿 4열 · 모바일 1열 가로 줄): 순위 · 게이트 번호 배지 · 이름 · 한글 이름 · 1~3위 라벨, 1위 칸은 금색 테두리, 내 말 칸은 짙은 테두리 + MY PICK. 경주 중(RUNNING)에는 숨긴다. 내 말 줄 아래 **정산 줄**(9단계): "쿠폰 4장을 돌려받았어요 (원금 1 + 추가 3)" / "건 쿠폰 1장은 돌아오지 않았어요" / 결과가 보충으로 먼저 보이고 정산이 아직이면(최대 1초) "쿠폰 정산 중…".
+4-1. **RaceResult — 경주 결과(트랙 무대와 출전표 사이, 사용자 요청 2026-10-13)**: 가장 최근에 끝난 경주의 1~7위. 머리 `RACE RESULT / Race #14 순위 · 10/13 18:00 출발` + 오른쪽 "내 말 1번 THUNDER · 5위 [NEXT TIME!]"(1~3위면 금색 [WIN!] [PLACE!] [SHOW!], 안 걸었으면 "이번 경주에는 참여하지 않았어요."). 칸 7개(PC 7열 · 태블릿 4열 · 모바일 1열 가로 줄): 순위 · 게이트 번호 배지(그 경주 당시 번호) · 이름 · 한글 이름 · 1~3위 라벨, 1위 칸은 금색 테두리, 내 말 칸은 짙은 테두리 + MY PICK. 경주 중(RUNNING)에는 숨긴다. 내 말 줄 아래 **정산 줄**(9단계): "쿠폰 4장을 돌려받았어요 (원금 1 + 추가 3)" / "건 쿠폰 1장은 돌아오지 않았어요" / 결과가 보충으로 먼저 보이고 정산이 아직이면(최대 1초) "쿠폰 정산 중…".
 5. **RaceResultModal — 정산 알림 (9단계, 사용자 결정 2026-10-13)**: 순위 전체는 4-1 결과 섹션이 맡으므로 모달은 **정산 알림**이다. **쿠폰을 건 경주에서만** 뜬다(관람자는 결과 섹션만). 경기를 보고 있었으면 끝나자마자(도착 + 1.5초), 다른 페이지에 있었으면 `/race` 로 돌아왔을 때 **한 번**(`RaceProvider.resultSeenUpTo`). 쿠폰 걸기 확인창이 열려 있으면 닫힌 뒤에 뜬다(모달 두 개가 겹치지 않게).
    ```
    RACE #14 · RESULT
@@ -877,28 +879,27 @@ interface UserState {
    - WIN · PLACE · SHOW 는 경마 용어(1·2·3착). 숫자 순위를 항상 같이 보여 준다.
    - [다음 경주 출전표 보기]는 지시서의 [다시 하기] 자리다 — 경주는 시각이 정하므로 다시 시작하지 않고, 모달을 닫고 출전표 제목(이미 다음 경주 번호)으로 포커스를 옮긴다. ×(닫기) · ESC · 배경 클릭 · [내 쿠폰 보기]도 모두 "본 것"으로 표시한다. 모바일은 Bottom Sheet.
    - 결과는 `RaceProvider.results` 맨 앞에 들어가고(끝까지 봤으면 `useRaceRun`, 아니면 `RaceSettlement`), 다음 경주 번호 · 출전표 최근 성적 · RECENT RACES 가 함께 바뀐다.
-6. **RaceHistory — RECENT RACES (9단계)**: 출전표 아래 `RECENT RACES / 지난 경주 기록`. 최근 5경기 카드(PC 5열 · 태블릿 3열 · 모바일 2열): `Race #14  10/13 18:00` + 1~3위(순위 · 게이트 번호 배지 · 이름). 내가 건 경주는 짙은 테두리 + `MY PICK 5번 CARAMEL · 1위`. 기록은 `useRace` 의 history(이 세션에서 확정된 경주 + 지나간 경주 보충 + Mock)라 경주가 끝나면 맨 앞에 바로 붙는다. 맨 앞 경주는 위 결과 섹션과 같은 경주다.
+6. **RaceHistory — RECENT RACES (9단계)**: 출전표 아래 `RECENT RACES / 지난 경주 기록`. 최근 5경기 카드(PC 5열 · 태블릿 3열 · 모바일 2열): `Race #14  10/13 18:00` + 1~3위(순위 · 게이트 번호 배지 · 이름 — 번호는 카드마다 그 경주 당시 번호). 내가 건 경주는 짙은 테두리 + `MY PICK 5번 CARAMEL · 1위`. 기록은 `useRace` 의 history(이 세션에서 확정된 경주 + 지나간 경주 보충 + Mock)라 경주가 끝나면 맨 앞에 바로 붙는다. 맨 앞 경주는 위 결과 섹션과 같은 경주다.
 
-#### 게이트 번호 규칙 (팀 협의 2026-10-13 · 아직 구현 안 됨)
+#### 게이트 번호 규칙 (팀 협의 2026-10-13 · 구현 2026-10-13)
 
 **1번~7번 게이트 번호는 지난 경주에서 들어온 순서대로 매긴다.** 지난 경주 1위로 들어온 말이 이번 경주 1번, 2위가 2번 … 7위가 7번이다.
 
 - 예: Race #12 도착 순서 `[7, 2, 1, 3, 5, 4, 6]`(말 id) → Race #13 게이트 `1번 COOKIE · 2번 LATTE · 3번 THUNDER · 4번 MOCHA · 5번 CARAMEL · 6번 ESPRESSO · 7번 VANILLA`.
 - 경주가 끝날 때마다 다음 경주의 번호가 그 결과로 다시 매겨진다. 그래서 같은 말이라도 경주마다 번호가 바뀐다.
-- 지금 코드는 말마다 고정 번호(`Horse.id` = 게이트 번호, 5.1 표의 No)를 쓴다. 구현할 때 바뀌는 곳:
-  - `Horse.id` 는 말 식별자로만 쓰고, 게이트 번호는 경주마다 계산한다(지난 경주 `ranking` 에서의 위치 + 1).
-  - 기록(`RaceResult.ranking`) · 내가 건 말(`RaceBet.horseId`)은 말 id 를 그대로 저장한다(번호가 바뀌어도 같은 말을 가리키게).
-  - 화면 · 문구는 **그 경주의** 게이트 번호를 쓴다 — 출전표 번호 원(`GateBadge`) · 확인창 "3번 MOCHA" · READY · 쿠폰 내역 "Race #13 · N번 MOCHA 참가" · 8단계 트랙 레인 번호 · 9단계 결과.
-  - **한 화면에 두 경주의 번호가 함께 보인다.** 경주 #14 가 끝난 직후라면 결과 섹션(Race #14)은 #14 당시 번호(= #13 도착 순서), 바로 아래 출전표(Race #15)는 #14 도착 순서, RECENT RACES 는 카드마다 그 경주의 번호다. 그래서 "경주 번호 → 말별 게이트 번호"를 돌려주는 순수 함수 하나(예: `records.ts` 의 `gatesFor(raceNo, history)` — 지난 경주 `ranking` 의 위치 + 1)를 두고, 배지 · 문구는 모두 그 값을 받아 그린다.
-  - **내 레이스 기록은 이미 분리돼 있다(9단계).** `RaceEntry.gate` 에 **걸 때의** 게이트 번호를 따로 저장한다 — 다음 경주에서 번호가 바뀌어도 지난 기록 "Race #14 · 5번 CARAMEL" 이 그대로 남게. 지금은 `useRace.confirmBet` 의 `const gate = horse.id;` 한 줄이 이 값을 정하고, 이 줄을 이번 경주의 번호로 바꾸면 `entry.gate` 를 읽는 곳(참가 쿠폰 내역 문구 · `/my` 내 레이스 기록 · 결과 섹션의 "내 말" 줄 · RECENT RACES 의 MY PICK 줄 · 결과 모달 글자)이 따라온다. 걸 수 있는 때는 늘 지난 경주 결과가 확정된 뒤라 걸 때 정한 번호는 그 경주 동안 바뀌지 않는다.
-  - **그 한 줄만으로는 끝나지 않는다.** `horse.id` 를 번호로 직접 쓰는 곳을 함께 바꿔야 한다: `GateBadge`(배지 숫자 — 출전표 · HUD · 결과 · RECENT RACES · 두 모달 공용) · `trackScene`(캔버스 배지 숫자, 배열 순서 = 원근 줄) · `HorseCard` · `BetConfirmModal` · `HorseTrack`(머리띠 · 선두 · HUD 문구) · `RaceResult` · `RaceHistory`(스크린리더 문구) · `RaceBoard`(카드 순서). 특히 결과 모달과 결과 섹션의 "내 말" 줄은 **배지는 `horse.id`, 글자는 `entry.gate`** 라 `confirmBet` 한 줄만 먼저 바꾸면 "배지 5 · 1번 CARAMEL" 처럼 어긋난다 — 배지와 같이 바꾼다.
-  - **시뮬레이션에 넘기는 말 순서는 바꾸지 않는다.** `createRace` 는 받은 배열 순서대로 난수를 써 말마다 속도를 정하므로, 게이트 순으로 정렬한 배열을 넘기면 트랙(`useRaceRun`) · 루트 정산(`getRaceResult`, `HORSES` 고정 순서) · 지나간 경주 보충의 순위가 서로 달라진다("모두 같은 경주" · 두 번 지급 방지가 깨진다). 정렬은 카드 · 트랙 줄 · 배지 같은 **화면에서만** 한다.
-  - 말 이미지 조끼에 적힌 숫자는 게이트 번호와 상관없다(5.1 — 이름에 맞는 이미지를 골랐다).
-- **첫 경주(기록이 하나도 없을 때)**: 게이트 번호는 **무작위 순서**로 매긴다(팀 협의 2026-10-13).
-  - 순서는 그 경주에 대해 **한 번만** 정하고 저장한다 — 다시 그리거나 페이지를 오가도 바뀌면 안 된다. 백엔드가 붙으면 서버가 경주를 만들 때 정해 내려준다.
-  - Mock 단계에서는 렌더 중에 `Math.random()` 을 부르지 않는다(Cache Components 는 렌더 중 무작위 값을 쓰면 빌드 오류가 나고, 렌더마다 순서가 바뀐다). 브라우저에서 처음 필요할 때 한 번 섞어 `RaceProvider` 에 두고 그 값을 쓴다.
-  - 지금은 Mock 기록(#8~#12)과 지나간 경주 보충이 있어 출전표에서는 거의 생기지 않는다. 생기는 곳은 RECENT RACES 에 #8 이 보일 때(#7 기록이 없다) 정도다.
-- **출전표 카드 순서**: 게이트 번호 순(1번부터)으로 놓는다(팀 협의 2026-10-13). 번호가 지난 경주 도착 순서이므로, 결과적으로 지난 경주 순위순과 같은 순서가 된다. 첫 경주는 무작위로 정한 번호 순.
+- **말 id 와 게이트 번호를 나눈다.** `Horse.id` 는 말 식별자로만 쓰고, 기록(`RaceResult.ranking`) · 내가 건 말(`RaceBet.horseId`)은 말 id 를 그대로 저장한다(번호가 바뀌어도 같은 말을 가리키게). 게이트 번호는 경주마다 계산한다.
+- **계산 — `records.ts` 의 `gatesFor(raceNo, history, horses)` → `Gates`(말 id → 번호)**: 지난 경주(`raceNo − 1`) `ranking` 의 위치 + 1. 지난 경주에 없던 말은 그 뒤에 id 순. 한 경주의 번호는 지난 경주 결과로만 정해지므로 그 경주가 끝난 뒤에도 같다. `byGate(horses, gates)` 는 게이트 순으로 정렬한 새 배열.
+- **어느 경주의 번호를 그리나** — 화면 · 문구는 **그 경주의** 게이트 번호를 쓴다(사용자 결정 2026-10-13: 결과 · 기록도 그 경주 당시 번호). `useRace` 가 세 가지를 준다.
+  - `gates` — 출전표(다음 경주): 카드 순서 · 번호 원 · 확인창 "1번 COOKIE" · 쿠폰 내역 "Race #13 · 1번 COOKIE 참가" · 내 레이스 기록(`RaceEntry.gate` — 걸 때 저장).
+  - `stageGates` — 트랙 무대의 경주(FINISHED 면 방금 끝난 경주): 머리띠 "1번 COOKIE 응원 중" · 캔버스 배지 · 원근 줄 · HUD.
+  - `gatesOf(raceNo)` — 결과 섹션 · RECENT RACES(카드마다) · 결과 모달 1~3위 줄.
+  - 그래서 **경주가 끝난 직후 한 화면에 두 경주의 번호가 함께 보인다** — 결과 섹션(Race #13)의 "1번 COOKIE" 가 바로 아래 출전표(Race #14)에서는 "3번 COOKIE". 경마장 결과표와 같은 방식이다.
+- **시뮬레이션에 넘기는 말 순서는 바꾸지 않는다(말 id 순).** `createRace` 는 받은 배열 순서대로 난수를 써 말마다 속도를 정하므로, 게이트 순 배열을 넘기면 트랙(`useRaceRun`) · 루트 정산(`getRaceResult`, `HORSES` 고정 순서) · 지나간 경주 보충의 순위가 서로 달라진다(순수 함수 테스트에서 실제로 달라짐을 확인). 정렬은 카드 · 트랙 줄 · 배지 같은 **화면에서만** 한다.
+- **캔버스**: `SceneHorse.gate` 가 배지 숫자, `SceneHorse` 배열 순서가 원근 줄(1번이 맨 뒤 줄). 경주가 끝나는 순간 게이트 표는 내용이 같아도 새 객체가 되므로, `HorseTrack` 은 번호 내용을 문자열로 비교해 장면을 다시 만들지 않는다(결승 직후 캔버스가 지워졌다 다시 그려지지 않게 — E2E 에서 같은 캔버스 확인). 새 경주로 넘어가 줄 순서가 바뀔 때만 다시 만든다.
+- 말 이미지 조끼에 적힌 숫자는 게이트 번호와 상관없다(5.1 — 이름에 맞는 이미지를 골랐다).
+- **`/race/lab`(실험실)도 같은 규칙을 실험실 안에서 재현한다(사용자 결정 2026-10-13)**: 실제 경주 기록 대신 **직전 실험 경주**(7마리가 모두 들어온 경주 — 끝까지 재생했거나 결과까지 건너뛴 경주)의 도착 순서가 다음 실험 경주의 게이트 번호가 되고, 직전 실험 경주가 없으면 그 시드로 섞은 순서다(`records.gatesAfter` — `gatesFor` 와 같은 계산). 번호는 경주를 시작할 때("경주 시작" · "처음부터 다시" · 시작 전 타임라인 이동) 정해 그 경주 동안 고정된다 — 되감아도 같다. 트랙 줄 · 배지 · 말별 상태 표 · 도착 순서 · 내 말 선택 목록이 이 번호를 쓰고, 조작 패널의 "다음 경주 게이트" 줄에 다음 번호와 근거가 보이며 [번호 초기화]로 시드 섞기로 되돌린다. 시뮬레이션에는 늘 말 id 순으로 넘기므로 "같은 시드 = 같은 경주"는 그대로다 — 그래서 같은 시드로 두 번 돌리면 두 번째 경주의 도착 순서가 1 → 2 → … → 7 로 읽힌다(E2E 확인).
+- **기록이 없는 경주(지난 경주가 없을 때)**: **경주 번호로 시드한 무작위 순서**(`simulation.ts` 의 `seededShuffle(ids, seedFor(raceNo, 0))`, 사용자 결정 2026-10-13). 팀 협의의 "무작위로 한 번만 정하고 바뀌면 안 된다"를 지키면서 — 모두에게 같고(서버가 정해 내려주는 것과 같은 효과) 렌더 · 페이지 이동에도 바뀌지 않으며, 렌더 중 `Math.random` 이 없어 정적 셸과 하이드레이션이 맞고 따로 저장할 필요도 없다. 처음 설계의 "브라우저에서 한 번 섞어 `RaceProvider` 에 저장"은 쓰지 않는다. 지금은 Mock 기록(#8~#12)과 지나간 경주 보충이 있어 RECENT RACES 에 #8 이 보일 때(#7 기록이 없다) 정도만 해당한다. 백엔드가 붙으면 서버가 경주를 만들 때 정해 내려준다.
+- **출전표 카드 순서**: 게이트 번호 순(1번부터, 팀 협의 2026-10-13). 번호가 지난 경주 도착 순서이므로 결과적으로 지난 경주 순위순이다.
 
 #### 레이스 시뮬레이션 (`app/(site)/race/_lib/simulation.ts`)
 
@@ -1491,11 +1492,11 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] `BetConfirmModal.tsx` — "OOO에 쿠폰 1장을 사용하시겠습니까?" + 보상 안내 + 보유 수 변화
 - [x] `ReadyPanel.tsx` — 출발 대기 패널(8단계에서 트랙으로 교체)
 - [x] 쿠폰 0장이면 선택 버튼 비활성 + 주문 적립 안내
-- [ ] **게이트 번호를 지난 경주 도착 순서로 매기기(팀 협의 2026-10-13)** — 8.2 "게이트 번호 규칙" 대로 말 id 와 게이트 번호를 나누고, 출전표 · 확인창 · READY · 쿠폰 내역 문구가 그 경주의 게이트 번호를 쓰게 한다. 출전표 카드는 게이트 번호 순. 기록이 없는 첫 경주는 무작위 순서를 한 번만 정해 `RaceProvider` 에 둔다
+- [x] **게이트 번호를 지난 경주 도착 순서로 매기기(팀 협의 2026-10-13, 9단계 뒤 구현)** — 8.2 "게이트 번호 규칙" 대로 말 id 와 게이트 번호를 나눴다: `Gates` 타입 · `records.gatesFor` · `byGate` · `simulation.seededShuffle`, `useRace` 의 `gates` · `stageGates` · `gatesOf`, `GateBadge`(`gate` prop) · `HorseCard` · `BetConfirmModal` · `HorseTrack`(머리띠 · HUD · 캔버스 배지 · 원근 줄) · `RaceResult` · `RaceHistory` · `RaceResultModal`, 출전표 카드는 게이트 번호 순, 쿠폰 내역 · 내 레이스 기록은 걸 때의 번호. 사용자 결정(2026-10-13): 결과 · 기록은 **그 경주 당시 번호** / 기록이 없는 경주는 `RaceProvider` 저장 대신 **경주 번호로 시드한 섞기**
 
 **완료 확인**
-- [ ] Race #13 출전표의 게이트 번호가 Race #12 도착 순서(1번 COOKIE · 2번 LATTE · 3번 THUNDER · 4번 MOCHA · 5번 CARAMEL · 6번 ESPRESSO · 7번 VANILLA)와 같고 카드도 그 순서로 놓이며, 경주가 끝나면 다음 경주 번호가 그 결과대로 다시 매겨진다
-- [ ] 기록이 없으면 무작위 순서로 번호가 매겨지고, 다시 그리거나 다른 페이지를 다녀와도 그 순서가 그대로다(빌드 · 하이드레이션 경고 없음)
+- [x] Race #13 출전표의 게이트 번호가 Race #12 도착 순서(1번 COOKIE · 2번 LATTE · 3번 THUNDER · 4번 MOCHA · 5번 CARAMEL · 6번 ESPRESSO · 7번 VANILLA)와 같고 카드도 그 순서로 놓이며, 경주가 끝나면 다음 경주 번호가 그 결과대로 다시 매겨진다 — E2E(10/13 12:29:30): 1번 COOKIE 에 걸어 확인창 · READY · 쿠폰 내역 · `/my` 모두 "1번 COOKIE", #13 이 끝나자 결과 섹션 · 모달 1~3위 · FINISHED HUD 는 #13 번호(1위 4번 MOCHA · 2위 3번 THUNDER · 3위 1번 COOKIE), #14 출전표는 1번 MOCHA · 2번 THUNDER · 3번 COOKIE · 4번 CARAMEL · 5번 LATTE · 6번 VANILLA · 7번 ESPRESSO 순으로 다시 놓임, RECENT RACES 는 카드마다 그 경주 번호, 결승 직후 캔버스가 다시 만들어지지 않음
+- [x] 기록이 없으면 무작위 순서로 번호가 매겨지고, 다시 그리거나 다른 페이지를 다녀와도 그 순서가 그대로다(빌드 · 하이드레이션 경고 없음) — RECENT RACES #8(#7 기록 없음)이 정적 셸 HTML 과 하이드레이션 뒤 모두 "1위 5번 LATTE · 2위 7번 THUNDER · 3위 6번 VANILLA", 콘솔 오류 · 경고 0, 순수 함수: 같은 경주는 늘 같은 순서 · 7,000경주에서 말마다 1번 게이트 확률 13.4~14.8%
 - [x] 출전표 7장이 보이고 최근 성적 1위가 금색으로 강조된다(금색 칸 3개 — THUNDER · ESPRESSO · COOKIE)
 - [x] 확인 → 쿠폰 1장 감소(Header 에도 반영) + `/my` 내역에 `−1`, 취소 → 변화 없음 · [사용하기] 를 같은 틱에 두 번 눌러도 1장만
 - [x] 0장일 때 선택할 수 없다(검증용으로 초기 쿠폰을 잠시 0장으로 빌드해 확인 후 되돌림)
@@ -1542,6 +1543,7 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [x] `RaceResult.tsx` — 최근 경주 1~7위(트랙과 출전표 사이), 내 말 MY PICK · WIN/PLACE/SHOW · 경주 중에는 숨김
 - [x] `RaceBoard` — 마감 안내 · 버튼 잠금 · 다음 경주 번호 · 건 카드 문구
 - [x] `/race/lab`(실험실 — 팀원 작성) 호출부를 바뀐 API(시드 내장 · 고정 스텝)에 맞춤: 시드 입력을 가짜 출발 시각(분)으로
+- [x] (버그 수정 2026-10-13, 사용자 제보 "2배속 → 일시정지 뒤 속도 이상 · 새로고침하면 3에서 시작 안 됨") 위 API 변경 때 실험실 재생 루프가 매 프레임 `run.elapsed + 프레임 시간 × 배속`을 목표로 삼아, 20ms(`STEP_MS`)보다 짧은 나머지가 매 프레임 버려졌다 — 배속이 화면 주사율에 따라 틀어지고(40fps 에서 ×1 → 0.77, ×0.5 → 0.07) 60Hz 화면의 ×1 · ×0.5 는 카운트다운 "3"에서 멈췄다. 소수점까지 쌓는 가상 시계(`clockRef`)를 따로 두고 시뮬레이션은 그 시각까지 따라잡게 바꿨고, 그리기는 `/race` 와 같은 `toFrame`(useRace 에서 export)으로 스텝 사이를 보간한다. 확인: 새로고침 직후 3 → 2 → 1 → GO!, 경주 중 ×2 1.92 → 일시정지 0 → 재생 2.03 · ×1 1.03 · ×0.25 0.29(선두 진행도가 110ms 마다 올라감) · +20ms 정확히 한 스텝
 
 **완료 확인**
 - [x] 두 탭(참여자 A · 관람자 B)의 시계를 17:59:30 으로 맞춰 실행: 들어오자마자 지나간 12:30 경주가 "Race #13 순위"로 보충돼 있고 출전표는 #14 · 17:59:50 마감 뒤 B 의 버튼 7개 비활성("DISABLED") · 18:00 에 두 탭 모두 NOW RACING(같은 순위 진행) · 18:00:20 쯤 두 탭 모두 FINISH, **결과 섹션의 1~7위가 두 탭에서 같음**(5 · 2 · 6 · 7 · 1 · 4 · 3) · 끝나면 출전표가 #15 로 바뀌고 버튼이 다시 열림 · 콘솔 오류 0

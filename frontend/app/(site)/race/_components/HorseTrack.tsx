@@ -7,9 +7,9 @@ import { formatCountdown, RACE_GATE_CLOSE_MS, RACE_SOON_MS } from "@/lib/time";
 import { useNow } from "@/lib/useCountdown";
 import { finishedFrame, lineupFrame, useRaceRun } from "../_hooks/useRace";
 import { payoutSummary } from "../_lib/payout";
-import { textOn } from "../_lib/records";
+import { byGate, textOn } from "../_lib/records";
 import { TrackScene, type SceneHorse } from "../_lib/trackScene";
-import type { Horse, RaceStage } from "../_types";
+import type { Gates, Horse, RaceStage } from "../_types";
 import GateBadge from "./GateBadge";
 import RaceEventMessage from "./RaceEventMessage";
 import styles from "./race.module.css";
@@ -20,7 +20,8 @@ const COURSE_M = 1200;
 const GO_FLASH_MS = 800;
 
 interface HorseTrackProps {
-  horses: Horse[];
+  horses: Horse[]; // 말 id 순 — 시뮬레이션에 이 순서 그대로 넘긴다(바꾸면 순위가 달라진다)
+  gates: Gates; // 이 무대 경주의 게이트 번호 — 배지 · 원근 줄 · 문구
   stage: RaceStage;
   headingId: string;
 }
@@ -30,8 +31,9 @@ interface HorseTrackProps {
  * BLUEPRINT 8.2 화면 구성 3-1 · 4. 출발은 버튼이 아니라 경주 시각(stage.startedAt)에 모두 함께다.
  * 캔버스는 보일 때마다 만들고(Activity 로 숨겨지면 effect 정리로 지운다) 매 프레임은 useRaceRun 이 직접 그린다.
  * 카운트다운 · 토스트는 캔버스 위에 DOM 으로 겹친다(사용자 결정: 경기 화면만 캔버스).
+ * 말은 게이트 번호 순으로 줄을 서고(1번이 맨 뒤 줄) 번호 배지 · HUD · 문구도 그 경주의 게이트 번호다.
  */
-export default function HorseTrack({ horses, stage, headingId }: HorseTrackProps) {
+export default function HorseTrack({ horses, gates, stage, headingId }: HorseTrackProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<TrackScene | null>(null);
   const [sceneFailed, setSceneFailed] = useState(false);
@@ -40,17 +42,23 @@ export default function HorseTrack({ horses, stage, headingId }: HorseTrackProps
   const { kind, raceNo, startedAt, bet, result } = stage;
   const myHorse = bet ? (horses.find((h) => h.id === bet.horseId) ?? null) : null;
 
-  const sceneHorses = useMemo<SceneHorse[]>(
-    () => horses.map((h) => ({ id: h.id, image: h.image, color: h.color, textColor: textOn(h.color), mine: h.id === myHorse?.id })),
-    [horses, myHorse?.id],
-  );
+  // 장면은 이 값이 바뀔 때만 다시 만든다. 게이트 표는 경주가 끝나는 순간 내용은 같아도 새 객체가 되므로(useRace — 출전표 경주가 넘어간다)
+  // 내용(말 id 순의 번호들)을 문자열로 비교한다 — 그러지 않으면 결승 직후 캔버스가 한 번 지워졌다 다시 그려진다.
+  const gateKey = horses.map((h) => gates[h.id]).join(",");
+  const sceneHorses = useMemo<SceneHorse[]>(() => {
+    const numbers = gateKey.split(",").map(Number);
+    return horses
+      .map((h, i) => ({ id: h.id, gate: numbers[i], image: h.image, color: h.color, textColor: textOn(h.color), mine: h.id === myHorse?.id }))
+      .sort((a, b) => a.gate - b.gate);
+  }, [horses, gateKey, myHorse?.id]);
 
   // 루프가 돌지 않을 때(출발 전 · 끝난 뒤) 장면에 보여 줄 프레임 — RUNNING 중에는 루프가 매 프레임 직접 넘긴다.
   // 끝난 경주인데 끝까지 본 스냅샷이 없으면(직접 보지 않았거나, 탭이 뒤에 있어 rAF 가 멈췄거나, 다시 마운트됨) 확정 순위로 결승선 장면을 만든다.
+  // 출발선 프레임의 순위(HUD)는 게이트 번호 순.
   const staticFrame = useMemo(() => {
     if (kind === "FINISHED" && result && frame?.doneAt == null) return finishedFrame(horses, result.ranking);
-    return frame ?? lineupFrame(horses);
-  }, [frame, kind, result, horses]);
+    return frame ?? lineupFrame(byGate(horses, gates));
+  }, [frame, kind, result, horses, gates]);
   const staticFrameRef = useRef(staticFrame);
   useEffect(() => {
     staticFrameRef.current = staticFrame;
@@ -96,7 +104,8 @@ export default function HorseTrack({ horses, stage, headingId }: HorseTrackProps
   const untilStart = now === null ? null : startedAt - now;
   const soon = untilStart !== null && untilStart <= RACE_SOON_MS;
   const myRank = myHorse ? order.indexOf(myHorse.id) + 1 : 0;
-  const myLabel = myHorse ? `${myHorse.id}번 ${myHorse.name.toUpperCase()}` : "";
+  const gateLabel = (h: Horse) => `${gates[h.id]}번 ${h.name.toUpperCase()}`;
+  const myLabel = myHorse ? gateLabel(myHorse) : "";
   const byId = (id: number) => horses.find((h) => h.id === id) ?? horses[0];
   const leaderHorse = byId(order[0]);
 
@@ -131,10 +140,10 @@ export default function HorseTrack({ horses, stage, headingId }: HorseTrackProps
     );
     const beforeGo = elapsed === null || elapsed < 0;
     title = bet ? `Race #${raceNo} · ${myLabel} 응원 중` : `Race #${raceNo} · 관람 중`;
-    note = beforeGo ? "곧 출발합니다" : bet ? `현재 ${myRank}위` : `선두 ${leaderHorse.id}번 ${leaderHorse.name.toUpperCase()}`;
+    note = beforeGo ? "곧 출발합니다" : bet ? `현재 ${myRank}위` : `선두 ${gateLabel(leaderHorse)}`;
   } else {
     label = "FINISH · 경주 종료";
-    title = bet ? `Race #${raceNo} · ${myLabel} ${myRank}위로 들어왔어요` : `Race #${raceNo} · 1위 ${leaderHorse.id}번 ${leaderHorse.name.toUpperCase()}`;
+    title = bet ? `Race #${raceNo} · ${myLabel} ${myRank}위로 들어왔어요` : `Race #${raceNo} · 1위 ${gateLabel(leaderHorse)}`;
     note = bet ? "아래에서 순위를 확인하세요." : "다음 경주 출전표가 열렸어요.";
   }
 
@@ -177,9 +186,9 @@ export default function HorseTrack({ horses, stage, headingId }: HorseTrackProps
                 <span className={styles.hudRank} aria-hidden>
                   {i + 1}
                 </span>
-                <GateBadge horse={horse} size="sm" />
+                <GateBadge horse={horse} gate={gates[horse.id]} size="sm" />
                 <span className="visually-hidden">
-                  {i + 1}위 {horse.id}번 {horse.name.toUpperCase()}
+                  {i + 1}위 {gateLabel(horse)}
                   {mine && " (내 말)"}
                 </span>
               </li>

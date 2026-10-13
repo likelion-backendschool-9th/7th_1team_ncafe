@@ -1,7 +1,7 @@
 import TicketBadge from "@/components/TicketBadge";
 import { formatRaceDate } from "@/lib/time";
 import type { RaceEntry } from "@/types/common";
-import type { Horse, RaceResult } from "../_types";
+import type { Gates, Horse, RaceResult } from "../_types";
 import GateBadge from "./GateBadge";
 import styles from "./race.module.css";
 
@@ -11,15 +11,17 @@ const RECENT = 5;
 /**
  * RECENT RACES — 최근 5경기의 1~3위(최신이 앞, 출전표 아래). 기록은 useRace 의 history
  * (이 세션에서 확정된 경주 + 지나간 경주 보충 + Mock 기록)라 경주가 끝나면 맨 앞에 바로 붙는다.
- * 내가 건 경주는 MY PICK 과 내 말 순위를 함께 보여 준다.
+ * 내가 건 경주는 MY PICK 과 내 말 순위를 함께 보여 준다. 번호는 카드마다 그 경주 당시 게이트 번호(gatesOf).
  */
 export default function RaceHistory({
   history,
   horses,
+  gatesOf,
   betFor,
 }: {
   history: RaceResult[];
   horses: Horse[];
+  gatesOf: (raceNo: number) => Gates;
   betFor: (result: RaceResult) => RaceEntry | null;
 }) {
   const byId = (id: number) => horses.find((h) => h.id === id) ?? horses[0];
@@ -36,6 +38,7 @@ export default function RaceHistory({
       </div>
       <ol className={styles.historyList}>
         {recent.map((race) => {
+          const gates = gatesOf(race.raceNo);
           const entry = betFor(race);
           const myHorse = entry ? byId(entry.horseId) : null;
           const myRank = entry ? race.ranking.indexOf(entry.horseId) + 1 : 0;
@@ -54,12 +57,12 @@ export default function RaceHistory({
                         {i + 1}
                         <small>위</small>
                       </span>
-                      <GateBadge horse={horse} size="sm" />
+                      <GateBadge horse={horse} gate={gates[id]} size="sm" />
                       <span className={styles.historyName} aria-hidden>
                         {horse.name.toUpperCase()}
                       </span>
                       <span className="visually-hidden">
-                        {i + 1}위 {horse.id}번 {horse.name.toUpperCase()}
+                        {i + 1}위 {gates[id]}번 {horse.name.toUpperCase()}
                       </span>
                     </li>
                   );
@@ -69,7 +72,7 @@ export default function RaceHistory({
                 <p className={styles.historyMine}>
                   <TicketBadge tone="PICK" />
                   <span>
-                    {entry.gate}번 {myHorse.name.toUpperCase()} · <strong>{myRank}위</strong>
+                    {gates[myHorse.id]}번 {myHorse.name.toUpperCase()} · <strong>{myRank}위</strong>
                   </span>
                 </p>
               )}

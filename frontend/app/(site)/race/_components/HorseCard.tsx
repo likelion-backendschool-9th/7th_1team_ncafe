@@ -7,6 +7,8 @@ import styles from "./race.module.css";
 
 interface HorseCardProps {
   horse: Horse;
+  /** 이번 경주의 게이트 번호(지난 경주 도착 순서) */
+  gate: number;
   /** 최근 순위(최근 경기부터) */
   recent: number[];
   /** 내가 건 말 */
@@ -22,16 +24,16 @@ interface HorseCardProps {
  * 출전표 카드 — 게이트 번호(대표색 원) · 이름 · 말 이미지 · 성향 · 최근 성적 · 설명 · [이 말 선택하기].
  * 최근 성적은 전광판 칸으로, 1위는 금색(WINNER 색).
  */
-export default function HorseCard({ horse, recent, picked, pickedLabel = "출발 대기 중", action, onPick }: HorseCardProps) {
-  const label = `${horse.id}번 ${horse.name.toUpperCase()}`;
+export default function HorseCard({ horse, gate, recent, picked, pickedLabel = "출발 대기 중", action, onPick }: HorseCardProps) {
+  const label = `${gate}번 ${horse.name.toUpperCase()}`;
 
   return (
     <article className={`${styles.card} ${picked ? styles.cardPicked : ""}`} aria-labelledby={`horse-${horse.id}`}>
       <div className={styles.cardHead}>
-        <GateBadge horse={horse} />
+        <GateBadge horse={horse} gate={gate} />
         <div className={styles.cardTitle}>
           <h3 id={`horse-${horse.id}`} className={styles.cardName}>
-            <span className="visually-hidden">{horse.id}번 </span>
+            <span className="visually-hidden">{gate}번 </span>
             {horse.name.toUpperCase()}
           </h3>
           <span className={styles.cardSub}>
