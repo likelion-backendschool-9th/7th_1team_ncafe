@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,9 +24,19 @@ const TEAR_MS = 380;
 export default function MenuCard({ menu }: { menu: Menu }) {
   const router = useRouter();
   const [torn, setTorn] = useState(false);
+  const tearTimer = useRef<number | undefined>(undefined);
   const soldOut = menu.status === "SOLD_OUT";
   const sizePrices = menu.sizePrices;
   const href = `/menu/${menu.id}`;
+
+  // 상세로 넘어가면 이 페이지는 Activity 로 숨겨질 뿐 상태가 남는다 —
+  // 숨겨질 때 STUB 을 다시 붙여 둬서 뒤로가기로 돌아오면 원래 티켓이 보이게 한다.
+  useLayoutEffect(() => {
+    return () => {
+      window.clearTimeout(tearTimer.current);
+      setTorn(false);
+    };
+  }, []);
 
   function handleClick(e: MouseEvent<HTMLAnchorElement>) {
     // 새 탭·새 창으로 여는 클릭은 브라우저에 맡긴다
@@ -35,7 +45,7 @@ export default function MenuCard({ menu }: { menu: Menu }) {
     e.preventDefault();
     if (torn) return;
     setTorn(true);
-    window.setTimeout(() => router.push(href), TEAR_MS);
+    tearTimer.current = window.setTimeout(() => router.push(href), TEAR_MS);
   }
 
   return (
