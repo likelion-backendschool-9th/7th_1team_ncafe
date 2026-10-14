@@ -21,4 +21,6 @@ export interface HeroSlide {
   imageAlt: string;
   /** CSS object-position — 피사체가 치우친 사진의 기준점 */
   imagePosition?: string;
+  /** 사진 위에 겹쳐 재생할 애니메이션 장면. image 는 로딩 전 · 실패 시의 정적 포스터가 된다 */
+  scene?: "coffee-race";
 }

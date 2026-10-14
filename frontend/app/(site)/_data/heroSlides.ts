@@ -1,4 +1,4 @@
-import nextRacePhoto from "@/public/images/hero/next-race.jpg";
+import nextRacePhoto from "@/public/images/hero/coffee-race/background.jpg";
 import { BASE_RACE_TIMES } from "@/lib/raceSchedule";
 import { formatRaceTimes } from "@/lib/time";
 import type { HeroSlide } from "../_types";
@@ -18,7 +18,8 @@ export const HERO_SLIDES: HeroSlide[] = [
     raceClock: true,
     cta: { label: "RACE 페이지 보기", href: "/race" },
     image: nextRacePhoto,
-    imageAlt: "커다란 아이스 커피 컵을 둘러싼 트랙을 번호 조끼를 입은 귀여운 말들이 달리는 일러스트",
-    imagePosition: "center",
+    imageAlt: "커다란 아이스 커피 컵을 둘러싼 트랙을 일곱 마리 귀여운 말들이 시계 방향으로 달리고 관중이 응원하는 일러스트",
+    imagePosition: "center 60%",
+    scene: "coffee-race",
   },
 ];
