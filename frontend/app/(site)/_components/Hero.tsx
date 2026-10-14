@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState, type CSSProperties } from "react";
 import type { HeroSlide } from "../_types";
+import CoffeeRaceScene from "./CoffeeRaceScene";
 import HeroRaceClock, { HeroRaceTabTitle } from "./HeroRaceClock";
 import styles from "./hero.module.css";
 
@@ -74,7 +75,12 @@ export default function Hero({ slides }: HeroProps) {
                 className={styles.photo}
                 style={{ objectPosition: slide.imagePosition ?? "center" }}
               />
-              <div className={styles.shade} aria-hidden />
+              {slide.scene === "coffee-race" && (
+                <div className={styles.scene} style={{ "--scene-position": slide.imagePosition ?? "center" } as CSSProperties}>
+                  <CoffeeRaceScene className={`${styles.photo} ${styles.sceneCanvas}`} />
+                </div>
+              )}
+              <div className={`${styles.shade} ${slide.scene ? styles.shadeLight : ""}`} aria-hidden />
 
               <div className={`container ${styles.content}`}>
                 <div className={styles.text}>
