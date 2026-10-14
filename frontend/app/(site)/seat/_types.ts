@@ -78,6 +78,12 @@ export interface SlotAvailability extends TimeBlock {
   total: number; // 전체 의자 수
 }
 
+/** 메인 "지점별 좌석 현황" — 지점 하나의 그 날 시간대별 잔여석(seatService.getBranchOccupancy) */
+export interface BranchOccupancy {
+  branch: Branch;
+  slots: SlotAvailability[];
+}
+
 /** 좌석 상태를 묻는 단위 — 지점 · 날짜 · 시간대 */
 export interface SeatSlot {
   branchId: string;

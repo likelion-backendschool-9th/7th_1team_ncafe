@@ -1,4 +1,5 @@
-/* ===== TODAY'S LINEUP — 4열 정사각 썸네일 그리드 ===== */
+/* ===== TODAY'S LINEUP — 4열 정사각 썸네일 그리드 =====
+   .section · .head · .title · .subtitle · .more 는 메인의 다른 섹션(SeatStatus · RunnerStatus)도 같이 쓴다. */
 .section {
   padding-block: 72px 24px;
 }

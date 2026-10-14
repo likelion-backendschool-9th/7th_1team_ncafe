@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSeatBooking } from "../_hooks/useSeatBooking";
 import { useSeatFilter } from "../_hooks/useSeatFilter";
 import { matchesFilter } from "../_lib/filter";
@@ -9,6 +9,7 @@ import { recommendSeats, type RecommendResult } from "../_lib/recommend";
 import { totalChairs } from "../_lib/summary";
 import type { Branch, FloorPlan, Seat, TimeBlock } from "../_types";
 import BookingBar from "./BookingBar";
+import BranchFromQuery from "./BranchFromQuery";
 import RecommendedSeat, { type RecommendState } from "./RecommendedSeat";
 import ReservationDone from "./ReservationDone";
 import ReserveConfirmModal from "./ReserveConfirmModal";
@@ -100,6 +101,9 @@ export default function SeatBooking({ seats, floorPlan, branches, timeBlocks }: 
 
   return (
     <>
+      <Suspense fallback={null}>
+        <BranchFromQuery branches={branches} onPick={booking.pickBranch} />
+      </Suspense>
       <BookingBar booking={booking} total={total} />
 
       <div className={styles.layout} data-step={step}>

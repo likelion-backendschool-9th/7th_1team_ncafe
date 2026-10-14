@@ -1,7 +1,8 @@
 /* ===== 디자인 토큰 — BLUEPRINT 2.1 =====
    화이트 베이스 · 산세리프(Pretendard) · 그레이스케일 포인트(manhattaN cafe 로고 톤).
    배경은 흰색/연회색, 텍스트는 거의 검정, --brand-* 회색 계열은 버튼·배지·강조처럼 "포인트"에만 쓴다.
-   금색은 WINNER 표시 전용, 빨강은 LIVE·품절·위험 동작 전용이다 — 유채색은 이 둘뿐이다. */
+   금색은 WINNER 표시 전용, 빨강은 LIVE·품절·위험 동작 전용이다 — 유채색은 이 둘뿐이다.
+   예외: 메인 "지점별 좌석 현황"의 혼잡도와 말 컨디션 게이지(메인 · /race 출전표)는 신호등 3색(--crowd-*)으로 읽는다(사용자 결정 2026-10-14). */
 :root {
   /* Surface */
   --bg: #ffffff;
@@ -43,6 +44,12 @@
   --seat-using: #8b5e3c;
   --seat-reserved: #c9a227;
   --seat-repair: #8a8a8a;
+
+  /* 신호등 3색 — 혼잡도(메인 지점별 좌석 현황) · 컨디션 게이지(components/ConditionMeter).
+     여유 · 혼잡 위 글자는 흰색, 보통 위 글자는 짙은 색(대비 4.5:1 이상) */
+  --crowd-low: #15803d;
+  --crowd-mid: #f2a900;
+  --crowd-high: var(--red-600);
 
   /* Legacy alias — 이전 크림/브라운 토큰을 쓰는 화면(관리자 등) 호환용. 새 코드에서는 위의 토큰을 쓴다. */
   --cream-50: var(--bg);

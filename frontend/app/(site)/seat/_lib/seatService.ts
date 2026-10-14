@@ -1,7 +1,7 @@
 // 좌석 데이터 창구(BLUEPRINT 6) — 지금은 Mock. 백엔드 연결 시 이 파일만 API 호출로 바꾼다.
-// 읽기: 지점 · 좌석 · 평면도 · 시간대 · 시간대별 좌석 상태 · 잔여석. 쓰기: 예약 · 예약대기 · 취소(결과만 돌려주고 반영은 호출한 쪽의 UserProvider 가 한다).
+// 읽기: 지점 · 좌석 · 평면도 · 시간대 · 시간대별 좌석 상태 · 잔여석(지점 하나 · 메인용 지점 전체). 쓰기: 예약 · 예약대기 · 취소(결과만 돌려주고 반영은 호출한 쪽의 UserProvider 가 한다).
 // 좌석 상태는 지점 · 날짜 · 시간대로 시드한 결정적 Mock(_lib/mockStatus.ts)이라 새로고침해도 같은 시간대는 같다.
-import { kstDate, kstMinutes, minutesOf } from "@/lib/kst";
+import { addDays, kstDate, kstMinutes, minutesOf } from "@/lib/kst";
 import type { SeatReservation } from "@/types/common";
 import { BRANCHES } from "../_data/branches";
 import { FLOOR_PLAN } from "../_data/floorPlan";
@@ -9,6 +9,7 @@ import { MAX_PEOPLE, TIME_BLOCKS } from "../_data/schedule";
 import { SEATS } from "../_data/seats";
 import type {
   Branch,
+  BranchOccupancy,
   ChairStatusMap,
   FloorPlan,
   ReservationRequest,
@@ -19,7 +20,7 @@ import type {
   WaitlistRequest,
 } from "../_types";
 import { mockChairStatuses } from "./mockStatus";
-import { blockState } from "./schedule";
+import { blockState, hasOpenBlock } from "./schedule";
 import { summarize, totalChairs } from "./summary";
 
 /** 한 번에 예약할 수 있는 최대 인원 — 컴포넌트는 _data 대신 여기서 읽는다 */
@@ -62,6 +63,19 @@ export async function getSlotAvailability(branchId: string, date: string, now: n
     const { available, total } = summarize(SEATS, statuses);
     return { ...block, state, available, total };
   });
+}
+
+/**
+ * GET /api/seats/occupancy — 메인 "지점별 좌석 현황". 지점마다 그 날 시간대별 잔여석.
+ * 날짜는 오늘, 오늘 시간대가 모두 지났으면(영업 종료 뒤) 내일 — /seat 의 기본 날짜와 같은 규칙이다.
+ */
+export async function getBranchOccupancy(now: number): Promise<{ date: string; branches: BranchOccupancy[] }> {
+  const today = kstDate(now);
+  const date = hasOpenBlock(today, TIME_BLOCKS, now) ? today : addDays(today, 1);
+  const branches = await Promise.all(
+    BRANCHES.map(async (branch) => ({ branch: structuredClone(branch), slots: await getSlotAvailability(branch.id, date, now) })),
+  );
+  return { date, branches };
 }
 
 // Mock 예약 번호 — 실제로는 서버가 정한다.

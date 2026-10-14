@@ -40,11 +40,13 @@ frontend/
 │  │
 │  ├─ (site)/                     # 사용자 사이트 route group — URL 에는 (site) 가 붙지 않는다
 │  │  ├─ layout.tsx               # Header + Footer
-│  │  ├─ page.tsx                 # /  메인 — Hero + MenuLineup 조립
+│  │  ├─ page.tsx                 # /  메인 — "use cache" — Hero → MenuLineup → RunnerStatus → SeatStatus 조립(지점 · 출전마 · 지난 기록을 Service 에서)
 │  │  ├─ _components/             # 메인(/) 전용
 │  │  │  ├─ Hero.tsx              # 전폭 슬라이더 + 하단 탭 페이지네이션 (hero.module.css)
 │  │  │  ├─ HeroRaceClock.tsx     # NEXT RACE 슬라이드의 다음 경주 시각 · 카운트다운 · SOON/LIVE + 탭 제목
-│  │  │  ├─ MenuLineup.tsx        # TODAY'S LINEUP 4열 메뉴 그리드, "use cache" (menuLineup.module.css)
+│  │  │  ├─ MenuLineup.tsx        # TODAY'S LINEUP 4열 메뉴 그리드, "use cache" (menuLineup.module.css — 섹션 머리 클래스는 아래 두 섹션도 같이 쓴다)
+│  │  │  ├─ SeatStatus.tsx        # SEAT STATUS 지점별 좌석 현황 카드 3장(혼잡도 신호등 · 시간대 막대 13칸), client (seatStatus.module.css)
+│  │  │  ├─ RunnerStatus.tsx      # TODAY'S RUNNERS 출전마 상태 가로 슬라이더(조끼색 막대 · 게이트 · 컨디션 · 최근 성적), client (runnerStatus.module.css)
 │  │  │  └─ DashboardCard.tsx     # (14단계) 좌석/인기메뉴/쿠폰/다음경주 카드 (Link)
 │  │  ├─ _lib/
 │  │  │  └─ lineup.ts             # 라인업 선정 순수 함수 (WINNER → BEST → NEW, 품절은 뒤로)
@@ -56,7 +58,7 @@ frontend/
 │  │  │  ├─ page.tsx              # "use cache" — 제목 → RaceCountdown → RaceBoard(출전마 · 지난 기록을 Service 에서)
 │  │  │  ├─ _components/
 │  │  │  │  ├─ RaceBoard.tsx      # 출전표 + 보상 안내 + 트랙 무대(READY 이후) + 확인창 조립 (client, useRace)
-│  │  │  │  ├─ HorseCard.tsx      # 출전표 카드(게이트 번호 · 이름 · 말 이미지 · 성향 · 최근 성적 · 선택 버튼)
+│  │  │  │  ├─ HorseCard.tsx      # 출전표 카드(게이트 번호 · 이름 · 말 이미지 · 성향 · 최근 성적 · 컨디션 · 선택 버튼)
 │  │  │  │  ├─ GateBadge.tsx      # 게이트 번호 원(번호 = 그 경주의 게이트 번호, 대표색 = 조끼 색, 글자색은 대비 계산)
 │  │  │  │  ├─ PayoutGuide.tsx    # "쿠폰 1장으로 참여 · [1위 4장] [2위 3장] [3위 2장] 돌려받기"
 │  │  │  │  ├─ BetConfirmModal.tsx# "MOCHA에 쿠폰 1장을 사용하시겠습니까?"
@@ -69,7 +71,8 @@ frontend/
 │  │  │  │  └─ race.module.css    # /race 스타일(전광판부터 7~9단계에서 이어 붙임)
 │  │  │  ├─ _hooks/
 │  │  │  │  ├─ useRace.ts         # useRaceHistory(기록 합치기 — /admin/race 도 씀) + useRace(경주 번호 · 쿠폰 걸기 · 결과 모달 알림) + useRaceRun(rAF 루프 — 캔버스 매 프레임 · DOM 10Hz · 토스트 큐)
-│  │  │  │  └─ useRaceHorses.ts   # (16단계) 출전마 구독 — page 가 받은 출전마에 관리자 변경(horseStore)을 겹친다(RaceBoard · /my MyRaces · /admin/race)
+│  │  │  │  ├─ useRaceHorses.ts   # (16단계) 출전마 구독 — page 가 받은 출전마에 관리자 변경(horseStore)을 겹친다(RaceBoard · /my MyRaces · /admin/race · 메인 RunnerStatus)
+│  │  │  │  └─ useHorseConditions.ts # 오늘(KST)의 컨디션 받기 — 자정이 지나면 다시(RaceBoard · 메인 RunnerStatus)
 │  │  │  ├─ _lib/
 │  │  │  │  ├─ simulation.ts      # 순수 함수: createRace · step · advanceTo(속도 · 성향 · 이벤트 · 순위 · 18초 안전장치) · seededShuffle — UI 의존 없음
 │  │  │  │  ├─ messages.ts        # 이벤트 메시지 템플릿
@@ -77,17 +80,19 @@ frontend/
 │  │  │  │  ├─ payout.ts          # RACE_ENTRY_COUPONS · RACE_PAYOUT · payoutFor · payoutTable · payoutSummary · payoutBreakdown · payoutLabel
 │  │  │  │  ├─ records.ts         # 순수 함수: nextRaceNo · recentRanks · backfillHistory(지나간 경주 결정적 보충 — 그 경주 당시 출전마) · raceStartAt(경주 번호 → 출발 시각) · mergeHistory · gatesFor · gatesAfter · byGate(게이트 번호) · rankLabel · TRAIT_LABEL · textOn
 │  │  │  │  ├─ horseStore.ts      # (16단계) 출전마 저장소 — 기본값 + 관리자 변경 버전(localStorage) · latestHorses(표시) · raceHorsesAt(시뮬레이션) · saveHorses
-│  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, placeBet, getRaceResult(raceNo)) + 관리자(updateHorse, getRaceTimes, updateRaceTimes)
+│  │  │  │  ├─ condition.ts       # 오늘의 컨디션 — 말 · 날짜 시드의 결정적 Mock(mockConditions) · CONDITION_LABEL · CONDITION_LEVEL. 시뮬레이션에는 쓰지 않는다
+│  │  │  │  └─ raceService.ts     # 데이터 접근(getHorses, getRaceHistory, getHorseConditions(date), placeBet, getRaceResult(raceNo)) + 관리자(updateHorse, getRaceTimes, updateRaceTimes)
 │  │  │  ├─ _data/
 │  │  │  │  ├─ horses.ts          # 7마리(이미지 · 조끼 색)
 │  │  │  │  └─ raceHistory.ts     # Race #8~#12, 경주마다 7마리 전체 순위
-│  │  │  ├─ _types.ts             # Horse, Gates, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
+│  │  │  ├─ _types.ts             # Horse, HorseCondition, Gates, RaceStage, RaceResult, RaceBet, RaceEventMessage, RunnerState, RaceRun ...
 │  │  │  └─ lab/                  # /race/lab 개발용 실험실(시드 · 배속 · 되감기 · 이벤트 강제 · 게이트 번호 = 직전 실험 경주 도착 순서) — 쿠폰 · 단계와 무관, noindex
 │  │  │
 │  │  ├─ seat/                    # /seat  ★ 핵심 — 날짜 · 지점 · 시간대 → 의자 단위 예약(8.3, 2026-10-13 재설계)
 │  │  │  ├─ page.tsx              # "use cache" — 제목 → SeatBooking(좌석 · 평면도 · 지점 · 시간대를 Service 에서)
 │  │  │  ├─ _components/
 │  │  │  │  ├─ SeatBooking.tsx    # 조립(client) — BookingBar · [SeatCanvas | 패널(일정 선택 → 선택 좌석 → 완료)] · 모달 · 모바일 고정 바
+│  │  │  │  ├─ BranchFromQuery.tsx# `/seat?branch=gangnam` → 그 지점을 골라 둔다(메인 SEAT STATUS 카드에서 들어올 때). 화면 없음, fallback 없는 Suspense 안
 │  │  │  │  ├─ BookingBar.tsx     # 고른 지점 · 날짜 · 시간대 · 인원 칩 + [일정변경] | SeatSummary
 │  │  │  │  ├─ SeatSummary.tsx    # AVAILABLE SEATS n / 71 전광판 + 빈 테이블 인원별 수 + 마지막 업데이트
 │  │  │  │  ├─ SeatCanvas.tsx     # 어두운 캔버스 — 배율 · 확대/축소 · 미니맵 · 덮개 안내 · [예약대기] + 범례
@@ -117,13 +122,13 @@ frontend/
 │  │  │  │  ├─ summary.ts         # summarize(의자 상태 → 잔여 · 상태별 수 · 빈 테이블 인원별)
 │  │  │  │  ├─ filter.ts          # (12단계) 순수 함수: matchesFilter · freeChairIds · fitsPeople · FILTER_FEATURES
 │  │  │  │  ├─ recommend.ts       # (12단계) 순수 함수: recommendSeats(점수 · 상위 3개 · 바석 묶음 · 대안)
-│  │  │  │  └─ seatService.ts     # getBranches · getSeats · getFloorPlan · getTimeBlocks · getChairStatuses · getSlotAvailability · reserveChairs · joinWaitlist · cancelReservation · getSeatSummary
+│  │  │  │  └─ seatService.ts     # getBranches · getSeats · getFloorPlan · getTimeBlocks · getChairStatuses · getSlotAvailability · getBranchOccupancy(메인) · reserveChairs · joinWaitlist · cancelReservation · getSeatSummary
 │  │  │  ├─ _data/
 │  │  │  │  ├─ seats.ts           # 30자리(테이블 17 · 바석 13 = 의자 71), x·y %
 │  │  │  │  ├─ floorPlan.ts       # 구역 4 + 구조물(창문 · 바 · 카운터 · 화장실 · 출입구 · 통로)
 │  │  │  │  ├─ branches.ts        # 지점 3곳(마포 본점 · 강남점 · 성수점)
 │  │  │  │  └─ schedule.ts        # TIME_BLOCKS(2시간 6개) · BOOKING_DAYS 14 · MAX_PEOPLE 8
-│  │  │  └─ _types.ts             # Seat, Chair, FloorFixture, FloorSection, FloorPlan, Branch, TimeBlock, SeatSlot, ChairStatusMap, SlotAvailability ...
+│  │  │  └─ _types.ts             # Seat, Chair, FloorFixture, FloorSection, FloorPlan, Branch, TimeBlock, SeatSlot, ChairStatusMap, SlotAvailability, BranchOccupancy ...
 │  │  │
 │  │  ├─ menu/                    # /menu
 │  │  │  ├─ page.tsx
@@ -262,6 +267,7 @@ frontend/
 │  ├─ Scoreboard.tsx              # 전광판 스타일 숫자 박스(카운트다운·좌석 수 공용, 어두운 배경용 onDark)
 │  ├─ RacePhaseBadge.tsx          # SOON(테두리) · LIVE(빨강 + 깜빡이는 점) 배지 — 메인 히어로 · /race 공용
 │  ├─ HorseAvatar.tsx             # 말 마스코트(SVG, 대표색 주입) — 메인 Hero · /race 공용
+│  ├─ ConditionMeter.tsx          # 오늘의 컨디션 게이지(막대 20칸 · 신호등 색) — /race 출전표 카드 · 메인 TODAY'S RUNNERS 공용
 │  ├─ UserProvider.tsx            # "내 것" Context(쿠폰 · 쿠폰 내역 · 찜 · 주문 내역 · 내 레이스 기록(내가 건 말 · 정산) · 좌석 예약 · 예약대기) + useUser() 훅
 │  ├─ CartProvider.tsx            # 장바구니 Context + useCart() 훅 (Header · /menu/[id] · /cart)
 │  ├─ RaceProvider.tsx            # 레이스 진행 Context(이 세션에서 확정된 경주 결과 · 결과 모달을 띄운 경주 번호 · 진행 중 시뮬레이션 ref) + useRaceSession() 훅
@@ -369,12 +375,17 @@ frontend/
   --seat-reserved:  #c9a227;
   --seat-repair:    #8a8a8a;
 
+  /* 혼잡도(메인 SEAT STATUS) — 신호등 3색 */
+  --crowd-low:  #15803d;           /* 여유 — 흰 글자 */
+  --crowd-mid:  #f2a900;           /* 보통 — 짙은 글자 */
+  --crowd-high: var(--red-600);    /* 혼잡 — 흰 글자 */
+
   /* Shape: --radius-sm 6px · --radius-md 10px · --radius-lg 16px · --radius-pill */
 }
 ```
 
 - 배경은 흰색, 텍스트는 거의 검정. 넓은 어두운 색면은 **히어로(이미지 위 어두운 그라데이션)** 한 곳뿐이고, 푸터는 옅은 회색(`--bg-muted`) 블록이다.
-- 회색 포인트(`--brand-*`)·금색·빨간색은 **포인트 전용**이다. 유채색은 금색(WINNER)과 빨간색(BEST·품절·위험) 둘뿐이다. 종이 질감, 이중 테두리, 네온, 검정+금 조합, 칩·룰렛·카드 이미지는 쓰지 않는다(카지노처럼 보이지 않게).
+- 회색 포인트(`--brand-*`)·금색·빨간색은 **포인트 전용**이다. 유채색은 금색(WINNER)과 빨간색(BEST·품절·위험) 둘뿐이다. 예외는 신호등 3색(`--crowd-*`, 사용자 결정 2026-10-14) — 메인 SEAT STATUS 의 혼잡도와 말 컨디션 게이지(`ConditionMeter` — 메인 · `/race` 출전표)에만 쓴다. 종이 질감, 이중 테두리, 네온, 검정+금 조합, 칩·룰렛·카드 이미지는 쓰지 않는다(카지노처럼 보이지 않게).
 
 ### 2.2 타이포그래피
 
@@ -788,9 +799,9 @@ export async function reserveChairs(req: ReservationRequest): Promise<SeatReserv
 
 | 파일 | 함수 | 추후 API (예상) |
 |---|---|---|
-| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `placeBet(raceNo, startsAt, horseId)` → `RaceBet`, `getRaceResult(raceNo)` → `RaceResult \| null`(확정 전 null — Mock 은 시간표에서 "N번째 경주"의 출발 시각을 찾아 출발 + `RACE_SETTLE_MS` 뒤 결정적 시뮬레이션. 16단계에서 startsAt 인자를 뺐다 — 걸어 둔 경주의 시각이 바뀌어도 같은 번호의 결과를 받는다) | GET /api/horses, GET /api/races/history, POST /api/races/{raceNo}/bets, GET /api/races/{raceNo}/result |
+| `app/(site)/race/_lib/raceService.ts` | `getHorses()`, `getRaceHistory()`, `getHorseConditions(date)` → 말 id → `HorseCondition`(오늘의 컨디션 — 말 · 날짜 시드의 결정적 Mock, 표시용이라 경주 결과와 무관), `placeBet(raceNo, startsAt, horseId)` → `RaceBet`, `getRaceResult(raceNo)` → `RaceResult \| null`(확정 전 null — Mock 은 시간표에서 "N번째 경주"의 출발 시각을 찾아 출발 + `RACE_SETTLE_MS` 뒤 결정적 시뮬레이션. 16단계에서 startsAt 인자를 뺐다 — 걸어 둔 경주의 시각이 바뀌어도 같은 번호의 결과를 받는다) | GET /api/horses, GET /api/races/history, GET /api/horses/conditions?date, POST /api/races/{raceNo}/bets, GET /api/races/{raceNo}/result |
 | 〃 (관리자, 16단계) | `updateHorse(id, input)` → `{ horse, from }`, `getRaceTimes()`, `updateRaceTimes(times)` → 시간표 버전 — 둘 다 `changeEffectiveFrom(now)` 부터 적용 | PUT /api/admin/horses/{id}, GET /api/races/schedule, PUT /api/admin/races/schedule |
-| `app/(site)/seat/_lib/seatService.ts` | `getBranches()`, `getSeats()`, `getFloorPlan()`, `getTimeBlocks()`, `getChairStatuses(slot, now)` → `ChairStatusMap`, `getSlotAvailability(branchId, date, now)` → 시간대별 잔여석, `reserveChairs(req)` → `SeatReservation`, `joinWaitlist(req)` → `SeatReservation`(WAITING), `cancelReservation(id)`, `getSeatSummary(now)`(메인 대시보드 — 본점 · 지금 시간대), (13단계) `updateSeatStatus(slot, chairId, status)` | GET /api/branches, GET /api/seats, GET /api/seats/floor-plan, GET /api/seats/status?branch&date&start, GET /api/seats/availability?branch&date, POST /api/seats/reservations, POST /api/seats/waitlist, DELETE /api/seats/reservations/{id}, PATCH /api/admin/seats/{id} |
+| `app/(site)/seat/_lib/seatService.ts` | `getBranches()`, `getSeats()`, `getFloorPlan()`, `getTimeBlocks()`, `getChairStatuses(slot, now)` → `ChairStatusMap`, `getSlotAvailability(branchId, date, now)` → 시간대별 잔여석, `getBranchOccupancy(now)` → `{ date, branches: { branch, slots }[] }`(메인 SEAT STATUS — 지점마다 그 날 시간대별 잔여석, 영업이 끝났으면 내일), `reserveChairs(req)` → `SeatReservation`, `joinWaitlist(req)` → `SeatReservation`(WAITING), `cancelReservation(id)`, `getSeatSummary(now)`(메인 대시보드 — 본점 · 지금 시간대), (13단계) `updateSeatStatus(slot, chairId, status)` | GET /api/branches, GET /api/seats, GET /api/seats/floor-plan, GET /api/seats/status?branch&date&start, GET /api/seats/availability?branch&date, GET /api/seats/occupancy, POST /api/seats/reservations, POST /api/seats/waitlist, DELETE /api/seats/reservations/{id}, PATCH /api/admin/seats/{id} |
 | `app/(site)/menu/_lib/menuService.ts` | `getMenus(categoryId?)`, `getTodayWinnerMenu()`, `getCategories()`, `getMenuImageOptions()` | GET /api/menus, GET /api/categories, (이미지 업로드 API 생기면 교체) |
 | 〃 (관리자) | `createMenu(input)`, `updateMenu(id, input)`, `deleteMenu(id)`, `updateMenuStatus(id, status)` | POST /api/admin/menus, PUT·DELETE /api/admin/menus/{id}, PATCH /api/admin/menus/{id}/status |
 | 〃 (관리자) | `createCategory(input, order)`, `updateCategory(id, input, order)`, `deleteCategory(id)`, `reorderCategories(ids)` | POST /api/admin/categories, PUT·DELETE /api/admin/categories/{id}, PUT /api/admin/categories/order |
@@ -1879,12 +1890,80 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 
 ### 14단계 — 메인 대시보드 (`/`)
 
-앞 단계의 Service 들을 모아 보여 주는 화면. 설계: 8.1.
+앞 단계의 Service 들을 모아 보여 주는 화면. 설계: 히어로 · 라인업은 8.1, SEAT STATUS · TODAY'S RUNNERS 는 아래 "추가 설계".
+
+**추가 설계 — SEAT STATUS · TODAY'S RUNNERS (사용자 결정 2026-10-14)**
+
+- 참고: 좌석 현황은 "순위 원 · 상태 배지 · 수치 줄 · 안내 · 기준 시각 · 버튼" 세로 카드(가로로 넓지 않게 3열), 출전마 상태는 "왼쪽 세로 그라데이션 막대 + 텍스트" 카드의 가로 슬라이더.
+- 순서: 히어로 → TODAY'S LINEUP → TODAY'S RUNNERS → SEAT STATUS. `page.tsx` 는 `"use cache"` 로 지점 · 출전마 · 지난 기록을 Service 에서 받아 넘기고, 시각에 따라 바뀌는 값은 각 섹션이 마운트 뒤 채운다. 섹션 머리(제목 · 설명 · 더 보기 ›)는 `menuLineup.module.css` 의 클래스를 셋이 같이 쓴다(공용 컴포넌트로 빼지 않는다).
+
+```
+  (히어로 · TODAY'S LINEUP — 8.1)
+  TODAY'S RUNNERS                                                 출전표 보기 ›
+  오늘의 컨디션 — 다음 경주 Race #15에 나설 7마리예요.
+  ┌───────────────────┐ ┌─────────────┐ ┌─────────────┐ ┌──────────┐ ┌──
+  │░░░░░░░░░░░░░░░░░░░│ │░░░░░░░░░░░░░│ │░░░░░░░░░░░░░│ │░░░░░░░░░░│ │░░
+  │░░ [달리는 말 이미지] ░│ │░ [말 이미지] ░│ │             │ │          │ │       ← 옅은 조끼색 바탕, 카드 위 가장자리까지(16:10)
+  │░░░░░░░░░░░░░░░░░░░│ │░░░░░░░░░░░░░│ │░░░░░░░░░░░░░│ │░░░░░░░░░░│ │░░
+  ├───────────────────┤ ├─────────────┤ ├─────────────┤ ├──────────┤ ├──
+  │▌ 1번 게이트 · 균형형 │ │▌ 2번 게이트 …│ │▌ 3번 게이트 …│ │▌ …       │ │▌   (›)  ← 넘길 곳이 있을 때만 화살표
+  │▌ CARAMEL 캐러멜     │ │▌ LATTE 라떼  │ │             │ │          │ │       모바일은 밀어서
+  │▌ 컨디션 저조         │ │▌             │ │             │ │          │ │
+  │▌ ▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯ │ │▌             │ │             │ │          │ │       ← 컨디션 게이지(막대 20칸, 신호등 색)
+  │▌      최근 [1위][4위][5위]│ │             │ │          │ │       ← 카드 클릭 → /race
+  └───────────────────┘ └─────────────┘ └─────────────┘ └──────────┘ └──
+   ▌ = 조끼색 세로 그라데이션 막대, 게이트 순
+  SEAT STATUS                                                  좌석 예약하기 ›
+  지점별 좌석 현황 — 지금 여유로운 지점부터 보여 드려요.
+  ┌───────────────────────┐ ┌──────────┐ ┌──────────┐
+  │ (1)            [보통] │ │ (2) [혼잡]│ │ (3) [혼잡]│   ← 여유로운 순 · 배지 신호등 3색
+  │ 강남점                 │ │ 성수점    │ │ 마포 본점  │      PC 3열 · 모바일 1열
+  │ 서울시 강남구 …, 2층    │ │          │ │          │
+  │ 빈 의자 25 / 71석 점유 65%│ │          │ │          │
+  │ ▓▓▓▓▓▓▓▓▓▓░░░░░        │ │          │ │          │   ← 점유율 막대(배지 색)
+  │ 자리가 적당히 남아 있어요. │ │          │ │          │
+  │ ┌ 오늘 시간대별 혼잡도 ─┐ │ │          │ │          │
+  │ │ ▁▁▂▅▅▅▂▃▄▃▅▂▂     │ │ │          │ │          │   ← 13칸(09~21시), 지난 칸 흐림, 기준 칸 아래 점
+  │ │ 09  12  15  18  21 │ │ │          │ │          │
+  │ └──────────────────┘ │ │          │ │          │
+  │ 지금 13:00–14:00 기준 · 13:30 업데이트 │          │ │          │
+  │ ( 이 지점 좌석 예약 → ) │ │          │ │          │   ← /seat?branch=gangnam
+  └───────────────────────┘ └──────────┘ └──────────┘
+```
+
+*SeatStatus (`_components/SeatStatus.tsx`, client) — 지점별 좌석 현황*
+- 데이터: `seatService.getBranchOccupancy(now)` — 지점마다 그 날 시간대 13칸의 잔여석. 날짜는 오늘, 오늘 시간대가 다 지났으면 내일(/seat 기본 날짜와 같은 규칙). 1분 시계(`seat/_hooks/useMinuteClock`)가 바뀔 때마다 다시 받는다. 잔여석에서 **내 예약 의자 수를 뺀다**(`UserProvider.seatReservations` — /seat 시간대 카드와 같은 숫자).
+- 기준 시간대: 진행 중(LIVE)인 블록, 없으면 아직 오지 않은 첫 블록. 기준 줄은 `지금 13:00–14:00 기준` / `오픈 전 · 09:00–10:00 기준` / `영업 종료 · 내일 09:00–10:00 기준` + `· HH:MM 업데이트`. 안내 한 줄도 LIVE 면 "지금 바로 앉을 자리가 넉넉해요", 아니면 "첫 시간대는 …".
+- 혼잡도: 점유율(1 − 빈 의자/전체) **45% 미만 여유 · 70% 미만 보통 · 그 이상 혼잡** — Mock 분포(지점 3곳 × 13칸 × 1주)에서 여유 ≈ 1/3 · 혼잡 ≈ 1/6 이 되도록 잡았다. 배지 · 점유율 막대 · 시간대 막대가 같은 신호등 색(`--crowd-*`).
+- 순서: 기준 시간대의 빈 의자 비율이 높은 지점부터(순위 원 1~3, 스크린리더는 "여유 1위"). 시각을 알기 전(정적 셸)에는 지점 이름 · 주소만 있는 빈 카드("확인 중", 막대 0)라 레이아웃이 밀리지 않는다.
+- 시간대 막대는 `<ol aria-label="오늘 시간대별 점유율">` — 칸마다 스크린리더용 "13:00 65% 보통 (기준)".
+- [이 지점 좌석 예약 →] 은 `/seat?branch=<id>` — /seat 의 `BranchFromQuery` 가 그 지점을 골라 둔다.
+
+*RunnerStatus (`_components/RunnerStatus.tsx`, client) — 출전마 상태*
+- 데이터는 /race 와 같다: 출전마 `useRaceHorses`(관리자 변경 포함) · 기록 `useRaceHistory`(지나간 경주 자동 보충) → 다음 경주 번호 · `gatesFor` 게이트 · `recentRanks` 최근 3경기, 컨디션 `useHorseConditions`. 그래서 메인 첫 번들에도 시뮬레이션 코드가 들어간다(기록 보충에 필요).
+- 카드 위쪽: 말 이미지(`horse.image` — /race 와 같은 420×300 PNG, 칸 폭의 78%)를 그 말의 조끼색 14% 바탕 위에, 카드 위 가장자리까지 꽉 채운 16:10 칸(사용자 결정 2026-10-14). 호버하면 이미지가 살짝 커진다(reduced-motion 이면 없음).
+- 카드 아래쪽: 왼쪽 6px 세로 막대(조끼색 → 옅은 조끼색 그라데이션) · `N번 게이트 · 성향` · `이름(영문 대문자) 한글` · `컨디션 좋음` + 그 아래 막대 20칸 게이지(`ConditionMeter caption="컨디션"`) · 오른쪽 아래 `최근 [1위][4위][5위]`(1위 금색). 카드 전체가 `/race` 링크. 게이트 순.
+- 슬라이더: 가로 스크롤 + 스크롤 스냅, 카드 폭 270px(모바일 `min(72vw, 270px)`). PC 는 넘길 곳이 있을 때만 좌우 원형 화살표(한 번에 화면 폭의 75%, reduced-motion 이면 즉시), 모바일은 화살표 없이 밀어서.
+- **`li` 의 key 는 게이트 자리(말 id 가 아님)** — 마운트 뒤 기록을 보충하면 게이트 순서가 바뀌는데, 말 id 로 두면 li 가 옮겨지고 스크롤 스냅이 처음 붙어 있던 칸을 따라가 슬라이더가 끝으로 밀린다.
+- **스크롤 칸(`.track`)은 `position: relative`** — 카드 안의 스크린리더용 글(`.visually-hidden`, `position: absolute`)이 바깥 `.slider` 기준으로 놓이면 스크롤 칸에 잘리지 않아, 화면 밖 카드의 숨은 글이 페이지 폭을 늘리고 메인 오른쪽에 빈 여백이 생긴다(1440px 에서 페이지 폭 2107px).
+
+*오늘의 컨디션 — 메인 TODAY'S RUNNERS · `/race` 출전표 카드 공용*
+- `raceService.getHorseConditions(date)` — 말 · KST 날짜로 시드한 결정적 Mock(`race/_lib/condition.ts`, 최상 15% · 좋음 35% · 보통 35% · 저조 15%)이라 그 날은 누가 봐도 같고 자정에 바뀐다. **표시용 값이고 시뮬레이션에는 넘기지 않는다**(경주 결과와 무관).
+- 표시는 공용 `components/ConditionMeter` — **가는 세로 막대 20칸 게이지**(사용자 결정 2026-10-14, 상태 페이지의 가동률 막대 줄 모양): 막대 5×16px · 모서리 1px · 간격 2px, 단계만큼 채운다(최상 20 · 좋음 15 · 보통 10 · 저조 5칸). 채운 칸은 신호등 색(최상 `--crowd-low` · 좋음 그 60% 연한 초록 · 보통 `--crowd-mid` · 저조 `--crowd-high`), 빈 칸은 연회색. 날짜를 알기 전에는 빈 칸 + "—", 스크린리더는 "좋음 (4단계 중 3)".
+- 두 가지 배치: `caption` 을 주면 `컨디션 좋음` 제목 줄 아래 막대 줄(메인), 없으면 `좋음 ▮▮▮…` 한 줄(`/race` 출전표 카드 — 성향 · 최근 성적 아래 세 번째 줄의 dd). 4열 카드(≥1200px)의 dd 폭 약 174px 안에 단어 + 막대 138px 가 들어간다.
 
 **구현**
 - [x] `Hero.tsx` — 전폭 슬라이더 골격(탭 페이지네이션 · 자동 전환 · 진행바). 현재 NEXT RACE 1장(카운트다운 + 사진)
 - [x] `MenuLineup.tsx` + `_lib/lineup.ts` — TODAY'S LINEUP 배지 메뉴 8개 그리드
 - [x] NEXT RACE 슬라이드에 카운트다운 연결(6단계에서 함께 함 — `HeroRaceClock`)
+- [x] (2026-10-14) 섹션 순서 히어로 → TODAY'S LINEUP → TODAY'S RUNNERS → SEAT STATUS — `page.tsx` 를 `"use cache"` 로 바꿔 지점 · 출전마 · 지난 기록을 Service 에서 받아 조립
+- [x] (2026-10-14) `SeatStatus.tsx` — 지점별 좌석 현황 카드 3장(여유로운 순 · 혼잡도 신호등 배지 · 빈 의자/전체 · 점유율 막대 · 시간대 막대 13칸 · [이 지점 좌석 예약 →]). `seatService.getBranchOccupancy(now)` 추가, 잔여석에서 내 예약을 뺀다. 혼잡도 기준 45% · 70%, 토큰 `--crowd-*`
+- [x] (2026-10-14) `/seat?branch=<id>` — `seat/_components/BranchFromQuery.tsx` 가 그 지점을 골라 둔다(SEAT STATUS 카드에서 들어올 때)
+- [x] (2026-10-14) 오늘의 컨디션 — `race/_lib/condition.ts`(말 · 날짜 시드 결정적 Mock, 최상 · 좋음 · 보통 · 저조, 표시용이라 시뮬레이션과 무관) · `raceService.getHorseConditions(date)` · `race/_hooks/useHorseConditions.ts` · 공용 `components/ConditionMeter.tsx`. `/race` 출전표 카드(`HorseCard`)의 성향 · 최근 성적 아래에 "컨디션" 줄 추가
+- [x] (2026-10-14) 컨디션 표시를 점(●●●○)에서 막대 20칸 게이지 + 신호등 색으로 변경 — 메인 TODAY'S RUNNERS(제목 줄 아래 막대 줄) · `/race` 출전표 카드(한 줄) 둘 다
+- [x] (2026-10-14) `RunnerStatus.tsx` — 출전마 상태 가로 슬라이더(조끼색 세로 막대 · 게이트 · 성향 · 이름 · 컨디션 · 최근 성적, 카드 → /race, PC 화살표 · 모바일 스와이프). li key 는 게이트 자리(말 id 면 게이트 순서가 바뀔 때 스크롤 스냅이 끝으로 밀린다)
+- [x] (2026-10-14) RunnerCard 위쪽에 말 이미지 칸 추가 — 옅은 조끼색 바탕, 카드 위 가장자리까지
+- [x] (2026-10-14) 메인 오른쪽 빈 여백(가로 넘침) 수정 — TODAY'S RUNNERS 스크롤 칸에 `position: relative`. 1440 · 1280 · 1024 · 820 · 390px 모두 페이지 폭 = 화면 폭
 - [ ] 히어로 슬라이드 추가 — 오늘의 WINNER 메뉴 · 이용 가능 좌석 · 내 쿠폰/이벤트 (각 Service 값으로 page 가 조립)
 - [ ] `DashboardCard.tsx` — 이용 가능 좌석 · 오늘의 인기 메뉴 · 내 쿠폰 · 다음 경주 (슬라이드로 흡수할지 별도 섹션으로 둘지 결정)
 - [ ] `app/(site)/page.tsx` — `getSeatSummary(now)`(10단계에서 만듦 — 본점 · 지금 시간대의 빈 의자 수, 영업 전이면 첫 시간대), `getTodayWinnerMenu` 를 각 라우트 Service 에서 가져와 조립
@@ -1893,6 +1972,8 @@ DB 연결 · Spring Boot API 연결 · 로그인/회원가입 · 실제 결제 �
 - [ ] 카드 4개가 각각 `/seat`, `/menu`, `/my#coupons`(내 쿠폰), `/race` 로 이동한다
 - [ ] 쿠폰 수가 Header · `/my` 와 같다
 - [ ] 다른 라우트의 `_components/`·`_data/` 를 직접 import 하지 않는다
+- [x] (2026-10-14) SEAT STATUS 가 오픈 전(09:00 블록) · 영업 중(진행 중 블록) · 영업 종료(내일 09:00 블록) 세 경우 모두 맞게 보이고, 카드 버튼으로 들어간 `/seat` 에 그 지점이 골라져 있다
+- [x] (2026-10-14) TODAY'S RUNNERS 가 게이트 1번부터 보이고 화살표로 끝까지 넘어간다, `/race` 카드에 컨디션 줄이 보인다 — `npm run build` · `npx eslint .` · `tsc` 통과, 콘솔 오류 없음 · PC(1440) · 모바일(390) 확인
 
 ---
 
