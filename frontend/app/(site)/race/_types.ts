@@ -17,6 +17,12 @@ export interface Horse {
 }
 // 최근 성적은 말 데이터에 두지 않고 경주 기록(RaceResult)에서 계산한다 — _lib/records.ts
 
+/**
+ * 오늘의 컨디션(사용자 결정 2026-10-14) — 메인 "TODAY'S RUNNERS" · 출전표 카드에 보인다.
+ * 말 · 날짜(KST)마다 정해지는 표시용 값이고 시뮬레이션(경주 결과)에는 쓰지 않는다 — _lib/condition.ts
+ */
+export type HorseCondition = "BEST" | "GOOD" | "NORMAL" | "LOW";
+
 /** 관리자 출전마 수정 폼 값(/admin/race) — 말 id 는 바꾸지 않는다(7마리 고정) */
 export type HorseInput = Omit<Horse, "id">;
 

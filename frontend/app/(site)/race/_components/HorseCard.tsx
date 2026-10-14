@@ -1,7 +1,8 @@
 import Image from "next/image";
+import ConditionMeter from "@/components/ConditionMeter";
 import TicketBadge from "@/components/TicketBadge";
 import { TRAIT_LABEL } from "../_lib/records";
-import type { Horse } from "../_types";
+import type { Horse, HorseCondition } from "../_types";
 import GateBadge from "./GateBadge";
 import styles from "./race.module.css";
 
@@ -11,6 +12,8 @@ interface HorseCardProps {
   gate: number;
   /** 최근 순위(최근 경기부터) */
   recent: number[];
+  /** 오늘의 컨디션 — 날짜를 알기 전에는 null */
+  condition: HorseCondition | null;
   /** 내가 건 말 */
   picked: boolean;
   /** 내가 건 말의 상태 문구("출발 대기 중" · "경주 중" …) — 비어 있으면 그리지 않는다 */
@@ -21,10 +24,10 @@ interface HorseCardProps {
 }
 
 /**
- * 출전표 카드 — 게이트 번호(대표색 원) · 이름 · 말 이미지 · 성향 · 최근 성적 · 설명 · [이 말 선택하기].
+ * 출전표 카드 — 게이트 번호(대표색 원) · 이름 · 말 이미지 · 성향 · 최근 성적 · 컨디션 · 설명 · [이 말 선택하기].
  * 최근 성적은 전광판 칸으로, 1위는 금색(WINNER 색).
  */
-export default function HorseCard({ horse, gate, recent, picked, pickedLabel = "출발 대기 중", action, onPick }: HorseCardProps) {
+export default function HorseCard({ horse, gate, recent, condition, picked, pickedLabel = "출발 대기 중", action, onPick }: HorseCardProps) {
   const label = `${gate}번 ${horse.name.toUpperCase()}`;
 
   return (
@@ -76,6 +79,12 @@ export default function HorseCard({ horse, gate, recent, picked, pickedLabel = "
                 <span className="visually-hidden">최근 경기부터 {recent.map((r) => `${r}위`).join(", ")}</span>
               </>
             )}
+          </dd>
+        </div>
+        <div>
+          <dt>컨디션</dt>
+          <dd>
+            <ConditionMeter condition={condition} />
           </dd>
         </div>
       </dl>

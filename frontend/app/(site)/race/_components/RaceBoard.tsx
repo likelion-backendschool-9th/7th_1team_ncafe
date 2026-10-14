@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useId, useLayoutEffect, useState } from "react";
 import { ORDER_COUPON_REWARD } from "../../cart/_lib/orderService";
+import { useHorseConditions } from "../_hooks/useHorseConditions";
 import { useRace } from "../_hooks/useRace";
 import { useRaceHorses } from "../_hooks/useRaceHorses";
 import { byGate, recentRanks } from "../_lib/records";
@@ -45,6 +46,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
     announcement,
     dismissAnnouncement,
   } = useRace(baseHistory, horses);
+  const conditions = useHorseConditions();
   const [selected, setSelected] = useState<Horse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -128,6 +130,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
                 horse={horse}
                 gate={gates[horse.id]}
                 recent={recentRanks(history, horse.id)}
+                condition={conditions?.[horse.id] ?? null}
                 picked={myBet?.horseId === horse.id}
                 pickedLabel={pickedLabel}
                 action={myBet ? "none" : canBet ? "pick" : "disabled"}

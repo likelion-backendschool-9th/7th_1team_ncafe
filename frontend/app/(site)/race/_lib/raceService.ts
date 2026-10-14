@@ -6,7 +6,8 @@
 import { announcedRaceTimes, saveRaceTimes, type RaceScheduleVersion } from "@/lib/raceSchedule";
 import { changeEffectiveFrom } from "@/lib/time";
 import { RACE_HISTORY } from "../_data/raceHistory";
-import type { Horse, HorseInput, RaceBet, RaceResult } from "../_types";
+import type { Horse, HorseCondition, HorseInput, RaceBet, RaceResult } from "../_types";
+import { mockConditions } from "./condition";
 import { latestHorses, raceHorsesAt, saveHorses } from "./horseStore";
 import { latestRaceAt, raceStartAt, settledRaceUntil } from "./records";
 import { simulateRace } from "./simulation";
@@ -19,6 +20,14 @@ export async function getHorses(): Promise<Horse[]> {
 /** GET /api/races/history — 최신 경주가 앞 */
 export async function getRaceHistory(): Promise<RaceResult[]> {
   return structuredClone(RACE_HISTORY);
+}
+
+/** GET /api/horses/conditions?date — 그 날(KST)의 컨디션, 말 id → 컨디션. 표시용이라 경주 결과에는 영향이 없다 */
+export async function getHorseConditions(date: string): Promise<Record<number, HorseCondition>> {
+  return mockConditions(
+    latestHorses().map((h) => h.id),
+    date,
+  );
 }
 
 /** POST /api/races/{raceNo}/bets — 지금은 성공만 돌려준다(쿠폰 차감 · 중복 참가 확인은 서버 몫) */
