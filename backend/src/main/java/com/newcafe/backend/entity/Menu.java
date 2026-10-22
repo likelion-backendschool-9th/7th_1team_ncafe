@@ -1,5 +1,8 @@
 package com.newcafe.backend.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.*; // 롬복을 설치 한 사람만 사용할 것
 
@@ -8,19 +11,32 @@ import lombok.*; // 롬복을 설치 한 사람만 사용할 것
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Menu {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kor_name", nullable = false)
-    private String korName;
+    @Column(nullable = false)
+    private String nameKor;
 
-    @Column(name = "eng_name", nullable = false)
-    private String engName;
+    @Column(nullable = false)
+    private String nameEng;
 
-    @Column(name = "price", nullable = false)
-    private Integer price;
+    private String description;
+    private String image;
+    private String label;
+
+    // 논리 삭제 플래그 (true면 목록/상세에서 숨김)
+    @Column(nullable = false)
+    private boolean deleted = false;
+
+    // 사이즈별 가격 (menus_size)
+    @OneToMany(mappedBy = "menu", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<MenuSize> sizes = new ArrayList<>();
+
+    // 해금 조건 (추후 구현)
+    // 지점별 판매가능여부(임시)
 }
