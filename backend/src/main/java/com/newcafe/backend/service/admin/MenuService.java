@@ -15,8 +15,10 @@ import com.newcafe.backend.common.exception.NotFoundException;
 import com.newcafe.backend.dto.menu.admin.MenuRequest;
 import com.newcafe.backend.dto.menu.admin.MenuResponse;
 import com.newcafe.backend.dto.menu.admin.MenuSizeRequest;
+import com.newcafe.backend.entity.Category;
 import com.newcafe.backend.entity.Menu;
 import com.newcafe.backend.entity.MenuSize;
+import com.newcafe.backend.repository.CategoryRepository;
 import com.newcafe.backend.repository.MenuRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class MenuService {
     private static final int SIZE_MAX_LENGTH = 2;
 
     private final MenuRepository menuRepository;
+    private final CategoryRepository categoryRepository;
 
     // 메뉴 목록 조회 (삭제된 메뉴 제외)
     public List<MenuResponse> findAll() {
@@ -83,7 +86,13 @@ public class MenuService {
         return new NotFoundException("MENU_NOT_FOUND", "메뉴를 찾을 수 없습니다. id=" + id);
     }
 
+    private Category getCategory(Integer categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다. id=" + categoryId));
+    }
+
     private void applyBasicInfo(Menu menu, MenuRequest request) {
+        menu.setCategory(getCategory(request.categoryId()));
         menu.setNameKor(request.nameKor().trim());
         menu.setNameEng(request.nameEng().trim());
         menu.setDescription(request.description());
@@ -116,6 +125,9 @@ public class MenuService {
     private void validate(MenuRequest request) {
         if (request == null || isBlank(request.nameKor()) || isBlank(request.nameEng())) {
             throw new BadRequestException("MENU_NAME_REQUIRED", "메뉴 한글명과 영문명은 필수입니다.");
+        }
+        if (request.categoryId() == null) {
+            throw new BadRequestException("MENU_CATEGORY_REQUIRED", "카테고리를 선택해야 합니다.");
         }
         if (request.sizes() == null || request.sizes().isEmpty()) {
             throw new BadRequestException("MENU_SIZE_REQUIRED", "사이즈와 가격을 1개 이상 입력해야 합니다.");
