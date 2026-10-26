@@ -26,6 +26,9 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
     @EntityGraph(attributePaths = "sizes")
     Optional<Menu> findByIdAndDeletedFalse(Long id);
 
+    // 카테고리에 남은 메뉴가 있는지 (카테고리 삭제 전 확인)
+    boolean existsByCategoryIdAndDeletedFalse(Integer categoryId);
+
     // 메뉴 등록: 상속받은 save(menu) 사용. 사이즈는 menu.sizes에 담아 함께 저장(cascade).
 
     // 메뉴 수정 (기본 정보). 변경된 행 수를 반환하며 0이면 대상 메뉴가 없거나 삭제된 상태.
