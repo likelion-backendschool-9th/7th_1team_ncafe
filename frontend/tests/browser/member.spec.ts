@@ -90,4 +90,3 @@ test("회원 화면 전체 흐름: 가입, 로그인, 수정, 비밀번호 변�
   await expect(page.locator('p[role="alert"]')).toBeVisible();
   expect(errors).toEqual([]);
 });
-
