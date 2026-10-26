@@ -24,9 +24,13 @@ public class MemberDetailsService implements UserDetailsService {
         Member member = memberRepository.findByLoginIdAndDeletedFalse(loginId)
                 .orElseThrow(() -> new UsernameNotFoundException("회원을 찾을 수 없습니다: " + loginId));
 
-        return User.withUsername(String.valueOf(member.getNo()))
-                .password(member.getPassword())
-                .roles(member.getRole().name())
-                .build();
+        return new User(String.valueOf(member.getNo()), member.getPassword(),
+                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_" + member.getRole().name()))) {
+            // 기존 세션의 비밀번호 변경 여부를 확인하기 위해 해시만 유지한다.
+            // 인증 토큰의 원문 credentials는 ProviderManager가 제거한다.
+            @Override
+            public void eraseCredentials() {}
+        };
     }
 }

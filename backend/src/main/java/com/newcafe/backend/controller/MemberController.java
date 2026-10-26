@@ -1,6 +1,13 @@
 package com.newcafe.backend.controller;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
+import com.newcafe.backend.dto.member.PasswordChangeRequest;
+import com.newcafe.backend.dto.member.WithdrawRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberController {
 
     private final MemberService memberService;
+    private final AuthService authService;
 
     // GET /api/v1/me/{memberId}
     @GetMapping("/{memberId}")
@@ -38,6 +46,26 @@ public class MemberController {
                                  Authentication authentication) {
         checkOwner(memberId, authentication);
         return memberService.update(memberId, request);
+    }
+
+    @PatchMapping("/{memberId}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@PathVariable Long memberId, @RequestBody PasswordChangeRequest request,
+                               Authentication authentication, HttpServletRequest httpRequest,
+                               HttpServletResponse httpResponse) {
+        checkOwner(memberId, authentication);
+        memberService.changePassword(memberId, request.currentPassword(), request.newPassword());
+        authService.logout(httpRequest, httpResponse, authentication);
+    }
+
+    @DeleteMapping("/{memberId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void withdraw(@PathVariable Long memberId, @RequestBody WithdrawRequest request,
+                         Authentication authentication, HttpServletRequest httpRequest,
+                         HttpServletResponse httpResponse) {
+        checkOwner(memberId, authentication);
+        memberService.withdraw(memberId, request.password());
+        authService.logout(httpRequest, httpResponse, authentication);
     }
 
     private void checkOwner(Long memberId, Authentication authentication) {

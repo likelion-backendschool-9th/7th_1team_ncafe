@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import jakarta.persistence.*;
 import lombok.*;
 
-// 회원 (members). 등급(grade_id)은 추후 연결
+// 회원 (members). 등급 정책 확정 전 grade_id는 null을 허용한다.
 @Entity
 @Table(name = "members")
 @Data
@@ -16,6 +16,12 @@ public class Member {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long no;                      // no BIGINT (PK, 회원 관리번호)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grade_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Grade grade;
 
     // 컬럼명은 id지만 PK(no)와 헷갈리지 않도록 필드명은 loginId로 둔다.
     @Column(name = "id", nullable = false, unique = true)
