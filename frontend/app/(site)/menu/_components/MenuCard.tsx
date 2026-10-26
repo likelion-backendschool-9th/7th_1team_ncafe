@@ -1,5 +1,9 @@
+"use client";
+
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import TicketBadge from "@/components/TicketBadge";
 import { ticketSerial } from "../_lib/menuBoard";
 import { MENU_SIZES } from "../_lib/menuSize";
@@ -11,13 +15,43 @@ import styles from "./menu.module.css";
  * 절취선 너머 STUB 에 STUB / No.0001 과 가격. 가격은 음료면 S · M · L · XL 한 줄씩,
  * 사이즈가 없는 메뉴(디저트)면 "ONE SIZE" 아래에 하나.
  * 카드 어디를 눌러도 상세(/menu/[id])로 간다 — 링크는 이름에만 걸고(읽히는 이름이 짧게) ::after 로 카드 전체를 덮는다.
+ * 마우스를 올리면 STUB 이 절취선 위쪽부터 반쯤 찢어지고, 누르면 STUB 이 떨어져 나간 뒤 상세로 넘어간다.
  */
+
+/** STUB 이 떨어지는 애니메이션(.ticketTorn .stub)이 끝날 즈음 이동한다 */
+const TEAR_MS = 380;
+
 export default function MenuCard({ menu }: { menu: Menu }) {
+  const router = useRouter();
+  const [torn, setTorn] = useState(false);
+  const tearTimer = useRef<number | undefined>(undefined);
   const soldOut = menu.status === "SOLD_OUT";
   const sizePrices = menu.sizePrices;
+  const href = `/menu/${menu.id}`;
+
+  // 상세로 넘어가면 이 페이지는 Activity 로 숨겨질 뿐 상태가 남는다 —
+  // 숨겨질 때 STUB 을 다시 붙여 둬서 뒤로가기로 돌아오면 원래 티켓이 보이게 한다.
+  useLayoutEffect(() => {
+    return () => {
+      window.clearTimeout(tearTimer.current);
+      setTorn(false);
+    };
+  }, []);
+
+  function handleClick(e: MouseEvent<HTMLAnchorElement>) {
+    // 새 탭·새 창으로 여는 클릭은 브라우저에 맡긴다
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    e.preventDefault();
+    if (torn) return;
+    setTorn(true);
+    tearTimer.current = window.setTimeout(() => router.push(href), TEAR_MS);
+  }
 
   return (
-    <article className={`${styles.ticket} ${soldOut ? styles.ticketSoldOut : ""}`}>
+    <article
+      className={`${styles.ticket} ${soldOut ? styles.ticketSoldOut : ""} ${torn ? styles.ticketTorn : ""}`}
+    >
       <div className={styles.main}>
         <div className={styles.thumb}>
           <Image src={menu.image} alt="" width={120} height={120} className={styles.thumbImg} />
@@ -30,7 +64,7 @@ export default function MenuCard({ menu }: { menu: Menu }) {
             </span>
           )}
           <h3 className={styles.title}>
-            <Link href={`/menu/${menu.id}`} className={styles.cardLink}>
+            <Link href={href} className={styles.cardLink} onClick={handleClick}>
               {menu.name}
             </Link>
           </h3>

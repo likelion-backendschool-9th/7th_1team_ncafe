@@ -199,7 +199,8 @@
 }
 
 /* ----- 티켓 카드 -----
-   STUB 경계(오른쪽에서 --stub 만큼)의 위·아래에 반원 홈을 마스크로 뚫는다. */
+   STUB 이 따로 찢어져 나가도록 배경·반원 홈은 본체(.main)와 STUB 에 각각 건다.
+   절취선 위·아래 반원 홈은 본체 오른쪽 끝, STUB 왼쪽 끝을 마스크로 반씩 뚫어 만든다. */
 .ticket {
   --stub: 92px; /* "XL 5,500원" 한 줄이 들어가는 폭 */
   --notch: 9px;
@@ -207,18 +208,17 @@
   display: flex;
   width: 100%;
   min-height: 150px;
-  background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  -webkit-mask:
-    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 0, transparent 98%, #000) top / 100% 51% no-repeat,
-    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
-  mask:
-    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 0, transparent 98%, #000) top / 100% 51% no-repeat,
-    radial-gradient(circle var(--notch) at calc(100% - var(--stub)) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.main,
+.stub {
+  background: var(--bg-subtle);
   transition: background-color 0.15s;
 }
 
-.ticket:hover {
+.ticket:hover .main,
+.ticket:hover .stub {
   background: var(--bg-muted);
 }
 
@@ -246,6 +246,13 @@
   align-items: flex-start;
   gap: 16px;
   padding: 20px 18px 20px 20px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
 }
 
 .thumb {
@@ -319,6 +326,44 @@
   width: var(--stub);
   padding: 16px 10px 16px 12px;
   border-left: 2px dashed var(--border-strong);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 0 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at 0 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  /* 절취선 아래 끝을 축으로 돈다 — 위쪽부터 벌어져 "반쯤 찢긴" 모양이 된다 */
+  transform-origin: 0 100%;
+  transition:
+    background-color 0.15s,
+    transform 0.25s ease-out,
+    opacity 0.38s ease-in;
+}
+
+/* 마우스를 올리면 절취선 위쪽이 반쯤 찢어진다 */
+.ticket:hover .stub {
+  transform: rotate(4deg);
+}
+
+/* 누르면 STUB 이 아래로 떨어져 나간다 (MenuCard 의 TEAR_MS 와 맞춘다) */
+.ticket.ticketTorn .stub {
+  transform: translate(28px, 46px) rotate(24deg);
+  opacity: 0;
+  transition:
+    background-color 0.15s,
+    transform 0.38s cubic-bezier(0.55, 0, 0.8, 0.3),
+    opacity 0.38s ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stub {
+    transition: background-color 0.15s;
+  }
+
+  .ticket:hover .stub {
+    transform: none;
+  }
 }
 
 .stubHead {
@@ -393,9 +438,9 @@
   font-size: 1.02rem;
 }
 
-/* 품절 — 흐리게 + 빨간 스탬프(빨강은 품절·위험 전용) */
-.ticketSoldOut .main,
-.ticketSoldOut .stub {
+/* 품절 — 내용만 흐리게(배경은 그대로) + 빨간 스탬프(빨강은 품절·위험 전용) */
+.ticketSoldOut .main > *,
+.ticketSoldOut .stub > * {
   opacity: 0.45;
 }
 
