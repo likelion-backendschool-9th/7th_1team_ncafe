@@ -25,41 +25,14 @@ public class MenuAvailability {
     @EqualsAndHashCode.Exclude
     private Menu menu;                    // menu_id INT (PK, FK → menus.id)
 
-    @Convert(converter = SaleStatus.Converter.class)
-    @Column(nullable = false)
-    private SaleStatus status = SaleStatus.ON_SALE; // status INT (판매가능여부)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private SaleStatus status = SaleStatus.ON_SALE; // status VARCHAR(20) (판매가능여부)
 
-    // DB에는 code(INT)로 저장한다.
-    @Getter
-    @RequiredArgsConstructor
     public enum SaleStatus {
-        ON_SALE(0),   // 판매 중
-        SOLD_OUT(1),  // 품절
-        HIDDEN(2);    // 숨김 (이 지점 메뉴판에서 안 보임)
-
-        private final int code;
-
-        public static SaleStatus fromCode(int code) {
-            for (SaleStatus status : values()) {
-                if (status.code == code) {
-                    return status;
-                }
-            }
-            throw new IllegalArgumentException("알 수 없는 판매 상태 코드: " + code);
-        }
-
-        @jakarta.persistence.Converter
-        public static class Converter implements AttributeConverter<SaleStatus, Integer> {
-            @Override
-            public Integer convertToDatabaseColumn(SaleStatus status) {
-                return status == null ? null : status.getCode();
-            }
-
-            @Override
-            public SaleStatus convertToEntityAttribute(Integer code) {
-                return code == null ? null : SaleStatus.fromCode(code);
-            }
-        }
+        ON_SALE,   // 판매 중
+        SOLD_OUT,  // 품절
+        HIDDEN     // 숨김 (이 지점 메뉴판에서 안 보임)
     }
 
     // 복합키 (@IdClass). 필드명은 위 @Id 필드와 같아야 하고, menu는 Menu의 id 타입으로 둔다.
