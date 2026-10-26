@@ -36,7 +36,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/menus/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/members", "/api/v1/admin/members/**")
+                        .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "HQ_ADMIN")
                         // 그 외 API는 로그인 필요. 로그인 없이 열어야 하는 API는 위에 추가한다.
                         .anyRequest().authenticated())
                 // 로그인하지 않은 요청은 401 (권한 없음은 기본값 403)

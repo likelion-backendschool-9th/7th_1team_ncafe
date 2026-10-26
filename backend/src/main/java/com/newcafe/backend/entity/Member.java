@@ -33,7 +33,7 @@ public class Member {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Role role = Role.USER;        // role VARCHAR(20) (USER / ADMIN)
+    private Role role = Role.USER;        // role VARCHAR(20)
 
     @Column(nullable = false)
     private String nickname;              // nickname VARCHAR(255)
@@ -64,9 +64,9 @@ public class Member {
     @Column(nullable = false)
     private boolean deleted = false;
 
-    // ADMIN만 /api/v1/admin/** 를 사용할 수 있다.
+    // ADMIN은 기존 본사 계정 호환용이다. 신규 본사 계정은 HQ_ADMIN을 사용한다.
     public enum Role {
-        USER, ADMIN
+        USER, ADMIN, HQ_ADMIN, BRANCH_ADMIN
     }
 
     @PrePersist

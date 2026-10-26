@@ -96,6 +96,17 @@
   color: var(--gold-300);
 }
 
+.adminLogout {
+  display: block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 .workspace {
   display: flex;
   flex-direction: column;
