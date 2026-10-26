@@ -9,6 +9,7 @@ const NAV = [
   { href: "/admin/menus", label: "메뉴 관리", en: "MENUS", icon: "☕" },
   { href: "/admin/categories", label: "카테고리 관리", en: "CATEGORIES", icon: "🗂" },
   { href: "/admin/race", label: "경주 관리", en: "RACE", icon: "🏇" },
+  { href: "/admin/coupons", label: "쿠폰 관리", en: "COUPONS", icon: "🎫" },
   { href: "/admin/event", label: "이벤트 관리", en: "EVENT", icon: "🎟" },
 ];
 

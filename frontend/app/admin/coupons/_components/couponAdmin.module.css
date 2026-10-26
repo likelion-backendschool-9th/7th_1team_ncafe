@@ -1,0 +1,84 @@
+/* /admin/coupons — 쿠폰 관리. 공용 표 · 폼 · 스위치는 admin.module.css, 여기는 이 화면에만 있는 블록 */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--brand-900);
+}
+
+.sectionDesc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* 정책 폼 — 흰 카드 한 장 */
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 22px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.policyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+/* 숫자 입력 + 단위("연패 이상" · "장" · "분 뒤") */
+.unitInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+.unitInput input {
+  max-width: 120px;
+}
+
+.summary {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  font-size: 0.9rem;
+  color: var(--text-strong);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .policyGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

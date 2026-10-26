@@ -1,4 +1,5 @@
 -- 출전마 7마리 초기 데이터 (프론트 목업 frontend/app/(site)/race/_data/horses.ts와 같은 값).
+-- data.sql이 아니라 자동 실행되지 않는다 — spring.sql.init.data-locations에 classpath:horses_data.sql을 넣어 실행한다.
 -- 서버를 시작할 때마다 실행되지만 같은 id가 있으면 넣지 않는다 — 관리자가 고친 값은 그대로 둔다.
 -- 말 id(1~7)는 경주 기록 · 경기 화면이 가리키므로 고정한다. 등록 · 삭제 API는 없다(7마리 고정).
 INSERT INTO horses (id, name_kor, name_eng, color, color_name, image, personality, trait, description)
