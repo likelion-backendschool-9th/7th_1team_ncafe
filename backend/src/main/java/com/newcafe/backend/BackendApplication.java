@@ -2,8 +2,11 @@ package com.newcafe.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+// @EnableScheduling: 경주 정산 스케줄러(RaceService.settleDueRaces)
 @SpringBootApplication
+@EnableScheduling
 public class BackendApplication {
 
 	public static void main(String[] args) {

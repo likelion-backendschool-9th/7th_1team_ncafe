@@ -46,8 +46,11 @@ export function sortForSite(events: readonly CafeEvent[], today: string): CafeEv
     .map((k) => k.event);
 }
 
-/** 기간 표시 — "2026.10.24(토) ~ 11.01(일)" · "2026.10.24(토)부터" · "2026.11.01(일)까지" · "상시" */
-export function formatEventPeriod(event: Dated): string {
+/**
+ * 기간 표시 — "2026.10.24(토) ~ 11.01(일)" · "2026.10.24(토)부터" · "2026.11.01(일)까지" · 날짜가 없으면 "상시".
+ * 경주 일정을 따라가는 이벤트(timeMode "RACE")는 날짜가 없으면 "일정별" — 관리자가 정한 경주 일정마다 열린다(사용자 결정 2026-10-27).
+ */
+export function formatEventPeriod(event: Pick<CafeEvent, "startDate" | "endDate" | "timeMode">): string {
   const { startDate: start, endDate: end } = event;
   if (start && end) {
     const sameYear = ymdParts(start).year === ymdParts(end).year;
@@ -55,7 +58,7 @@ export function formatEventPeriod(event: Dated): string {
   }
   if (start) return `${formatYmdKo(start)}부터`;
   if (end) return `${formatYmdKo(end)}까지`;
-  return "상시";
+  return event.timeMode === "RACE" ? "일정별" : "상시";
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -96,7 +99,7 @@ export function visibilityReason(event: CafeEvent, today: string): string {
   return `${EVENT_STATUS_LABEL[status]} 상태라 손님 화면에 보이지 않아요. 노출 허가를 켜면 보여요.`;
 }
 
-/** 카드 시각 칸 — 경주 시간표 따라가기면 raceTimes("12:30 · 18:00"), 직접 입력이면 그 문구, 없으면 null */
+/** 카드 시각 칸 — 경주 일정 따라가기면 raceTimes("오늘 12:30 · 18:00" · "다음 경주 10/29(목) 18:00"), 직접 입력이면 그 문구, 없으면 null */
 export function eventTimeText(event: CafeEvent, raceTimes: string): string | null {
   if (event.timeMode === "RACE") return raceTimes;
   if (event.timeMode === "TEXT" && event.time.trim()) return event.time.trim();

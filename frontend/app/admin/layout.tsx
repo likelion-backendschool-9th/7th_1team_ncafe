@@ -16,8 +16,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <AdminNav />
       <div className={styles.workspace}>
         <p className={styles.mockBand} role="note">
-          <strong>MOCK ADMIN</strong> — 서버에 저장되지 않습니다. 메뉴 · 카테고리 변경은 새로고침하면 초기화되고, 경주 · 이벤트
-          변경은 이 브라우저에만 저장됩니다.
+          <strong>MOCK ADMIN</strong> — 메뉴 · 카테고리 변경은 새로고침하면 초기화되고, 이벤트 변경은 이 브라우저에만 저장됩니다.
+          경주 관리는 서버에 저장됩니다(관리자 로그인 필요).
         </p>
         <main className={styles.content}>{children}</main>
       </div>

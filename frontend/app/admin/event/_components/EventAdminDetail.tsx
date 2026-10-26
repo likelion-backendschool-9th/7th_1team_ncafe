@@ -16,9 +16,7 @@ import {
 } from "@/app/(site)/event/_lib/eventStatus";
 import type { CafeEvent } from "@/app/(site)/event/_types";
 import Modal from "@/components/Modal";
-import { formatRaceTimes } from "@/lib/time";
-import { useKstToday } from "@/lib/useCountdown";
-import { useRaceTimes } from "@/lib/useRaceTimes";
+import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast from "../../_components/AdminToast";
 import ConfirmDialog from "../../_components/ConfirmDialog";
@@ -34,7 +32,7 @@ import styles from "./eventAdmin.module.css";
 export default function EventAdminDetail({ id }: { id: number | null }) {
   const events = useEvents();
   const today = useKstToday();
-  const raceTimes = formatRaceTimes(useRaceTimes());
+  const raceTimes = useRaceDayText() ?? "";
   const a = useEventEditor(events);
   const router = useRouter();
   const event = id === null ? null : (events.find((e) => e.id === id) ?? null);
@@ -207,7 +205,7 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
   );
 }
 
-const TIME_MODE_LABEL = { NONE: "없음", TEXT: "직접 입력", RACE: "경주 시간표 따라감" } as const;
+const TIME_MODE_LABEL = { NONE: "없음", TEXT: "직접 입력", RACE: "경주 일정 따라감" } as const;
 
 /** 이벤트 정보 전체 — 폼에 들어가는 값을 한눈에 */
 function EventInfo({ event, raceTimes }: { event: CafeEvent; raceTimes: string }) {

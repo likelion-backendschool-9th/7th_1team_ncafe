@@ -1,4 +1,4 @@
-// 한국 시간(KST, UTC+9 · 서머타임 없음) 날짜 순수 함수 — /seat(예약 날짜 · 시간대) · /my(좌석 예약 내역 표시) 공용.
+// 한국 시간(KST, UTC+9 · 서머타임 없음) 날짜 순수 함수 — /seat(예약 날짜 · 시간대) · /my(좌석 예약 내역 표시) · 경주 일정 공용.
 // 날짜는 "YYYY-MM-DD" 문자열로 다루고, 산술은 UTC 자정 epoch 로 한다(브라우저 시간대와 무관).
 // 경주 일정(lib/time.ts)과 같은 이유로 KST 기준이다 — 카페가 서울에 있다.
 
@@ -58,11 +58,22 @@ export function minutesOf(time: string): number {
   return h * 60 + m;
 }
 
+/** KST 날짜 "YYYY-MM-DD" + 시각 "HH:MM" → epoch ms */
+export function kstEpoch(ymd: string, time: string): number {
+  return ymdToEpoch(ymd) + minutesOf(time) * MINUTE - KST_OFFSET;
+}
+
 /** "2026-10-17" → "2026.10.17(토)" · withYear false 면 "10.17(토)" */
 export function formatYmdKo(ymd: string, withYear = true): string {
   const { year, month, day } = ymdParts(ymd);
   const wd = WEEKDAY_KO[dayOfWeek(ymd)];
   return withYear ? `${year}.${pad(month)}.${pad(day)}(${wd})` : `${pad(month)}.${pad(day)}(${wd})`;
+}
+
+/** "2026-10-29" → "10/29(목)" — 경주 일정 문구 */
+export function formatMdKo(ymd: string): string {
+  const { month, day } = ymdParts(ymd);
+  return `${month}/${day}(${WEEKDAY_KO[dayOfWeek(ymd)]})`;
 }
 
 /** 스크린리더용 — "10월 17일 토요일" */

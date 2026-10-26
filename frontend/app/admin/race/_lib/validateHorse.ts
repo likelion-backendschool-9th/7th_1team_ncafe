@@ -1,5 +1,5 @@
 // 출전마 수정 폼 검증 — 순수 함수
-import { HORSE_IMAGES, HORSE_TRAITS } from "@/app/(site)/race/_lib/horseStore";
+import { HORSE_IMAGES, HORSE_TRAITS } from "@/app/(site)/race/_data/horses";
 import type { Horse, HorseInput } from "@/app/(site)/race/_types";
 
 export type HorseErrors = Partial<Record<keyof HorseInput, string>>;

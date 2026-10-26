@@ -2,12 +2,12 @@ import type { CafeEvent } from "../_types";
 
 // 이벤트 기본 Mock — 값만 둔다. 문구는 BLUEPRINT 7 "쿠폰 규칙"과 맞춘다.
 // 관리자(/admin/event)가 바꾸면 같은 브라우저에서는 localStorage 의 목록이 이 값을 대신한다(_lib/eventStore.ts).
-// DAILY RACE 의 시각은 timeMode "RACE" — 관리자 경주 관리의 시간표(lib/raceSchedule.ts)를 그대로 보여 준다.
+// DAILY RACE 의 시각은 timeMode "RACE" — 관리자 경주 관리의 일정(lib/raceSchedule.ts)으로 만든 문구를 그대로 보여 준다.
 export const EVENTS: CafeEvent[] = [
   {
     id: 1,
     title: "DAILY RACE",
-    period: "매일",
+    period: "일정별",
     timeMode: "RACE",
     time: "",
     description: "쿠폰 1장으로 7마리 말 중 한 마리를 응원하세요. 내 말이 1~3위면 건 쿠폰과 함께 추가 쿠폰을 돌려받아요.",

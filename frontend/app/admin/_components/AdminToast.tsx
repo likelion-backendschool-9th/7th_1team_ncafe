@@ -14,21 +14,19 @@ const SHOW_MS = 2_500;
 /** 저장·삭제 결과 알림 상태 */
 export function useToast() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0);
 
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
+  // 보이는 동안 SHOW_MS 뒤에 닫는다. 타이머를 effect 에 두어, 다른 페이지로 갔다가(<Activity> 로 숨으면 effect 가 정리된다)
+  // 돌아와도 다시 걸린다 — show() 에서 걸면 숨는 순간 지워져 토스트가 남는다
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), SHOW_MS);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   function show(text: string, tone: ToastMessage["tone"] = "success") {
-    if (timer.current) clearTimeout(timer.current);
     seq.current += 1;
     setToast({ id: seq.current, text, tone });
-    timer.current = setTimeout(() => setToast(null), SHOW_MS);
   }
 
   return { toast, show };

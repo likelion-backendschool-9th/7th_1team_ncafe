@@ -1,5 +1,5 @@
-// localStorage 에 JSON 으로 저장하는 작은 외부 저장소 — 관리자(경주 · 이벤트) Mock 의 "서버" 자리.
-// 사용자 결정(2026-10-14): 관리자에서 바꾼 경주 · 이벤트 값은 같은 브라우저의 사용자 화면에도 반영한다(다른 탭은 storage 이벤트로).
+// localStorage 에 JSON 으로 저장하는 작은 외부 저장소 — 관리자(이벤트) Mock 의 "서버" 자리. 경주는 백엔드로 옮겼다(lib/remoteStore).
+// 사용자 결정(2026-10-14): 관리자에서 바꾼 이벤트 값은 같은 브라우저의 사용자 화면에도 반영한다(다른 탭은 storage 이벤트로).
 // React 는 useSyncExternalStore(store.subscribe, store.get, store.getServer) 로 구독한다 — 서버 렌더 · 빌드 · 하이드레이션 동안은
 // 기본값(getServer)이라 정적 셸과 첫 클라이언트 렌더가 같고, 하이드레이션 직후 저장값으로 바뀐다.
 // React 를 import 하지 않으므로 순수 함수(lib/time.ts 등)도 store.get() 으로 지금 값을 읽을 수 있다. 백엔드가 붙으면 이 저장소들은 지운다.

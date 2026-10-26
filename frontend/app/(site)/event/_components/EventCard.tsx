@@ -7,7 +7,7 @@ interface EventCardProps {
   event: CafeEvent;
   status: EventStatus;
   hint: string; // 상태 옆 작은 글씨 — "D-10" · "오늘 종료"
-  timeText: string | null; // 시각 칸 — "12:30 · 18:00"(경주 시간표) · 직접 입력 문구 · 없음
+  timeText: string | null; // 시각 칸 — "오늘 12:30 · 18:00"(경주 일정) · 직접 입력 문구 · 없음
 }
 
 /**

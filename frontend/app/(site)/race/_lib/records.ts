@@ -1,63 +1,23 @@
 // 경주 기록 · 표시용 순수 함수.
-import { getRaceStartsBetween } from "@/lib/time";
-import type { Gates, Horse, HorseTrait, RaceResult } from "../_types";
-import { RACE_SETTLE_MS, seededShuffle, seedFor, simulateRace } from "./simulation";
+import type { Gates, Horse, HorseTrait, RaceResult, ServerRace } from "../_types";
+import { seededShuffle } from "./simulation";
 
-/** 다음 경주 번호 — 기록의 가장 큰 번호 + 1 (기록이 없으면 1) */
-export function nextRaceNo(history: RaceResult[]): number {
-  return maxRaceNo(history) + 1;
-}
-
-/** 지나간 경주를 한 번에 몇 개까지 돌릴지 — 그보다 오래된 경주는 번호만 건너뛴다(최근 성적 · 다음 번호에는 영향 없음) */
-const BACKFILL_LIMIT = 40;
-
-/** 기록에서 가장 늦은 출발 시각(epoch ms, 없으면 0) */
-export function latestRaceAt(history: RaceResult[]): number {
-  return history.reduce((max, r) => Math.max(max, Date.parse(r.date)), 0);
-}
-
-/** now 기준으로 확실히 끝난(RACE_SETTLE_MS 지난) 마지막 출발 시각 — 보충 계산의 기준값. 없으면 afterMs */
-export function settledRaceUntil(afterMs: number, now: number): number {
-  const starts = getRaceStartsBetween(afterMs, now - RACE_SETTLE_MS);
-  return starts.length ? starts[starts.length - 1] : afterMs;
+/** 정산된 서버 경주 → 경주 결과(1~7위 말 id). 정산 전이면 null */
+export function raceResult(race: ServerRace): RaceResult | null {
+  if (race.status !== "SETTLED" || race.runners.length === 0 || race.runners.some((r) => r.rank === null)) return null;
+  const ranking = [...race.runners].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)).map((r) => r.horse.id);
+  return { raceNo: race.raceNo, date: new Date(race.startsAt).toISOString(), ranking };
 }
 
 /**
- * 지나간 경주 기록 보충(사용자 결정 2026-10-13 "자동 기록") — Mock 기록의 마지막 경주 뒤부터 untilMs(포함)까지의
- * 출발 시각마다 결정적 시뮬레이션을 돌려 결과를 만든다. 누가 언제 들어와도 경주 번호 · 출전표 최근 성적이 같아진다.
- * horsesAt 은 그 경주 당시의 출전마(말 id 순 — 관리자가 바꾼 성향은 바꾼 뒤의 경주부터, horseStore.raceHorsesAt).
- * untilMs 는 settledRaceUntil 로 구한다(새 경주가 끝날 때만 바뀌어 메모가 유지된다). 백엔드가 붙으면 서버 기록이 이 역할을 맡는다. 결과는 최신순.
+ * 서버 경주의 게이트 표(BLUEPRINT 8.2 "게이트 번호 규칙" — 서버가 앞 경주 도착 순서로 매긴다). 그 경주 당시 번호라 끝난 뒤에도 같다.
+ * 경주가 없거나 아직 번호가 없으면(앞 경주가 정산되기 전) 말 id 순으로 1번부터 둔다.
  */
-export function backfillHistory(base: RaceResult[], horsesAt: (at: number) => Horse[], untilMs: number): RaceResult[] {
-  const lastAt = latestRaceAt(base);
-  const starts = getRaceStartsBetween(lastAt, untilMs);
-  const baseNo = maxRaceNo(base);
-  const skip = Math.max(0, starts.length - BACKFILL_LIMIT);
-  const filled: RaceResult[] = [];
-  starts.forEach((at, i) => {
-    if (i < skip) return;
-    const raceNo = baseNo + i + 1;
-    filled.unshift({ raceNo, date: new Date(at).toISOString(), ranking: simulateRace(horsesAt(at), raceNo, at).ranking });
-  });
-  return filled;
-}
-
-function maxRaceNo(history: RaceResult[]): number {
-  return history.reduce((max, r) => Math.max(max, r.raceNo), 0);
-}
-
-/**
- * 경주 raceNo 의 출발 시각(epoch ms) — Mock 기록에 있으면 그 시각, 그 뒤의 경주는 시간표 순서대로 번호가 붙는다(backfillHistory 와 같은 규칙).
- * untilMs 까지 출발한 경주만 찾는다(없으면 null). 시간표가 바뀌어도 "N번째 경주"로 찾으므로, 건 경주의 결과를 경주 번호로 받을 수 있다.
- */
-export function raceStartAt(base: RaceResult[], raceNo: number, untilMs: number): number | null {
-  const baseNo = maxRaceNo(base);
-  if (raceNo <= baseNo) {
-    const record = base.find((r) => r.raceNo === raceNo);
-    return record ? Date.parse(record.date) : null;
+export function raceGates(race: ServerRace | null, horses: Horse[]): Gates {
+  if (race && race.runners.length > 0 && race.runners.every((r) => r.gate !== null)) {
+    return Object.fromEntries(race.runners.map((r) => [r.horse.id, r.gate as number]));
   }
-  const starts = getRaceStartsBetween(latestRaceAt(base), untilMs);
-  return starts[raceNo - baseNo - 1] ?? null;
+  return Object.fromEntries([...horses].sort((a, b) => a.id - b.id).map((h, i) => [h.id, i + 1]));
 }
 
 /** 여러 출처의 기록을 번호로 합친다(앞쪽 출처 우선) — 최신순 */
@@ -75,19 +35,8 @@ export function mergeHistory(...sources: RaceResult[][]): RaceResult[] {
 }
 
 /**
- * 경주 raceNo 의 게이트 번호(BLUEPRINT 8.2 "게이트 번호 규칙", 팀 협의 2026-10-13) — 지난 경주(raceNo − 1)에 들어온 순서대로 1번부터.
- * 지난 경주 기록이 없으면 경주 번호로 시드한 무작위 순서(사용자 결정 2026-10-13 — 모두에게 같고, 렌더 · 페이지 이동에도 바뀌지 않으며,
- * 렌더 중 Math.random 이 없어 정적 셸과 하이드레이션이 맞는다). 지난 경주에 없던 말은 그 뒤에 id 순으로 붙인다.
- * 한 경주의 번호는 지난 경주 결과로만 정해지므로 그 경주가 끝난 뒤에도 같다(결과 · 지난 경주 기록에 "그 경주 당시 번호"를 그린다).
- */
-export function gatesFor(raceNo: number, history: RaceResult[], horses: Horse[]): Gates {
-  const prev = history.find((r) => r.raceNo === raceNo - 1);
-  return gatesAfter(prev?.ranking ?? null, horses, seedFor(raceNo, 0));
-}
-
-/**
  * 도착 순서(말 id, 1위부터) → 그다음 경주의 게이트 표. 도착 순서가 없으면 seed 로 섞은 순서.
- * gatesFor(실제 경주) · /race/lab(직전 실험 경주)이 함께 쓴다.
+ * /race/lab(직전 실험 경주)이 쓴다 — 실제 경주의 게이트 번호는 서버가 같은 규칙으로 매긴다(raceGates).
  */
 export function gatesAfter(ranking: number[] | null, horses: Horse[], seed: number): Gates {
   const ids = horses.map((h) => h.id);

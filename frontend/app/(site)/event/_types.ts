@@ -3,7 +3,7 @@
 /** 진행 상태 — 진행 중 · 예정 · 종료 */
 export type EventStatus = "ONGOING" | "UPCOMING" | "ENDED";
 
-/** 카드 시각 칸 — 없음 · 직접 입력(time) · 경주 시간표 따라가기(관리자 경주 관리의 시각표) */
+/** 카드 시각 칸 — 없음 · 직접 입력(time) · 경주 일정 따라가기(관리자 경주 관리의 일정 — "오늘 12:30 · 18:00") */
 export type EventTimeMode = "NONE" | "TEXT" | "RACE";
 
 export interface CafeEvent {

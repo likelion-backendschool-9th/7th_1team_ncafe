@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConditionMeter from "@/components/ConditionMeter";
-import { useHorseConditions } from "../race/_hooks/useHorseConditions";
-import { useRaceHistory } from "../race/_hooks/useRace";
-import { useRaceHorses } from "../race/_hooks/useRaceHorses";
-import { byGate, gatesFor, nextRaceNo, recentRanks, TRAIT_LABEL } from "../race/_lib/records";
-import type { Horse, HorseCondition, RaceResult } from "../race/_types";
+import { getRaceSchedule } from "@/lib/time";
+import { useNow } from "@/lib/useCountdown";
+import { useRaceSchedule } from "@/lib/useRaceSchedule";
+import { useRaceHistory, useRaceHorses } from "../race/_hooks/useRaceData";
+import { byGate, raceGates, recentRanks, TRAIT_LABEL } from "../race/_lib/records";
+import type { Horse, HorseCondition } from "../race/_types";
 // 섹션 머리(제목 · 설명 · 더 보기)는 TODAY'S LINEUP 과 같은 클래스를 쓴다
 import head from "./menuLineup.module.css";
 import styles from "./runnerStatus.module.css";
@@ -17,15 +18,20 @@ import styles from "./runnerStatus.module.css";
  * 메인 "TODAY'S RUNNERS" — 다음 경주 출전마 7마리의 오늘 상태를 가로 슬라이더 텍스트 카드로(게이트 순).
  * 카드: 위쪽 말 이미지(옅은 조끼색 바탕) · 아래 왼쪽 조끼색 세로 막대 · 게이트 번호 · 성향 · 이름 · 오늘의 컨디션(막대 20칸 게이지) · 최근 성적.
  * 누르면 /race 출전표로.
- * 게이트 · 최근 성적은 /race 와 같은 기록(useRaceHistory — 지나간 경주 자동 보충)에서, 컨디션은 useHorseConditions 에서 온다.
+ * 출전마 · 다음 경주(게이트 · 컨디션) · 최근 성적은 /race 와 같은 서버 값이다(마운트 뒤 불러온다). 예정된 경주가 없으면 게이트는 말 번호 순.
  * PC 는 좌우 화살표, 모바일은 밀어서 넘긴다.
  */
-export default function RunnerStatus({ horses: serverHorses, history: baseHistory }: { horses: Horse[]; history: RaceResult[] }) {
-  const horses = useRaceHorses(serverHorses);
-  const { history } = useRaceHistory(baseHistory);
-  const conditions = useHorseConditions();
-  const raceNo = nextRaceNo(history);
-  const gates = useMemo(() => gatesFor(raceNo, history, horses), [raceNo, history, horses]);
+export default function RunnerStatus() {
+  const now = useNow();
+  const horses = useRaceHorses().data;
+  const races = useRaceSchedule().data;
+  const { history } = useRaceHistory();
+  const nextAt = now === null ? null : (getRaceSchedule(now).next?.at ?? null);
+  const nextRace = nextAt === null ? null : (races.find((r) => r.startsAt === nextAt) ?? null);
+  const raceNo = nextRace?.raceNo ?? null;
+  const gates = useMemo(() => raceGates(nextRace, horses), [nextRace, horses]);
+  const conditionOf = (horseId: number): HorseCondition | null =>
+    nextRace?.runners.find((r) => r.horse.id === horseId)?.condition ?? null;
 
   const track = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
@@ -63,7 +69,7 @@ export default function RunnerStatus({ horses: serverHorses, history: baseHistor
             TODAY&apos;S RUNNERS
           </h2>
           <p className={head.subtitle}>
-            오늘의 컨디션 — 다음 경주 Race #{raceNo}에 나설 {horses.length}마리예요.
+            오늘의 컨디션 — {raceNo !== null ? `다음 경주 Race #${raceNo}에 나설 ${horses.length}마리예요.` : "다음 경주 일정이 정해지면 컨디션이 보여요."}
           </p>
         </div>
         <Link href="/race" className={head.more}>
@@ -77,7 +83,7 @@ export default function RunnerStatus({ horses: serverHorses, history: baseHistor
               말 id 로 두면 li 가 옮겨지고, 스크롤 스냅이 처음 붙어 있던 칸을 따라가 슬라이더가 끝으로 밀려 버린다 */}
           {byGate(horses, gates).map((horse) => (
             <li key={gates[horse.id]}>
-              <RunnerCard horse={horse} gate={gates[horse.id]} recent={recentRanks(history, horse.id)} condition={conditions?.[horse.id] ?? null} />
+              <RunnerCard horse={horse} gate={gates[horse.id]} recent={recentRanks(history, horse.id)} condition={conditionOf(horse.id)} />
             </li>
           ))}
         </ul>

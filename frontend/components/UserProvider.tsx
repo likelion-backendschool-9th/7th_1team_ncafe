@@ -1,14 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import type { RaceBet } from "@/app/(site)/race/_types";
-import type { CouponLog, CouponReason, Order, RaceEntry, SeatReservation, UserState } from "@/types/common";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import type { CouponLog, CouponReason, Order, SeatReservation, UserState } from "@/types/common";
 
-// "내 것" Context — 쿠폰 · 찜한 메뉴 · 주문 내역 · 내 레이스 기록 · 좌석 예약. 로그인이 없으므로 Mock 사용자 1명 기준이다.
-// Header(쿠폰 칩) · /race(걸기 · 내가 건 말) · RaceSettlement(정산) · /cart(주문 적립·기록) · /menu/[id](찜) · /seat(예약 · 배치도에 내 예약 겹치기) · /my 가 같은 값을 본다.
-// 쿠폰 수는 spendCoupon · earnCoupons 로만 바뀌고, 바뀔 때마다 couponHistory 맨 앞에 한 줄이 남는다.
+// "내 것" Context — 쿠폰 · 찜한 메뉴 · 주문 내역 · 좌석 예약. Mock 사용자 1명 기준이다.
+// Header(쿠폰 칩) · /cart(주문 적립·기록) · /menu/[id](찜) · /seat(예약 · 배치도에 내 예약 겹치기) · /my 가 같은 값을 본다.
+// 쿠폰 수는 earnCoupons 로만 바뀌고, 바뀔 때마다 couponHistory 맨 앞에 한 줄이 남는다.
+// 경주 걸기 · 정산 · 내 레이스 기록은 서버 값이다(lib/auth 의 couponCount, race/_lib/raceStores 의 myBetsStore) — 이 Mock 지갑과 따로 논다.
 // React State 에만 두므로 새로고침하면 초기화된다(프로토타입).
-// Mock 초기값 — 백엔드 연결 시 GET /api/my/coupons · /api/my/favorites · /api/my/orders · /api/my/races 결과로 초기화한다.
+// Mock 초기값 — 백엔드 연결 시 GET /api/my/coupons · /api/my/favorites · /api/my/orders 결과로 초기화한다.
 export const INITIAL_COUPONS = 5;
 
 interface Wallet {
@@ -29,33 +29,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<Wallet>({ coupons: INITIAL_COUPONS, history: [] });
   const [favorites, setFavorites] = useState<number[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  // spendCoupon 은 결과를 바로 돌려줘야 하므로 최신 값을 ref 로도 들고 있는다
-  // (같은 틱에 두 번 불려도 렌더 전 값으로 두 번 통과하지 않게).
-  const walletRef = useRef(wallet);
 
-  const commit = useCallback((next: Wallet) => {
-    walletRef.current = next;
-    setWallet(next);
+  const earnCoupons = useCallback((amount: number, reason: CouponReason, label: string) => {
+    if (!Number.isInteger(amount) || amount <= 0) return;
+    const log = makeLog(reason, amount, label);
+    setWallet((current) => ({ coupons: current.coupons + amount, history: [log, ...current.history] }));
   }, []);
-
-  const spendCoupon = useCallback(
-    (reason: CouponReason, label: string) => {
-      const current = walletRef.current;
-      if (current.coupons <= 0) return false;
-      commit({ coupons: current.coupons - 1, history: [makeLog(reason, -1, label), ...current.history] });
-      return true;
-    },
-    [commit],
-  );
-
-  const earnCoupons = useCallback(
-    (amount: number, reason: CouponReason, label: string) => {
-      if (!Number.isInteger(amount) || amount <= 0) return;
-      const current = walletRef.current;
-      commit({ coupons: current.coupons + amount, history: [makeLog(reason, amount, label), ...current.history] });
-    },
-    [commit],
-  );
 
   // 이미 찜했으면 해제, 아니면 맨 앞에 추가(최근 찜한 순)
   const toggleFavorite = useCallback((menuId: number) => {
@@ -65,39 +44,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const addOrder = useCallback((order: Order) => {
     setOrders((prev) => [order, ...prev]);
   }, []);
-
-  // 내 레이스 기록 — 걸기 · 정산 모두 경주당 한 번이어야 하므로 지갑처럼 최신 값을 ref 로도 들고 있는다
-  const [races, setRaces] = useState<RaceEntry[]>([]);
-  const racesRef = useRef(races);
-
-  const commitRaces = useCallback((next: RaceEntry[]) => {
-    racesRef.current = next;
-    setRaces(next);
-  }, []);
-
-  // 쿠폰을 건 경주를 맨 앞에(최신순) — 순위 · 돌려받은 쿠폰은 정산 때 채운다
-  const joinRace = useCallback(
-    (bet: RaceBet, gate: number) => {
-      const current = racesRef.current;
-      if (current.some((r) => r.raceNo === bet.raceNo)) return false;
-      commitRaces([{ ...bet, gate, rank: null, payout: 0, settledAt: null }, ...current]);
-      return true;
-    },
-    [commitRaces],
-  );
-
-  // 정산 결과 기록 — 이미 정산한 경주면 false. 호출한 쪽은 true 일 때만 쿠폰을 돌려준다(두 번 지급 방지)
-  const settleRace = useCallback(
-    (raceNo: number, rank: number, payout: number) => {
-      const current = racesRef.current;
-      const entry = current.find((r) => r.raceNo === raceNo);
-      if (!entry || entry.settledAt !== null) return false;
-      const settled: RaceEntry = { ...entry, rank, payout, settledAt: new Date().toISOString() };
-      commitRaces(current.map((r) => (r === entry ? settled : r)));
-      return true;
-    },
-    [commitRaces],
-  );
 
   // 좌석 예약 · 예약대기 — /seat 가 만들고(seatService 결과), /my 가 보여 주고 취소한다. 최신순.
   const [seatReservations, setSeatReservations] = useState<SeatReservation[]>([]);
@@ -120,30 +66,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     () => ({
       coupons: wallet.coupons,
       couponHistory: wallet.history,
-      spendCoupon,
       earnCoupons,
       favorites,
       toggleFavorite,
       orders,
       addOrder,
-      races,
-      joinRace,
-      settleRace,
       seatReservations,
       addSeatReservation,
       cancelSeatReservation,
     }),
     [
       wallet,
-      spendCoupon,
       earnCoupons,
       favorites,
       toggleFavorite,
       orders,
       addOrder,
-      races,
-      joinRace,
-      settleRace,
       seatReservations,
       addSeatReservation,
       cancelSeatReservation,

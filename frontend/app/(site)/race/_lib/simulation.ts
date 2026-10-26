@@ -3,7 +3,8 @@
 //   · 난수는 경주 번호 + 출발 시각으로 시드한 mulberry32 이고 상태(rng)를 run 안에 들고 다닌다
 //   · 시간은 STEP_MS 고정 간격으로만 진행한다(프레임 길이와 무관) — 같은 입력이면 어느 기기에서든 같은 결과
 // useRaceRun(rAF 루프)이 advanceTo 로 "지금까지의 경과 시간"만큼 진행시키고, 지나간 경주는 simulateRace 로 한 번에 돌려 기록한다.
-// 백엔드가 붙으면 서버가 내려준 결과를 재생하는 모드로 바꾼다(시드 대신 ranking · 이벤트 타임라인).
+// 백엔드는 경주마다 시드를 정해(races.seed) 마감 뒤에 공개하고, 같은 계산으로 순위를 확정한다 — 정산은 Spring 이
+// 순위 계산 Route Handler(app/api/race-ranking)를 불러 이 파일의 simulateRace 로, 화면은 createRace(…, seed) 로 같은 경주를 그린다.
 import type { Horse, HorseTrait, RaceEventMessage, RaceEventType, RaceRun, RunnerState } from "../_types";
 import { messageFor } from "./messages";
 
@@ -100,7 +101,7 @@ export function seedFor(raceNo: number, startedAt: number): number {
   return h >>> 0;
 }
 
-/** 시드로 섞은 새 배열(Fisher–Yates) — 같은 시드면 어느 기기에서든 같은 순서. 기록이 없는 경주의 게이트 순서(records.gatesFor)에 쓴다 */
+/** 시드로 섞은 새 배열(Fisher–Yates) — 같은 시드면 어느 기기에서든 같은 순서. /race/lab 의 첫 경주 게이트 순서(records.gatesAfter)에 쓴다 */
 export function seededShuffle<T>(items: readonly T[], seed: number): T[] {
   const rng = mulberry32(seed);
   const out = [...items];
@@ -120,9 +121,15 @@ function traitMultiplier(trait: HorseTrait, progress: number): number {
   return progress < 0.3 ? early : progress < 0.7 ? mid : late;
 }
 
-/** 출발 준비 — 말마다 기본 속도를 시드 난수로 정한다. startedAt 은 경과 0(출발)이 되는 epoch ms */
-export function createRace(horses: Horse[], raceNo: number, startedAt: number): RaceRun {
-  const rng = mulberry32(seedFor(raceNo, startedAt));
+/** 시뮬레이션이 말에서 쓰는 값 — 말 id(난수를 쓰는 순서)와 주행 성향뿐이다 */
+export type SimHorse = Pick<Horse, "id" | "trait">;
+
+/**
+ * 출발 준비 — 말마다 기본 속도를 시드 난수로 정한다. startedAt 은 경과 0(출발)이 되는 epoch ms.
+ * seed 는 서버가 정한 경주 시드(races.seed — 순위 계산 Route Handler)이고, 없으면 목업 규칙(경주 번호 + 출발 시각)으로 만든다.
+ */
+export function createRace(horses: SimHorse[], raceNo: number, startedAt: number, seed = seedFor(raceNo, startedAt)): RaceRun {
+  const rng = mulberry32(seed);
   const runners: RunnerState[] = horses.map((horse) => ({
     horseId: horse.id,
     trait: horse.trait,
@@ -336,9 +343,17 @@ export function advanceTo(run: RaceRun, targetMs: number, names?: (horseId: numb
   return { run: current, events };
 }
 
-/** 경주 하나를 끝까지 돌려 도착 순서를 돌려준다 — 지나간 경주 기록 보충 · 테스트용. 라이브로 본 결과와 같다 */
-export function simulateRace(horses: Horse[], raceNo: number, startedAt: number): { ranking: number[]; doneAt: number } {
-  let run = createRace(horses, raceNo, startedAt);
+/**
+ * 경주 하나를 끝까지 돌려 도착 순서를 돌려준다 — 지나간 경주 기록 보충 · 순위 계산 Route Handler(app/api/race-ranking) · 테스트용.
+ * 라이브로 본 결과와 같다(같은 말 순서 · 성향 · 시드면 어느 기기에서든 같은 순위).
+ */
+export function simulateRace(
+  horses: SimHorse[],
+  raceNo: number,
+  startedAt: number,
+  seed = seedFor(raceNo, startedAt),
+): { ranking: number[]; doneAt: number } {
+  let run = createRace(horses, raceNo, startedAt, seed);
   while (run.doneAt === null) run = step(run).run;
   return { ranking: run.ranking, doneAt: run.doneAt };
 }

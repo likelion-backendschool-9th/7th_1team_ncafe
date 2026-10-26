@@ -15,9 +15,7 @@ import {
 } from "@/app/(site)/event/_lib/eventStatus";
 import type { EventStatus } from "@/app/(site)/event/_types";
 import Modal from "@/components/Modal";
-import { formatRaceTimes } from "@/lib/time";
-import { useKstToday } from "@/lib/useCountdown";
-import { useRaceTimes } from "@/lib/useRaceTimes";
+import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast from "../../_components/AdminToast";
 import ConfirmDialog from "../../_components/ConfirmDialog";
@@ -36,7 +34,7 @@ type SiteFilter = "ALL" | "SHOWN" | "HIDDEN";
 export default function EventAdminList() {
   const events = useEvents();
   const today = useKstToday();
-  const raceTimes = formatRaceTimes(useRaceTimes());
+  const raceTimes = useRaceDayText() ?? "";
   const a = useEventEditor(events);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");

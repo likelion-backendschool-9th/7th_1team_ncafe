@@ -80,8 +80,8 @@ export default function RaceResultModal({ entry, result, gates, horses, coupons,
             <button type="button" className="btn btn-outline" onClick={onNext}>
               다음 경주 출전표 보기
             </button>
-            <Link href="/my#coupons" className="btn" onClick={onClose}>
-              내 쿠폰 보기
+            <Link href="/my#races" className="btn" onClick={onClose}>
+              내 레이스 기록 보기
             </Link>
           </div>
         </div>

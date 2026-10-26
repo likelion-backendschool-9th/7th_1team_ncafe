@@ -28,7 +28,7 @@ export interface Order {
 }
 
 /**
- * 내가 참여한 경주 한 건(내 레이스 기록) — 쿠폰을 건 순간 생기고, 경주가 끝나 정산되면 순위 · 돌려받은 쿠폰이 채워진다.
+ * 내가 참여한 경주 한 건(내 레이스 기록) — 서버 bets 한 줄(GET /api/v1/races/bets/me). 쿠폰을 건 순간 생기고, 경주가 끝나 정산되면 순위 · 돌려받은 쿠폰이 채워진다.
  * 말은 id 로 가리킨다(게이트 번호는 경주마다 바뀔 수 있어 그 경주의 번호를 따로 남긴다 — BLUEPRINT 8.2 "게이트 번호 규칙").
  */
 export interface RaceEntry extends RaceBet {
@@ -63,15 +63,11 @@ export interface SeatReservation {
 export interface UserState {
   coupons: number; // 보유 쿠폰
   couponHistory: CouponLog[]; // 쿠폰 증감 내역, 최신순
-  spendCoupon: (reason: CouponReason, label: string) => boolean; // 1장 차감 + 내역 기록, 0장이면 false
   earnCoupons: (amount: number, reason: CouponReason, label: string) => void; // amount 장 적립 + 내역 기록
   favorites: number[]; // 찜한 메뉴 id, 최근 찜한 순
   toggleFavorite: (menuId: number) => void;
   orders: Order[]; // 주문 내역, 최신순
   addOrder: (order: Order) => void;
-  races: RaceEntry[]; // 내가 참여한 경주, 최신순
-  joinRace: (bet: RaceBet, gate: number) => boolean; // 쿠폰을 건 경주 기록 — 그 경주에 이미 걸었으면 false
-  settleRace: (raceNo: number, rank: number, payout: number) => boolean; // 순위 · 돌려받은 쿠폰 기록 — 이미 정산했으면 false(경주당 한 번)
   seatReservations: SeatReservation[]; // 좌석 예약 · 예약대기, 최신순
   addSeatReservation: (reservation: SeatReservation) => void;
   cancelSeatReservation: (id: string) => boolean; // 목록에서 지운다 — 없으면 false
