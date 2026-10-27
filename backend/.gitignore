@@ -47,3 +47,4 @@ out/
 application.properties
 application-local.properties
 application.yml
+!src/test/resources/application.properties

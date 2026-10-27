@@ -26,6 +26,12 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @GetMapping("/csrf")
+    public org.springframework.security.web.csrf.CsrfToken csrf(
+            org.springframework.security.web.csrf.CsrfToken token) {
+        return token;
+    }
+
     // POST /api/v1/auth/login
     @PostMapping("/login")
     public MemberResponse login(@RequestBody LoginRequest request,

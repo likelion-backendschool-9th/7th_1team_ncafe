@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import AdminNav from "./_components/AdminNav";
 import styles from "./_components/admin.module.css";
+import AdminAccess from "./_components/AdminAccess";
 
 export const metadata: Metadata = {
   title: { default: "관리자", template: "%s · 관리자 · manhattaN cafe" },
@@ -9,10 +11,10 @@ export const metadata: Metadata = {
 };
 
 // 관리자 전용 레이아웃 — 사용자 사이트의 Header/Footer 를 쓰지 않는다.
-// 이번 단계는 로그인이 없으므로 누구나 들어올 수 있다(주소로 직접 진입).
+// 로그인한 관리자의 역할에 따라 화면과 내비게이션을 제한한다.
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className={styles.shell}>
+    <Suspense fallback={<p role="status">관리자 화면을 준비하고 있습니다…</p>}><AdminAccess><div className={styles.shell}>
       <AdminNav />
       <div className={styles.workspace}>
         <p className={styles.mockBand} role="note">
@@ -21,6 +23,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </p>
         <main className={styles.content}>{children}</main>
       </div>
-    </div>
+    </div></AdminAccess></Suspense>
   );
 }
