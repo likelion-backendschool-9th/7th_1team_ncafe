@@ -46,6 +46,13 @@ public class Menu {
     @EqualsAndHashCode.Exclude
     private List<MenuSize> sizes = new ArrayList<>();
 
-    // 해금 조건 (추후 구현)
+    // 해금 등급 (required_grade_id, FK → grade.id). 비어 있으면 누구나 주문할 수 있다.
+    // 값이 있으면 그 등급의 필요 누적 쿠폰 이상인 회원만 주문할 수 있다.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "required_grade_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Grade requiredGrade;
+
     // 지점별 판매가능여부는 MenuAvailability (menus_available)
 }

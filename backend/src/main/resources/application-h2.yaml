@@ -1,4 +1,15 @@
+race:
+  ranking:
+    url: ${RACE_RANKING_URL:http://127.0.0.1:3000/api/race-ranking}
+    key: ${RACE_RANKING_KEY:dev-race-ranking-key}
+app:
+  test-seat-data:
+    enabled: ${H2_TEST_SEAT_DATA_ENABLED:true}
 spring:
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:branches_data.sql,classpath:menus_data.sql,classpath:horses_data.sql,classpath:coupons_losing_streak_data.sql,classpath:events_data.sql,classpath:admin.sql,classpath:seats_data.sql,classpath:branch_admins_data.sql
   datasource:
     url: jdbc:h2:mem:security
     driver-class-name: org.h2.Driver
@@ -11,6 +22,7 @@ spring:
       settings:
         web-allow-others: false
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
     show-sql: false

@@ -54,6 +54,30 @@
   color: var(--text-muted);
 }
 
+.grade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.grade > span::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+.gradeName {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--text-strong);
+  color: var(--bg);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .profileMeta {
   font-size: 0.85rem;
   color: var(--text-muted);

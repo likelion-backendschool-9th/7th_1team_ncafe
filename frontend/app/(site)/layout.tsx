@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import styles from "@/components/layout.module.css";
@@ -7,7 +7,7 @@ import styles from "@/components/layout.module.css";
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <div className={styles.site}>
-      <Header />
+      <Suspense fallback={<div role="status">화면을 준비하고 있습니다…</div>}><Header /></Suspense>
       <main className={styles.main}>{children}</main>
       <Footer />
     </div>

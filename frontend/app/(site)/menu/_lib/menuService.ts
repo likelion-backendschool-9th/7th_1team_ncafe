@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { MENU_IMAGES } from "../_data/menus";
 import { MENU_SIZES } from "./menuSize";
 import type { Branch } from "../../seat/_types";
-import type { Category, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
+import type { Category, GradeInfo, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
 
 // ───────── 백엔드 응답 → 프론트 타입 ─────────
 
@@ -21,6 +21,8 @@ export interface MenuResponse {
   label: string | null;
   /** 지점별 판매 상태 — ?branchId= 로 조회했을 때만 온다(그 지점에서 숨긴 메뉴는 아예 빠진다) */
   status: MenuStatus | null;
+  /** 해금 등급(없으면 null) */
+  requiredGrade?: GradeInfo | null;
   sizes: { size: string; price: number }[];
 }
 
@@ -57,6 +59,7 @@ export function toMenu(m: MenuResponse): Menu {
     image: m.image || FALLBACK_IMAGE,
     badge: m.label && BADGES.includes(m.label) ? (m.label as MenuBadge) : undefined,
     status: m.status ?? "ON_SALE",
+    requiredGrade: m.requiredGrade ?? null,
   };
 }
 
@@ -81,10 +84,10 @@ export async function getMenuStatuses(branchId: string): Promise<Map<number, Men
   return new Map(menus.map((m) => [m.id, m.status ?? "ON_SALE"]));
 }
 
-/** GET /api/v1/branches — 메뉴판 지점 선택 칩. 등록된 지점이 없으면 빈 배열(칩을 숨긴다) */
+/** GET /api/v1/branches — 메뉴판 지점 선택 칩. 영업 중인 지점만(좌석 예약과 같다), 없으면 빈 배열(칩을 숨긴다) */
 export async function getMenuBranches(): Promise<Branch[]> {
-  const branches = await apiFetch<{ id: string; name: string; address: string }[]>("/api/v1/branches");
-  return branches.map(({ id, name, address }) => ({ id, name, address }));
+  const branches = await apiFetch<{ id: string; name: string; address: string; open: boolean }[]>("/api/v1/branches");
+  return branches.filter((b) => b.open).map(({ id, name, address }) => ({ id, name, address }));
 }
 
 export async function getTodayWinnerMenu(): Promise<Menu | null> {

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Category, Menu } from "@/app/(site)/menu/_types";
+import type { Category, GradeInfo, Menu } from "@/app/(site)/menu/_types";
 import type { Branch } from "@/app/(site)/seat/_types";
 import styles from "../../_components/admin.module.css";
-import { getAdminCategories, getAdminMenus, getBranches } from "../_lib/menuAdminService";
+import { getAdminCategories, getAdminMenus, getBranches, getGrades } from "../_lib/menuAdminService";
 import MenuAdminTable from "./MenuAdminTable";
 
-type Loaded = { menus: Menu[]; categories: Category[]; branches: Branch[] };
+type Loaded = { menus: Menu[]; categories: Category[]; branches: Branch[]; grades: GradeInfo[] };
 
 /**
  * 메뉴 관리 데이터를 브라우저에서 받는다 — 관리자 API 는 로그인 세션이 필요해 서버 렌더에서 부르지 않는다.
@@ -20,8 +20,8 @@ export default function MenuAdminScreen({ imageOptions }: { imageOptions: { path
 
   useEffect(() => {
     let ignore = false;
-    Promise.all([getAdminMenus(), getAdminCategories(), getBranches()])
-      .then(([menus, categories, branches]) => !ignore && setData({ menus, categories, branches }))
+    Promise.all([getAdminMenus(), getAdminCategories(), getBranches(), getGrades()])
+      .then(([menus, categories, branches, grades]) => !ignore && setData({ menus, categories, branches, grades }))
       .catch((e: unknown) => !ignore && setError(e instanceof Error ? e.message : "메뉴를 불러오지 못했습니다."));
     return () => {
       ignore = true;
@@ -52,6 +52,7 @@ export default function MenuAdminScreen({ imageOptions }: { imageOptions: { path
       initialMenus={data.menus}
       categories={data.categories}
       branches={data.branches}
+      grades={data.grades}
       imageOptions={imageOptions}
     />
   );

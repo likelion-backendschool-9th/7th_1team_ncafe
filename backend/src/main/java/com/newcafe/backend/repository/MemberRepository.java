@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 //   가입: save(member)  (no가 없는 새 엔티티)
 //   수정: 영속 상태의 member를 수정한 뒤 save(member)
 public interface MemberRepository extends JpaRepository<Member, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Member m where m.no = :no")
+    Optional<Member> findForBranchAssignment(@Param("no") Long no);
     // 회원 목록 조회 (탈퇴하지 않은 회원)
     List<Member> findAllByDeletedFalseOrderByNoAsc();
 
@@ -38,7 +41,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     // 쿠폰 적립 (CouponService.earn). 변경된 행 수를 반환하며 0이면 없거나 탈퇴한 회원.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update Member m set m.couponCount = m.couponCount + :amount where m.no = :no and m.deleted = false")
+    @Query("""
+            update Member m
+               set m.couponCount = m.couponCount + :amount,
+                   m.totalEarnedCoupons = m.totalEarnedCoupons + :amount
+             where m.no = :no and m.deleted = false
+            """)
     int increaseCoupons(@Param("no") Long no, @Param("amount") int amount);
 
     // 회원 탈퇴 (논리 삭제). 변경된 행 수를 반환하며 0이면 대상 회원이 없거나 이미 탈퇴한 상태.

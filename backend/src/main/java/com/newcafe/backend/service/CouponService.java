@@ -18,10 +18,12 @@ import com.newcafe.backend.dto.coupon.MyLosingStreakResponse;
 import com.newcafe.backend.entity.Bet;
 import com.newcafe.backend.entity.CouponLog;
 import com.newcafe.backend.entity.CouponLosingStreak;
+import com.newcafe.backend.entity.Grade;
 import com.newcafe.backend.entity.Member;
 import com.newcafe.backend.repository.BetRepository;
 import com.newcafe.backend.repository.CouponLogRepository;
 import com.newcafe.backend.repository.CouponLosingStreakRepository;
+import com.newcafe.backend.repository.GradeRepository;
 import com.newcafe.backend.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,7 @@ public class CouponService {
     private final CouponLogRepository couponLogRepository;
     private final CouponLosingStreakRepository losingStreakRepository;
     private final BetRepository betRepository;
+    private final GradeRepository gradeRepository;
 
     // 연패 위로 쿠폰 대상 한 명 — dueTime(마지막 경주 정산 시각 + 지연 시간)이 지나면 지급한다
     public record LosingStreakTarget(Long memberNo, String loginId, String nickname, int loseStreak, Integer raceNo,
@@ -152,7 +155,7 @@ public class CouponService {
         addLog(memberNo, -amount, note);
     }
 
-    // 쿠폰 적립 (추후 주문 적립 · 레이스 정산)
+    // 쿠폰 적립 (가입 축하 · 이벤트 · 레이스 정산 · 연패 위로 · 추후 주문 적립). 누적 쿠폰도 같이 늘고, 등급을 다시 매긴다.
     @Transactional
     public void earn(Long memberNo, int amount, String note) {
         checkAmount(amount);
@@ -160,6 +163,20 @@ public class CouponService {
             throw notFound(memberNo);
         }
         addLog(memberNo, amount, note);
+        upgradeGrade(memberNo);
+    }
+
+    // 누적 쿠폰으로 닿는 가장 높은 등급으로 올린다. 등급은 올라가기만 한다(쿠폰을 써도 내려가지 않는다).
+    // 등급 데이터(grades_data.sql)가 없으면 아무것도 하지 않는다.
+    private void upgradeGrade(Long memberNo) {
+        Member member = getActiveMember(memberNo);
+        gradeRepository.findTopByMinTotalCouponsLessThanEqualOrderByMinTotalCouponsDesc(member.getTotalEarnedCoupons())
+                .filter(reached -> isHigher(reached, member.getGrade()))
+                .ifPresent(member::setGrade);
+    }
+
+    private boolean isHigher(Grade reached, Grade current) {
+        return current == null || reached.getMinTotalCoupons() > current.getMinTotalCoupons();
     }
 
     private void addLog(Long memberNo, int delta, String note) {

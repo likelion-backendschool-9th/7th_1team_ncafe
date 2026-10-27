@@ -380,7 +380,7 @@
 }
 
 /* 품절 — 일러스트를 흐리게 + 빨간 스탬프 */
-.ticketSoldOut .visualImg {
+.visualSoldOut .visualImg {
   opacity: 0.4;
 }
 
@@ -562,4 +562,11 @@
   .related {
     margin-top: 48px;
   }
+}
+
+/* 해금 등급 안내 — 잠긴 메뉴 상세의 담기 버튼 아래 */
+.lockNotice {
+  margin-top: 12px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
 }

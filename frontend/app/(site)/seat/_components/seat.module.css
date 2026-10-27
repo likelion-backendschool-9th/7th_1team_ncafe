@@ -358,6 +358,8 @@
   outline-offset: -2px;
 }
 
+.viewportFit { scrollbar-gutter: auto; }
+
 .stage {
   flex: none;
   margin: auto;

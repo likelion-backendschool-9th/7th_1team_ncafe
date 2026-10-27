@@ -19,7 +19,7 @@ export default function AdminAccess({ children }: { children: ReactNode }) {
   if (!isHeadOffice(member.role) && !pathname.startsWith("/admin/branches/")) {
     return <div className={styles.card}><h1>본사 관리자 전용</h1><p>이 업무는 본사 관리자만 사용할 수 있습니다.</p><Link href="/admin/branches/members">지점 회원관리로 이동</Link></div>;
   }
-  if (!isHeadOffice(member.role) && !/^\/admin\/branches\/members(?:\/\d+)?\/?$/.test(pathname)) {
+  if (!isHeadOffice(member.role) && !["/admin/branches/assigned", "/admin/branches/operations"].includes(pathname) && !/^\/admin\/branches\/members(?:\/\d+)?\/?$/.test(pathname)) {
     return <div className={styles.card}><h1>회원 조회 전용</h1><p>회원 추가·수정·삭제는 본사 관리자만 할 수 있습니다.</p><Link href="/admin/branches/members">회원 목록으로 이동</Link></div>;
   }
   return children;

@@ -1,0 +1,63 @@
+.workspace.workspace {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: clamp(16px, 2vw, 28px);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.tabs button[aria-pressed="false"] {
+  background: transparent;
+  color: var(--text-strong);
+}
+
+.seatWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.seatActions {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  padding: 20px;
+  background: var(--surface);
+  color: var(--text-strong);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+}
+
+.seatActions h3 { margin-top: 0; }
+.seatActions p { font-size: 14px; }
+.seatActions > h3, .seatActions > p, .seatActions > section { grid-column: 1 / -1; }
+.seatActions > p { margin-bottom: 0; }
+
+@media (max-width: 600px) {
+  .seatActions { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+}
+
+.seatMap { min-width: 0; grid-column: 1; grid-row: 1; }
+
+.mapToolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-subtle); }
+.mapToolbar label { flex: 1 1 220px; }
+.mapToolbar button { flex: 0 0 auto; white-space: nowrap; }
+.mapSummary { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 !important; }
+.mapSummary span { padding: 6px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); white-space: nowrap; font-size: 14px; }
+
+.seatActions button { width: 100%; margin: 6px 0; }
+.repairDialog { width: min(600px, calc(100vw - 32px)); max-height: 80dvh; overflow-y: auto; padding: 24px; border: 1px solid var(--border-strong); border-radius: 12px; margin: auto; background: var(--surface); color: var(--text-strong); }
+.repairDialog::backdrop { background: rgb(0 0 0 / 60%); }
+.repairDialog p, .repairDialog li { margin: 12px 0; }
+.repairDialog ul, .logList { padding-left: 20px; }
+.logList li { padding: 16px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }

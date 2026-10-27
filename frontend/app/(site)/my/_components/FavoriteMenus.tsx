@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@/components/UserProvider";
+import { useBranchStatuses, useSelectedBranch, withBranchStatuses } from "../../menu/_hooks/useMenuBranch";
 import type { Menu } from "../../menu/_types";
 import { useShowMore } from "../_hooks/useShowMore";
 import { won } from "../_lib/format";
@@ -14,10 +15,13 @@ const PREVIEW = 4;
 /**
  * 찜한 메뉴 — 최근 찜한 순 카드. 찜 · 해제는 메뉴 상세의 ♡ 버튼에서만 한다(카드를 누르면 상세로).
  * menus 는 page 가 메뉴 Service 에서 받아 온 "메뉴판에 보이는 메뉴" — 숨김 처리된 메뉴는 찜해 두었어도 보이지 않는다.
+ * 품절 · 숨김은 고른 지점(메뉴판에서 고른 지점, 사이트 공통) 기준이다.
  */
 export default function FavoriteMenus({ menus }: { menus: Menu[] }) {
   const { favorites } = useUser();
-  const byId = new Map(menus.map((m) => [m.id, m]));
+  const branch = useSelectedBranch();
+  const { statuses } = useBranchStatuses(branch?.id ?? null);
+  const byId = new Map(withBranchStatuses(menus, statuses).map((m) => [m.id, m]));
   const items = favorites.map((id) => byId.get(id)).filter((m): m is Menu => m !== undefined);
   const { visible, expanded, hasMore, total, toggle } = useShowMore(items, PREVIEW);
 
