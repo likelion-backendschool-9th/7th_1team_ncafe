@@ -3,6 +3,8 @@ package com.newcafe.backend.entity;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -53,6 +55,12 @@ public class Member {
 
     @Column(nullable = false)
     private int couponCount = 0;          // coupon_count INT (보유쿠폰 수)
+
+    // 지금까지 받은 쿠폰 수 — 등급 기준. 쿠폰을 써도 줄지 않는다(CouponService.earn에서만 늘어난다).
+    // 이미 회원이 있는 DB에 칼럼을 더할 때 기존 행이 0으로 채워지도록 DB 기본값을 둔다.
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int totalEarnedCoupons = 0;   // total_earned_coupons INT (누적 적립 쿠폰)
 
     @Column(nullable = false)
     private int loseStreak = 0;           // lose_streak INT (현재 연패 수)
