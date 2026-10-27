@@ -56,6 +56,12 @@ export interface FloorPlan {
   fixtures: FloorFixture[];
 }
 
+/** 지점 하나의 배치도 — 평면도(지점의 sections · fixtures) + 좌석 배치. /seat 는 고른 지점 것으로 그린다 */
+export interface BranchLayout {
+  floorPlan: FloorPlan;
+  seats: Seat[];
+}
+
 /** 지점(10단계, 사용자 결정 2026-10-13: Mock 3곳 · 같은 평면도 · 좌석 상태만 다르다) */
 export interface Branch {
   id: string; // "mapo"

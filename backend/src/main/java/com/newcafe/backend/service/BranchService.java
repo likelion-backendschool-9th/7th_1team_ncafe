@@ -1,7 +1,6 @@
 package com.newcafe.backend.service;
 
 import java.util.List;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.newcafe.backend.common.exception.NotFoundException;
@@ -16,9 +15,9 @@ public class BranchService {
 
     private final BranchRepository branchRepository;
 
-    // 영업 여부를 포함한 전체 지점을 ID 순으로 반환한다.
+    // 영업 여부를 포함한 전체 지점을 손님 화면 순서(sort, 같으면 ID)로 반환한다.
     public List<BranchResponse> findAll() {
-        return branchRepository.findAll(Sort.by("id")).stream()
+        return branchRepository.findAllByOrderBySortAscIdAsc().stream()
                 .map(BranchResponse::from).toList();
     }
 

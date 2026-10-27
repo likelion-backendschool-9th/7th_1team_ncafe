@@ -4,10 +4,9 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { useSeatBooking } from "../_hooks/useSeatBooking";
 import { useSeatFilter } from "../_hooks/useSeatFilter";
 import { matchesFilter } from "../_lib/filter";
-import { allChairs } from "../_lib/geometry";
 import { recommendSeats, type RecommendResult } from "../_lib/recommend";
 import { totalChairs } from "../_lib/summary";
-import type { Branch, FloorPlan, Seat, TimeBlock } from "../_types";
+import type { Branch, BranchLayout, TimeBlock } from "../_types";
 import BookingBar from "./BookingBar";
 import BranchFromQuery from "./BranchFromQuery";
 import RecommendedSeat, { type RecommendState } from "./RecommendedSeat";
@@ -21,8 +20,7 @@ import SelectionPanel, { SelectionBar } from "./SelectionPanel";
 import WaitlistModal from "./WaitlistModal";
 
 interface SeatBookingProps {
-  seats: Seat[];
-  floorPlan: FloorPlan;
+  layouts: Record<string, BranchLayout>; // 지점 id → 배치도(평면도 + 좌석)
   branches: Branch[];
   timeBlocks: TimeBlock[];
 }
@@ -34,11 +32,12 @@ const NONE: ReadonlySet<string> = new Set();
  * 좌석 예약 화면 조립 — BLUEPRINT 8.3.
  * [일정 바] / [배치도 캔버스(필터 줄 · 추천 줄 포함) | 패널(일정 선택 → 선택 좌석 → 완료)] + 예약 안내 · 예약대기 모달.
  * 예약 상태는 useSeatBooking, 필터는 useSeatFilter 에 있고, 여기서는 둘을 합쳐(반투명 자리 · 추천) 넘기며 모달 열림만 들고 있다.
+ * 배치도(평면도 · 좌석)는 고른 지점 것을 useSeatBooking 이 골라 준다.
  */
-export default function SeatBooking({ seats, floorPlan, branches, timeBlocks }: SeatBookingProps) {
-  const chairs = useMemo(() => allChairs(seats), [seats]);
+export default function SeatBooking({ layouts, branches, timeBlocks }: SeatBookingProps) {
+  const booking = useSeatBooking({ layouts, branches, timeBlocks });
+  const { floorPlan, seats, chairs } = booking;
   const total = useMemo(() => totalChairs(seats), [seats]);
-  const booking = useSeatBooking({ seats, chairs, branches, timeBlocks });
   const { step, slot, statuses, mine, selected, summary, branch, people, blockNow, waitingHere, reservation, canPick, hint, toggleChair, selectChairs, reserve, restart } =
     booking;
   const filterControls = useSeatFilter();

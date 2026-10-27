@@ -57,6 +57,7 @@ class SeatReservationApiTests {
     private Branch branch;
     private Member alice;
     private Member bob;
+    private Member admin;
     private LocalDate today;
     private LocalDate tomorrow;
 
@@ -69,6 +70,8 @@ class SeatReservationApiTests {
         saveSeat("B01", Seat.Section.PADDOCK, Seat.Type.BAR, 1, Set.of(Seat.Feature.BAR, Seat.Feature.OUTLET));
         alice = saveMember("alice");
         bob = saveMember("bob");
+        admin = saveMember("admin");
+        admin.setRole(Member.Role.ADMIN);
         today = SeatSchedule.now().toLocalDate();
         tomorrow = today.plusDays(1);
     }
@@ -133,6 +136,26 @@ class SeatReservationApiTests {
                 .andExpect(jsonPath("$.branches[0].branch.id").value("test"))
                 .andExpect(jsonPath("$.branches[0].slots.length()").value(13))
                 .andExpect(jsonPath("$.branches[0].slots[0].total").value(3));
+    }
+
+    @Test
+    void branchesFollowSortThenId() throws Exception {
+        // sort가 작을수록 앞, 같으면 ID 순 — 맨 앞 지점이 손님 화면의 기본 선택
+        Branch first = saveBranch("zeta", true);
+        first.setSort(-1);
+        saveBranch("alpha", true); // sort 0 (기본값) — "test"와 같아 ID 순으로 앞
+        branches.flush();
+
+        mvc.perform(get("/api/v1/branches"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("zeta"))
+                .andExpect(jsonPath("$[0].sort").value(-1))
+                .andExpect(jsonPath("$[1].id").value("alpha"))
+                .andExpect(jsonPath("$[2].id").value("test"));
+        mvc.perform(get("/api/v1/seats/occupancy"))
+                .andExpect(jsonPath("$.branches[0].branch.id").value("zeta"))
+                .andExpect(jsonPath("$.branches[1].branch.id").value("alpha"))
+                .andExpect(jsonPath("$.branches[2].branch.id").value("test"));
     }
 
     // ───────── 예약 규칙 ─────────
@@ -387,8 +410,9 @@ class SeatReservationApiTests {
         return session(String.valueOf(member.getNo()), "ROLE_USER");
     }
 
-    private static MockHttpSession admin() {
-        return session("admin", "ROLE_ADMIN");
+    // 본사 관리자 — 관리자 API가 회원 번호로 담당 지점을 확인하므로(BranchAdminService) 실제 ADMIN 회원이어야 한다
+    private MockHttpSession admin() {
+        return session(String.valueOf(admin.getNo()), "ROLE_ADMIN");
     }
 
     private static MockHttpSession session(String name, String role) {

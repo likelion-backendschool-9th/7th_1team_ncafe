@@ -1,17 +1,16 @@
 // 좌석 데이터 창구(BLUEPRINT 6) — 백엔드(Spring) /api/v1/seats/** · /api/v1/branches 를 부른다(lib/api.ts, next.config.ts 프록시).
-// 지점 · 좌석 배치 · 시간대는 /seat · 메인의 "use cache" 셸이 서버에서 읽는다(apiFetch).
+// 지점 · 지점별 배치도(평면도 + 좌석) · 시간대는 /seat · 메인의 "use cache" 셸이 서버에서 읽는다(apiFetch).
 // 시간대별 좌석 상태 · 잔여석 · 내 예약 · 예약 · 예약대기 · 취소는 브라우저에서 부른다(api — 쓰기 요청에는 CSRF 토큰을 붙인다).
 // 실패하면 ApiError(서버 code · message) — 예약이 막힌 이유(자리를 뺏김 · 예약 수 초과 · 노쇼 제한)는 message 를 그대로 보여 준다.
-// 평면도(창문 · 카운터 같은 구조물)는 아직 서버에 없어 _data/floorPlan.ts 를 그대로 쓴다.
+// 평면도(구역 · 창문 · 카운터 같은 구조물)는 지점마다 서버(branches.sections · fixtures)에 있다.
 import { api, ApiError, apiFetch } from "@/lib/api";
 import type { SeatReservation } from "@/types/common";
-import { FLOOR_PLAN } from "../_data/floorPlan";
 import { MAX_PEOPLE } from "../_data/schedule";
 import type {
   Branch,
+  BranchLayout,
   BranchOccupancy,
   ChairStatusMap,
-  FloorPlan,
   ReservationRequest,
   Seat,
   SeatSlot,
@@ -19,24 +18,46 @@ import type {
   TimeBlock,
   WaitlistRequest,
 } from "../_types";
+import { parseFloorPlan } from "./floorPlan";
 
 /** 한 번에 예약할 수 있는 최대 인원 — 컴포넌트는 _data 대신 여기서 읽는다(서버 SeatSchedule.MAX_PEOPLE 과 같은 값) */
 export const SEAT_MAX_PEOPLE = MAX_PEOPLE;
 
-/** GET /api/v1/branches — 영업 중인 지점만(영업하지 않는 지점은 예약할 수 없다). 서버 순서(지점 id 순) 그대로 */
-export async function getBranches(): Promise<Branch[]> {
-  const branches = await apiFetch<(Branch & { open: boolean })[]>("/api/v1/branches");
-  return branches.filter((b) => b.open).map(({ id, name, address }) => ({ id, name, address }));
+/** GET /api/v1/branches 의 한 항목(dto/branch/BranchResponse) — 평면도는 JSON 원문 문자열 */
+interface BranchResponse extends Branch {
+  open: boolean;
+  sections: string | null;
+  fixtures: string | null;
 }
 
-/** GET /api/v1/seats?branchId= — 그 지점의 좌석 배치. 지점마다 배치는 같고 상태(예약 · 수리 중)만 다르다 */
+/** 영업 중인 지점만(영업하지 않는 지점은 예약할 수 없다). 서버 순서(sort, 같으면 지점 id) 그대로 — 맨 앞이 기본 선택 */
+async function getOpenBranches(): Promise<BranchResponse[]> {
+  return (await apiFetch<BranchResponse[]>("/api/v1/branches")).filter((b) => b.open);
+}
+
+const toBranch = ({ id, name, address }: BranchResponse): Branch => ({ id, name, address });
+
+/** GET /api/v1/branches — 영업 중인 지점(이름 · 주소만) */
+export async function getBranches(): Promise<Branch[]> {
+  return (await getOpenBranches()).map(toBranch);
+}
+
+/** GET /api/v1/seats?branchId= — 그 지점의 좌석 배치 */
 export async function getSeats(branchId: string): Promise<Seat[]> {
   return apiFetch<Seat[]>(`/api/v1/seats?branchId=${encodeURIComponent(branchId)}`);
 }
 
-/** 평면도 구조물 — 서버에 생기기 전까지 프론트 데이터 */
-export async function getFloorPlan(): Promise<FloorPlan> {
-  return structuredClone(FLOOR_PLAN);
+/**
+ * GET /api/v1/branches + 지점마다 GET /api/v1/seats?branchId= — 영업 중인 지점과 지점별 배치도(평면도 + 좌석).
+ * 지점이 몇 곳뿐이라 /seat 는 한 번에 다 받아 두고, 지점을 바꾸면 그 지점 것으로 그린다(바꿀 때 기다리지 않는다).
+ */
+export async function getBranchLayouts(): Promise<{ branches: Branch[]; layouts: Record<string, BranchLayout> }> {
+  const branches = await getOpenBranches();
+  const seats = await Promise.all(branches.map((b) => getSeats(b.id)));
+  const layouts = Object.fromEntries(
+    branches.map((b, i) => [b.id, { floorPlan: parseFloorPlan(b.sections, b.fixtures), seats: seats[i] }]),
+  );
+  return { branches: branches.map(toBranch), layouts };
 }
 
 /** GET /api/v1/seats/time-blocks — 1시간 블록 13개(09:00~22:00) */

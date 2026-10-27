@@ -7,18 +7,21 @@ import type { SeatReservation } from "@/types/common";
 import { blockState, bookingRange, hasOpenBlock, sameSlot } from "../_lib/schedule";
 import { getChairStatuses, getSlotAvailability, joinWaitlist as joinWaitlistService, reserveChairs } from "../_lib/seatService";
 import { summarize, type SeatSummaryData } from "../_lib/summary";
-import type { Branch, Chair, ChairStatusMap, Seat, SeatSlot, SlotAvailability, TimeBlock } from "../_types";
+import { allChairs } from "../_lib/geometry";
+import type { Branch, BranchLayout, Chair, ChairStatusMap, SeatSlot, SlotAvailability, TimeBlock } from "../_types";
 import { useMinuteClock } from "./useMinuteClock";
 
 /** SCHEDULE: 일정 선택(날짜 · 지점 · 인원 · 시간대) → SEATS: 배치도에서 의자 고르기 → DONE: 예약 완료 */
 export type BookingStep = "SCHEDULE" | "SEATS" | "DONE";
 
 interface Options {
-  seats: Seat[];
-  chairs: Chair[];
+  layouts: Readonly<Record<string, BranchLayout>>; // 지점 id → 배치도(평면도 + 좌석)
   branches: Branch[];
   timeBlocks: TimeBlock[];
 }
+
+/** 배치도가 없는 지점(영업을 막 시작해 정적 셸에 없음 등) — 빈 배치도 */
+const EMPTY_LAYOUT: BranchLayout = { floorPlan: { sections: [], fixtures: [] }, seats: [] };
 
 /** 안내 문구가 떠 있는 시간 */
 const HINT_MS = 2600;
@@ -40,10 +43,11 @@ interface AvailabilitySnapshot {
  * /seat 예약 흐름의 단일 State — BLUEPRINT 8.3.
  * 좌석 상태의 단일 소스는 "서버가 준 시간대 상태 + 같은 시간대의 내 예약(UserProvider)"이고,
  * 요약 · 범례 · 시간대 잔여석 · 배치도는 모두 여기서 파생한다(별도 카운트 State 없음).
+ * 배치도(평면도 · 좌석 · 의자)는 고른 지점 것이다 — 지점을 바꾸면 그 지점 배치도로 다시 그린다.
  * 서버 상태 · 잔여석은 내 예약까지 찬 자리로 센다 — 내 예약은 배치도에 "내 예약"으로 겹쳐 그리기만 한다.
  * 예약 · 예약대기를 하거나 자리를 뺏기면 서버 상태를 다시 받는다(reloadKey). /my 에서 취소해도 돌아오면 자리가 풀려 있다.
  */
-export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options) {
+export function useSeatBooking({ layouts, branches, timeBlocks }: Options) {
   const { seatReservations, refreshSeatReservations } = useUser();
   const now = useMinuteClock();
   const today = now === null ? null : kstDate(now);
@@ -79,6 +83,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   // 날짜: 고른 날이 없거나 범위를 벗어났으면(자정이 지남) 기본 날짜
   const date = pickedDate && range && pickedDate >= range.from && pickedDate <= range.to ? pickedDate : fallbackDate;
   const branch = branches.find((b) => b.id === branchId) ?? branches[0] ?? null;
+  // 고른 지점의 배치도 — 평면도 · 좌석이 지점마다 다르다
+  const { floorPlan, seats } = (branch && layouts[branch.id]) ?? EMPTY_LAYOUT;
+  const chairs = useMemo(() => allChairs(seats), [seats]);
 
   // 시간대: 고른 시간대가 지나가 버리면(자정 · 시간대 종료) 없는 것으로 — 고른 의자도 함께 버리고 일정 선택으로 돌아간다
   // (useMemo 는 성능보다 React Compiler 린트 때문이다 — date 와 now 를 함께 넘기는 이 호출을 렌더 본문에 두면 컴파일러가 아래 setter 들을 불안정하다고 본다)
@@ -328,6 +335,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   }, [commitSelected]);
 
   return {
+    floorPlan,
+    seats,
+    chairs,
     now,
     today,
     range,

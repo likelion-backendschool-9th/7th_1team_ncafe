@@ -33,7 +33,7 @@ public class BranchService {
         Branch branch = new Branch();
         branch.setId(id);
         apply(branch, new BranchUpdateRequest(request.name(), request.address(),
-                request.sections(), request.fixtures(), request.open()));
+                request.sections(), request.fixtures(), request.open(), request.sort()));
         // 직접 지정한 ID로 merge하면 기존 행을 덮어쓸 수 있으므로 신규 INSERT만 수행한다.
         entityManager.persist(branch);
         entityManager.flush();
@@ -54,11 +54,13 @@ public class BranchService {
         String sections = floorPlan(request.sections());
         String fixtures = floorPlan(request.fixtures());
         if (request.open() == null) throw badRequest("영업 여부는 필수입니다.");
+        if (request.sort() != null && request.sort() < 0) throw badRequest("지점 순서는 0 이상이어야 합니다.");
         branch.setName(name);
         branch.setAddress(address);
         branch.setSections(sections);
         branch.setFixtures(fixtures);
         branch.setOpen(request.open());
+        if (request.sort() != null) branch.setSort(request.sort());
     }
 
     private String required(String value, int max, String label) {
