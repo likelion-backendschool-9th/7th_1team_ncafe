@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
 import MenuBoard from "./_components/MenuBoard";
 import { selectBoard } from "./_lib/menuBoard";
-import { getCategories, getMenus } from "./_lib/menuService";
-import { getBranches } from "../seat/_lib/seatService";
+import { getCategories, getMenuBranches, getMenus } from "./_lib/menuService";
 
 export const metadata: Metadata = { title: "MENU BOARD" };
 
@@ -18,7 +17,7 @@ export default async function MenuPage() {
   "use cache";
   cacheLife("hours");
 
-  const [categories, menus, branches] = await Promise.all([getCategories(), getMenus(), getBranches()]);
+  const [categories, menus, branches] = await Promise.all([getCategories(), getMenus(), getMenuBranches()]);
   const board = selectBoard(categories, menus);
 
   return (
