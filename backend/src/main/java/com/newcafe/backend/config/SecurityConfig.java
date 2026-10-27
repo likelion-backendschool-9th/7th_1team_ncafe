@@ -46,6 +46,9 @@ public class SecurityConfig {
                         // 이벤트 조회는 로그인 없이. 내 참여 기록 · 참여(POST)는 로그인 필요
                         .requestMatchers(HttpMethod.GET, "/api/v1/events/applies/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()
+                        // 좌석 조회(배치 · 시간대 · 의자 상태 · 잔여석)는 로그인 없이. 내 예약 목록 · 예약 · 취소는 로그인 필요
+                        .requestMatchers(HttpMethod.GET, "/api/v1/seats/reservations/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/seats/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/members", "/api/v1/admin/members/**")
                         .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "HQ_ADMIN")

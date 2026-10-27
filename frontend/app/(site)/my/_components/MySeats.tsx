@@ -72,7 +72,9 @@ export default function MySeats() {
 function SeatRow({ entry, past, onCancel }: { entry: SeatReservation; past: boolean; onCancel: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const waiting = entry.kind === "WAITING";
-  const statusLabel = past ? (waiting ? "대기 종료" : "이용 완료") : waiting ? "대기 중" : "예약됨";
+  // 예약대기에 자리가 났다(백엔드 notifiedAt) — 시간대가 지났으면 자리가 났어도 "대기 종료"
+  const opened = waiting && !past && Boolean(entry.notifiedAt);
+  const statusLabel = past ? (waiting ? "대기 종료" : "이용 완료") : opened ? "자리 났어요" : waiting ? "대기 중" : "예약됨";
 
   return (
     <li className={`${styles.seatRow} ${past ? styles.seatRowPast : ""}`}>
@@ -88,11 +90,22 @@ function SeatRow({ entry, past, onCancel }: { entry: SeatReservation; past: bool
           {entry.branchName}
           <small>{entry.people}명</small>
         </span>
-        <span className={styles.seatChairs}>{waiting ? "예약대기 · 자리가 나면 알려드려요" : entry.chairLabels.join(" · ")}</span>
+        {opened ? (
+          <span className={styles.seatChairs}>
+            예약대기 · 자리가 났어요!{" "}
+            <Link href={`/seat?branch=${entry.branchId}`} className={styles.seatOpenLink}>
+              지금 예약하기
+            </Link>
+          </span>
+        ) : (
+          <span className={styles.seatChairs}>{waiting ? "예약대기 · 자리가 나면 알려드려요" : entry.chairLabels.join(" · ")}</span>
+        )}
       </div>
 
       <div className={styles.seatActions}>
-        <span className={`${styles.seatStatus} ${waiting ? styles.seatStatusWaiting : ""} ${past ? styles.seatStatusPast : ""}`}>
+        <span
+          className={`${styles.seatStatus} ${waiting ? styles.seatStatusWaiting : ""} ${opened ? styles.seatStatusOpened : ""} ${past ? styles.seatStatusPast : ""}`}
+        >
           {statusLabel}
         </span>
         {!past &&

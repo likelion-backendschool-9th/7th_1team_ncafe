@@ -772,6 +772,20 @@
   color: var(--text-muted);
 }
 
+/* 예약대기에 자리가 났다 — 대기 중(점선)보다 눈에 띄게 금색 */
+.seatStatusOpened {
+  border: 1px solid var(--gold-500);
+  background: var(--gold-100);
+  color: var(--text-strong);
+}
+
+.seatOpenLink {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--text-strong);
+}
+
 .seatStatusPast {
   border: 0;
   background: var(--bg-muted);
