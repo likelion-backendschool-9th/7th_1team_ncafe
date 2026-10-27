@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.newcafe.backend.entity.Member;
+import com.newcafe.backend.repository.CouponLogRepository;
 import com.newcafe.backend.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,9 +21,11 @@ import org.springframework.test.web.servlet.MockMvc;
 class MemberApiTests {
     @Autowired MockMvc mvc;
     @Autowired MemberRepository members;
+    @Autowired CouponLogRepository couponLogs;
     @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager entityManager;
 
-    @BeforeEach void clean() { members.deleteAll(); }
+    // 가입 축하 쿠폰 내역(coupons_log)이 회원을 참조하므로 회원보다 먼저 지운다.
+    @BeforeEach void clean() { couponLogs.deleteAll(); members.deleteAll(); }
 
     private void signup(String id) throws Exception {
         mvc.perform(post("/api/v1/auth/signup").with(csrf()).contentType("application/json")
@@ -290,7 +293,7 @@ class MemberApiTests {
                      "role":"ADMIN","gradeId":999,"couponCount":999,"loseStreak":999,"deleted":true}
                     """))
                 .andExpect(status().isCreated()).andExpect(jsonPath("role").value("USER"))
-                .andExpect(jsonPath("gradeId").isEmpty()).andExpect(jsonPath("couponCount").value(0))
+                .andExpect(jsonPath("gradeId").isEmpty()).andExpect(jsonPath("couponCount").value(5))
                 .andExpect(jsonPath("loseStreak").value(0));
         assertFalse(members.findByLoginIdAndDeletedFalse("alice").orElseThrow().isDeleted());
         var session = login("alice", "password123");
@@ -308,7 +311,7 @@ class MemberApiTests {
                     """))
                 .andExpect(status().isOk()).andExpect(jsonPath("loginId").value("alice"))
                 .andExpect(jsonPath("role").value("USER")).andExpect(jsonPath("gradeId").isEmpty())
-                .andExpect(jsonPath("couponCount").value(0)).andExpect(jsonPath("loseStreak").value(0));
+                .andExpect(jsonPath("couponCount").value(5)).andExpect(jsonPath("loseStreak").value(0));
         login("alice", "password123");
         mvc.perform(get("/api/v1/admin/members").session(session)).andExpect(status().isForbidden());
     }

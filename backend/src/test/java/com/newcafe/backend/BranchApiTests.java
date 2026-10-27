@@ -1,5 +1,6 @@
 package com.newcafe.backend;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -91,24 +92,24 @@ class BranchApiTests {
 
     @Test
     void onlyAdminCanCreateBranch() throws Exception {
-        mvc.perform(post("/api/v1/admin/branches").contentType("application/json").content(CREATE))
+        mvc.perform(post("/api/v1/admin/branches").with(csrf()).contentType("application/json").content(CREATE))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_USER"))
+        mvc.perform(post("/api/v1/admin/branches").with(csrf()).session(session("ROLE_USER"))
                 .contentType("application/json").content(CREATE)).andExpect(status().isForbidden());
-        mvc.perform(put("/api/v1/admin/branches/mapo").contentType("application/json").content(CREATE))
+        mvc.perform(put("/api/v1/admin/branches/mapo").with(csrf()).contentType("application/json").content(CREATE))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(put("/api/v1/admin/branches/mapo").session(session("ROLE_USER"))
+        mvc.perform(put("/api/v1/admin/branches/mapo").with(csrf()).session(session("ROLE_USER"))
                 .contentType("application/json").content(CREATE)).andExpect(status().isForbidden());
     }
 
     @Test
     void adminCanCreateAndUpdateWithoutChangingIdOrCreationDate() throws Exception {
-        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+        mvc.perform(post("/api/v1/admin/branches").with(csrf()).session(session("ROLE_ADMIN"))
                 .contentType("application/json").content(CREATE))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("마포점"))
                 .andExpect(jsonPath("$.sections").value("[]"));
         var createdDate = repository.findById("mapo").orElseThrow().getCreatedDate();
-        mvc.perform(put("/api/v1/admin/branches/mapo").session(session("ROLE_ADMIN"))
+        mvc.perform(put("/api/v1/admin/branches/mapo").with(csrf()).session(session("ROLE_ADMIN"))
                 .contentType("application/json").content("""
                     {"name":"마포 본점","address":"서울 마포구","open":false,
                      "sections":"[{\\\"section\\\":\\\"LOUNGE\\\"}]","fixtures":"[]"}
@@ -124,17 +125,17 @@ class BranchApiTests {
     @Test
     void rejectsDuplicateMissingAndInvalidBranches() throws Exception {
         save("mapo", true);
-        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+        mvc.perform(post("/api/v1/admin/branches").with(csrf()).session(session("ROLE_ADMIN"))
                 .contentType("application/json").content(CREATE))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("BRANCH_ID_DUPLICATED"));
-        mvc.perform(put("/api/v1/admin/branches/missing").session(session("ROLE_ADMIN"))
+        mvc.perform(put("/api/v1/admin/branches/missing").with(csrf()).session(session("ROLE_ADMIN"))
                 .contentType("application/json").content(CREATE)).andExpect(status().isNotFound());
         for (String invalid : java.util.List.of(
                 "{\"id\":\"new\",\"name\":\" \",\"address\":\"서울\",\"open\":true}",
                 "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\"}",
                 "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\",\"open\":true,\"sections\":\"invalid\"}",
                 "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\",\"open\":true,\"fixtures\":\"{}\"}")) {
-            mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+            mvc.perform(post("/api/v1/admin/branches").with(csrf()).session(session("ROLE_ADMIN"))
                     .contentType("application/json").content(invalid)).andExpect(status().isBadRequest());
         }
         assertEquals(1, repository.count());
