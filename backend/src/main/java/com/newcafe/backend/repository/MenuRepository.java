@@ -22,6 +22,13 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
     @EntityGraph(attributePaths = "sizes")
     List<Menu> findAllByDeletedFalseOrderByIdAsc();
 
+    // 카테고리별 메뉴 목록 조회 (삭제되지 않은 메뉴, 사이즈 포함)
+    @EntityGraph(attributePaths = "sizes")
+    List<Menu> findAllByCategoryIdAndDeletedFalseOrderByIdAsc(Integer categoryId);
+
+    // 같은 라벨을 가진 메뉴 (WINNER는 한 메뉴에만 붙일 수 있어 등록·수정 전 확인)
+    Optional<Menu> findFirstByLabelAndDeletedFalse(String label);
+
     // 메뉴 상세 조회 (삭제되지 않은 메뉴, 사이즈 포함)
     @EntityGraph(attributePaths = "sizes")
     Optional<Menu> findByIdAndDeletedFalse(Long id);
