@@ -13,7 +13,7 @@ const LINEUP_SIZE = 8;
 
 /**
  * 메인 라인업 그리드 — 고른 지점(메뉴판에서 고른 지점, 사이트 공통)의 품절 · 숨김을 입혀 고른다.
- * 숨긴 메뉴는 빠지고 품절은 뒤로 밀린다. 지점 상태를 받기 전에는 받아 온 메뉴 그대로 고른다(정적 셸과 같다).
+ * 숨긴 메뉴는 빠지고 품절은 제자리에서 SOLD OUT 으로 보인다. 지점 상태를 받기 전에는 받아 온 메뉴 그대로 고른다(정적 셸과 같다).
  */
 export default function LineupGrid({ menus, categoryNames }: { menus: Menu[]; categoryNames: Record<number, string> }) {
   const branch = useSelectedBranch();

@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import TicketBadge from "@/components/TicketBadge";
 import { ticketSerial, type MenuDetailData } from "../_lib/menuBoard";
 import AddToCart from "./AddToCart";
 import BranchSaleStatus from "./BranchSaleStatus";
+import BranchVisual from "./BranchVisual";
 import FavoriteButton from "./FavoriteButton";
 import MenuCard from "./MenuCard";
 import boardStyles from "./menu.module.css";
@@ -16,8 +16,6 @@ import styles from "./menuDetail.module.css";
  * "메뉴판으로" 는 /menu 링크다 — 메뉴판에서 왔다면 탭·검색어가 그대로 남아 있다(MenuBoard 주석).
  */
 export default function MenuDetail({ menu, category, related }: MenuDetailData) {
-  const soldOut = menu.status === "SOLD_OUT";
-
   return (
     <>
       <nav aria-label="현재 위치" className={styles.crumbs}>
@@ -29,16 +27,8 @@ export default function MenuDetail({ menu, category, related }: MenuDetailData) 
         </ol>
       </nav>
 
-      <article className={`${styles.ticket} ${soldOut ? styles.ticketSoldOut : ""}`} aria-labelledby="menu-title">
-        <div className={styles.visual}>
-          <Image src={menu.image} alt="" width={240} height={240} loading="eager" className={styles.visualImg} />
-          {soldOut && (
-            <span className={styles.stamp}>
-              품절
-              <small>SOLD OUT</small>
-            </span>
-          )}
-        </div>
+      <article className={styles.ticket} aria-labelledby="menu-title">
+        <BranchVisual menu={menu} />
 
         <div className={styles.body}>
           {/* 배지(있으면) · 찜 버튼 한 줄 */}

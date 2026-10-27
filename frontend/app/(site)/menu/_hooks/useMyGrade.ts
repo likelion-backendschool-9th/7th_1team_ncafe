@@ -9,8 +9,15 @@ import type { GradeInfo } from "../_types";
  * 내 등급 — 메뉴 해금 판단용. 로그인 회원의 gradeId(/auth/me)를 등급 목록에서 찾는다.
  * 등급은 쿠폰을 받을 때 서버가 누적 쿠폰으로 매긴다(CouponService.earn).
  * 로그아웃 · 등급 미지정(등급 데이터가 없을 때)이면 grade 는 null, minTotal 은 0(가장 낮은 등급과 같다).
+ * next 는 바로 위 등급 — 가장 높은 등급이거나 등급을 모르면 null.
  */
-export function useMyGrade(): { loggedIn: boolean; grade: GradeInfo | null; minTotal: number; totalEarned: number } {
+export function useMyGrade(): {
+  loggedIn: boolean;
+  grade: GradeInfo | null;
+  next: GradeInfo | null;
+  minTotal: number;
+  totalEarned: number;
+} {
   const { member } = useAuth();
   const memberNo = member?.no ?? null;
   const gradeId = member?.gradeId ?? null;
@@ -30,9 +37,12 @@ export function useMyGrade(): { loggedIn: boolean; grade: GradeInfo | null; minT
 
   const grades = loaded?.memberNo === memberNo ? loaded.grades : [];
   const grade = grades.find((g) => g.id === gradeId) ?? null;
+  // 등급 목록은 낮은 등급부터 온다(GET /grades)
+  const next = grade ? (grades.find((g) => g.minTotalCoupons > grade.minTotalCoupons) ?? null) : null;
   return {
     loggedIn: memberNo !== null,
     grade,
+    next,
     minTotal: grade?.minTotalCoupons ?? 0,
     totalEarned: member?.totalEarnedCoupons ?? 0,
   };

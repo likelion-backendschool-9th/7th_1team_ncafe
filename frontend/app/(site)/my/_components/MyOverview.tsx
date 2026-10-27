@@ -3,6 +3,7 @@
 import HorseAvatar from "@/components/HorseAvatar";
 import Scoreboard from "@/components/Scoreboard";
 import { useUser } from "@/components/UserProvider";
+import { useMyGrade } from "../../menu/_hooks/useMyGrade";
 import { formatDate, serial } from "../_lib/format";
 import type { UserProfile } from "../_types";
 import styles from "./my.module.css";
@@ -13,6 +14,7 @@ import styles from "./my.module.css";
  */
 export default function MyOverview({ profile }: { profile: UserProfile }) {
   const { coupons, favorites, orders } = useUser();
+  const { grade, next, totalEarned } = useMyGrade();
 
   const stats = [
     { href: "#coupons", label: "보유 쿠폰", value: coupons, unit: "장" },
@@ -30,6 +32,14 @@ export default function MyOverview({ profile }: { profile: UserProfile }) {
             {profile.nickname}
             <span className={styles.nicknameSuffix}>님</span>
           </h2>
+          {/* 등급은 지금까지 받은 쿠폰(누적)으로 매긴다 — 쿠폰을 써도 줄지 않는다 */}
+          {grade && (
+            <p className={styles.grade}>
+              <strong className={styles.gradeName}>{grade.name}</strong>
+              <span>누적 {totalEarned}장</span>
+              <span>{next ? `${next.name}까지 ${next.minTotalCoupons - totalEarned}장` : "최고 등급이에요"}</span>
+            </p>
+          )}
           <p className={styles.profileMeta}>
             {formatDate(profile.joinedAt)} 가입 · 로그인 기능이 생기면 내 정보를 바꿀 수 있어요
           </p>
