@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import styles from "@/app/(site)/race/_components/race.module.css";
 import { useLosingStreak } from "@/app/(site)/race/_hooks/useRaceData";
 import { losingStreakStore } from "@/app/(site)/race/_lib/raceStores";
-import { authStore, useAuth } from "@/lib/auth";
+import { useAuth } from "./AuthProvider";
 import Modal from "./Modal";
 
 /** 지급 예정 시각이 지난 뒤 다시 묻는 간격(서버 지급 스케줄러는 10초마다 돈다) */
@@ -18,7 +18,7 @@ const RECHECK_MS = 5000;
  * app/layout.tsx 에서 RaceSettlement 옆에 둔다.
  */
 export default function LosingStreakNotice() {
-  const { member } = useAuth();
+  const { member, refresh: refreshMember } = useAuth();
   const status = useLosingStreak().data;
   const [seenId, setSeenId] = useState<number | null>(null);
   const dueAt = status?.dueAt ?? null;
@@ -46,8 +46,8 @@ export default function LosingStreakNotice() {
 
   // 새로 받았으면 보유 쿠폰 수(전광판)도 다시
   useEffect(() => {
-    if (freshId !== null) void authStore.refresh();
-  }, [freshId]);
+    if (freshId !== null) void refreshMember();
+  }, [freshId, refreshMember]);
 
   const open = freshId !== null && freshId !== seenId;
   const close = () => setSeenId(freshId);

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 import { formatRaceDate } from "@/lib/time";
 import type { RaceEntry } from "@/types/common";
 import { useMyBets, useRaceHorses } from "../../race/_hooks/useRaceData";
@@ -20,7 +20,7 @@ const LOGIN_HREF = `/login?next=${encodeURIComponent("/my#races")}`;
  * 정산은 서버가 하므로 결과 전에는 "결과 대기"로 보이다가 RaceSettlement 가 다시 불러오면 바뀐다. 로그인하지 않았으면 로그인 안내.
  */
 export default function MyRaces() {
-  const { member, loaded: authLoaded } = useAuth();
+  const { member, loading: authLoading } = useAuth();
   const horses = useRaceHorses().data;
   const { data: races, loaded } = useMyBets();
   const { visible, expanded, hasMore, total, toggle } = useShowMore(races, PREVIEW);
@@ -29,7 +29,7 @@ export default function MyRaces() {
     <section id="races" className={styles.section} aria-labelledby="races-title">
       <SectionHead id="races" label="MY RACES" title="내 레이스 기록" meta={member && loaded ? `${races.length}경주` : ""} />
 
-      {authLoaded && !member ? (
+      {!authLoading && !member ? (
         <SectionEmpty
           title="로그인하면 내 레이스 기록이 보여요"
           action={

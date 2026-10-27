@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 import { formatYmdKo, formatKstTime, kstDate } from "@/lib/kst";
 import { useEvents, useMyApplies } from "../../event/_hooks/useEvents";
 import { branchName, EVENT_TYPE_LABEL } from "../../event/_lib/eventStatus";
@@ -20,7 +20,7 @@ const LOGIN_HREF = `/login?next=${encodeURIComponent("/my#events")}`;
  * 이벤트 이름은 지금 손님 화면에 보이는 이벤트일 때만 상세 링크로 둔다. 로그인하지 않았으면 로그인 안내.
  */
 export default function MyEvents() {
-  const { member, loaded: authLoaded } = useAuth();
+  const { member, loading: authLoading } = useAuth();
   const shownIds = new Set(useEvents().data.map((e) => e.id));
   const { data: applies, loaded } = useMyApplies(member?.no ?? null);
   const { visible, expanded, hasMore, total, toggle } = useShowMore(applies, PREVIEW);
@@ -29,7 +29,7 @@ export default function MyEvents() {
     <section id="events" className={styles.section} aria-labelledby="events-title">
       <SectionHead id="events" label="MY EVENTS" title="내 이벤트 참여" meta={member && loaded ? `${applies.length}건` : ""} />
 
-      {authLoaded && !member ? (
+      {!authLoading && !member ? (
         <SectionEmpty
           title="로그인하면 내 이벤트 참여가 보여요"
           action={

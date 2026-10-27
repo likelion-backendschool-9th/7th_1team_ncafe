@@ -7,7 +7,7 @@ import { raceResult } from "@/app/(site)/race/_lib/records";
 import { adminRacesStore } from "@/app/(site)/race/_lib/raceStores";
 import { RACE_SETTLE_MS } from "@/app/(site)/race/_lib/simulation";
 import type { RaceResult } from "@/app/(site)/race/_types";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 import { useNow } from "@/lib/useCountdown";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast, { useToast } from "../../_components/AdminToast";
@@ -28,7 +28,7 @@ const SETTLE_POLL_MS = 2000;
  * 관리자 API 는 ADMIN 확인 뒤에만 부른다(RaceManager) — 로그인 전에 받은 401 이 로그인 뒤에도 남지 않게.
  */
 export default function RaceAdmin() {
-  const { member, loaded } = useAuth();
+  const { member, loading } = useAuth();
 
   return (
     <>
@@ -43,7 +43,7 @@ export default function RaceAdmin() {
       {member?.role === "ADMIN" ? (
         <RaceManager key={member.no} />
       ) : (
-        loaded && (
+        !loading && (
           <div className={adminStyles.empty}>
             <p>{member ? "관리자 계정만 경주를 관리할 수 있어요." : "관리자 계정으로 로그인해야 경주를 관리할 수 있어요."}</p>
             <Link href={`/login?next=${encodeURIComponent("/admin/race")}`} className="btn btn-outline btn-sm">

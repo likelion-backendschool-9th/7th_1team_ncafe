@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 import RacePhaseBadge from "@/components/RacePhaseBadge";
 import Scoreboard from "@/components/Scoreboard";
-import { useAuth } from "@/lib/auth";
 import { formatCountdownSpoken, formatRaceSlot } from "@/lib/time";
 import { useRaceCountdown } from "@/lib/useCountdown";
 import styles from "./race.module.css";
@@ -16,7 +16,7 @@ import styles from "./race.module.css";
  */
 export default function RaceCountdown() {
   const { schedule, countdown } = useRaceCountdown();
-  const { member, loaded } = useAuth();
+  const { member, loading } = useAuth();
   const coupons = member?.couponCount ?? 0;
   const live = schedule?.live ?? null;
   const next = schedule?.next ?? null;
@@ -52,7 +52,7 @@ export default function RaceCountdown() {
 
       <div className={styles.boardCell}>
         <span className={styles.boardLabel}>MY COUPONS</span>
-        {loaded && !member ? (
+        {!loading && !member ? (
           <Link href="/login?next=/race" className={styles.boardValue}>
             <strong>로그인</strong>
           </Link>
