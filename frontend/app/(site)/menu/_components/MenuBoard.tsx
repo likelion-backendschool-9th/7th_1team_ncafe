@@ -5,8 +5,9 @@ import type { Branch } from "../../seat/_types";
 import { matchesMenu, normalizeQuery } from "../_lib/menuSearch";
 import { useMyGrade } from "../_hooks/useMyGrade";
 import { lockOf } from "../_lib/gradeService";
-import { getMenuStatuses } from "../_lib/menuService";
-import type { Category, Menu, MenuStatus } from "../_types";
+import { useBranchStatuses, useSelectedBranch, withBranchStatuses } from "../_hooks/useMenuBranch";
+import { selectedBranchStore } from "../_lib/branchStore";
+import type { Category, Menu } from "../_types";
 import MenuBranchPicker from "./MenuBranchPicker";
 import MenuCard from "./MenuCard";
 import MenuCategory, { tabId, type CategoryTab } from "./MenuCategory";
@@ -35,29 +36,26 @@ interface MenuBoardProps {
 export default function MenuBoard({ categories, menus, branches, children }: MenuBoardProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const [query, setQuery] = useState("");
-  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
-  const [loaded, setLoaded] = useState<{ branchId: string; statuses: Map<number, MenuStatus> | null } | null>(null);
+  // 고른 지점은 사이트 공통(branchStore) — 메뉴 상세 · 메인 · 마이페이지도 같은 지점을 본다.
+  // 처음 왔거나 저장된 지점이 지금 목록에 없으면 첫 지점을 골라 저장해 둔다(다른 화면도 같은 기본 지점을 보게).
+  const stored = useSelectedBranch();
+  const branch = stored && branches.some((b) => b.id === stored.id) ? stored : null;
+  const branchId = branch?.id ?? branches[0]?.id ?? "";
+  const { statuses, failed } = useBranchStatuses(branchId || null);
   const { minTotal } = useMyGrade();
   const idBase = useId();
   const panelId = `${idBase}-panel`;
   const searchId = `${idBase}-search`;
 
   useEffect(() => {
-    if (!branchId) return;
-    let ignore = false; // 지점을 빠르게 바꾸면 늦게 온 이전 응답은 버린다
-    getMenuStatuses(branchId)
-      .then((statuses) => !ignore && setLoaded({ branchId, statuses }))
-      .catch(() => !ignore && setLoaded({ branchId, statuses: null }));
-    return () => {
-      ignore = true;
-    };
-  }, [branchId]);
+    if (!branch && branches[0]) selectedBranchStore.set({ id: branches[0].id, name: branches[0].name });
+  }, [branch, branches]);
 
-  const current = loaded?.branchId === branchId ? loaded : null;
-  const statuses = current?.statuses ?? null;
-  const branchMenus = statuses
-    ? menus.filter((m) => statuses.has(m.id)).map((m) => ({ ...m, status: statuses.get(m.id)! }))
-    : menus;
+  const pickBranch = (id: string) => {
+    const picked = branches.find((b) => b.id === id);
+    if (picked) selectedBranchStore.set({ id: picked.id, name: picked.name });
+  };
+  const branchMenus = withBranchStatuses(menus, statuses);
 
   const q = normalizeQuery(query);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
@@ -93,8 +91,8 @@ export default function MenuBoard({ categories, menus, branches, children }: Men
 
       {branches.length > 0 && (
         <div className={styles.branchRow}>
-          <MenuBranchPicker branches={branches} selected={branchId} onSelect={setBranchId} />
-          {current && !current.statuses && (
+          <MenuBranchPicker branches={branches} selected={branchId} onSelect={pickBranch} />
+          {failed && (
             <p className={styles.branchNote} role="status">
               이 지점의 품절 정보를 불러오지 못했어요. 모든 메뉴를 판매 중으로 보여 드려요.
             </p>

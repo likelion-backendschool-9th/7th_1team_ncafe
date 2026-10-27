@@ -3,6 +3,7 @@ import Link from "next/link";
 import TicketBadge from "@/components/TicketBadge";
 import { ticketSerial, type MenuDetailData } from "../_lib/menuBoard";
 import AddToCart from "./AddToCart";
+import BranchSaleStatus from "./BranchSaleStatus";
 import FavoriteButton from "./FavoriteButton";
 import MenuCard from "./MenuCard";
 import boardStyles from "./menu.module.css";
@@ -73,9 +74,7 @@ export default function MenuDetail({ menu, category, related }: MenuDetailData) 
             </div>
             <div>
               <dt>판매 상태</dt>
-              <dd className={soldOut ? styles.factSoldOut : styles.factOnSale}>
-                {soldOut ? "품절 — 오늘 준비한 수량이 모두 나갔어요" : "판매 중"}
-              </dd>
+              <BranchSaleStatus menu={menu} />
             </div>
           </dl>
 

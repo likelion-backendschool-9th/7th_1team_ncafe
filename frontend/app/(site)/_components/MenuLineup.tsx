@@ -1,15 +1,9 @@
 import { cacheLife, cacheTag } from "next/cache";
-import Image from "next/image";
 import Link from "next/link";
-import TicketBadge from "@/components/TicketBadge";
-import { pickLineup } from "../_lib/lineup";
 import { MENU_CACHE_TAG } from "../menu/_lib/menuCache";
 import { getCategories, getMenus } from "../menu/_lib/menuService";
-import type { Menu } from "../menu/_types";
+import LineupGrid from "./LineupGrid";
 import styles from "./menuLineup.module.css";
-
-/** PC 4열 × 2줄 */
-const LINEUP_SIZE = 8;
 
 /**
  * 메인 "TODAY'S LINEUP" — 배지(WINNER·BEST·NEW) 메뉴를 4열 정사각 썸네일 그리드로 보여 준다.
@@ -18,6 +12,7 @@ const LINEUP_SIZE = 8;
  * "use cache": 모두에게 같은 내용이라 결과를 캐시해 정적 셸에 포함시킨다. Suspense 로 감싸지 않아야
  * 첫 HTML 에 바로 보인다(감싸면 하이드레이션 전까지 fallback 이 보인다).
  * API 를 붙인 뒤에도 메뉴는 자주 바뀌지 않으므로 그대로 두고, 관리자 저장 시 revalidateTag 로 갱신하면 된다.
+ * 고를 메뉴는 고른 지점의 품절 · 숨김에 따라 달라지므로, 선정과 카드 그리기는 브라우저 쪽 LineupGrid 가 한다.
  */
 export default async function MenuLineup() {
   "use cache";
@@ -25,19 +20,12 @@ export default async function MenuLineup() {
   cacheTag(MENU_CACHE_TAG); // 관리자가 메뉴 · 카테고리를 바꾸면 app/api/menu-cache 가 무효화한다
 
   const [menus, categories] = await Promise.all([getMenus(), getCategories()]);
-  const lineup = pickLineup(menus, LINEUP_SIZE);
-  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryNames = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
     <section className={`container ${styles.section}`} aria-labelledby="lineup-title">
       <LineupHead />
-      <ul className={styles.grid}>
-        {lineup.map((menu) => (
-          <li key={menu.id}>
-            <LineupCard menu={menu} category={categoryName.get(menu.categoryId) ?? ""} />
-          </li>
-        ))}
-      </ul>
+      <LineupGrid menus={menus} categoryNames={categoryNames} />
     </section>
   );
 }
@@ -55,32 +43,5 @@ function LineupHead() {
         전체 메뉴 보기 <span aria-hidden>›</span>
       </Link>
     </div>
-  );
-}
-
-function LineupCard({ menu, category }: { menu: Menu; category: string }) {
-  const soldOut = menu.status === "SOLD_OUT";
-
-  return (
-    <Link href={`/menu/${menu.id}`} className={`${styles.card} ${soldOut ? styles.cardSoldOut : ""}`}>
-      <div className={styles.thumb}>
-        <Image src={menu.image} alt="" width={240} height={240} className={styles.thumbImg} />
-        {menu.badge && (
-          <span className={styles.badge}>
-            <TicketBadge tone={menu.badge} />
-          </span>
-        )}
-        {soldOut && <span className={styles.soldOut}>SOLD OUT</span>}
-      </div>
-      <div className={styles.body}>
-        <span className={styles.category}>{category}</span>
-        <strong className={styles.name}>{menu.name}</strong>
-        <span className={styles.eng}>{menu.engName}</span>
-        {/* 사이즈가 있는 음료는 S 가격부터 — 사이즈별 가격은 메뉴판·상세에서 */}
-        <span className={styles.price}>
-          {menu.price.toLocaleString("ko-KR")}원{menu.sizePrices && "~"}
-        </span>
-      </div>
-    </Link>
   );
 }
