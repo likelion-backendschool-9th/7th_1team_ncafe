@@ -42,6 +42,25 @@ const toMenuRequest = (input: MenuInput) => ({
     : [{ size: "F", price: input.price }],
 });
 
+/**
+ * 고객 메뉴판 캐시를 비운다(app/api/menu-cache) — 메뉴 · 카테고리를 바꾼 뒤 부른다.
+ * 저장은 이미 끝났으므로 실패해도 오류로 알리지 않는다(메뉴판은 캐시가 끝나는 1시간 안에 따라온다).
+ */
+async function refreshMenuBoard(): Promise<void> {
+  try {
+    await fetch("/api/menu-cache", { method: "POST", credentials: "same-origin", cache: "no-store" });
+  } catch {
+    // 무시 — 위 설명
+  }
+}
+
+/** 변경 요청을 보내고, 성공하면 고객 메뉴판 캐시를 비운다 */
+async function change<T>(request: Promise<T>): Promise<T> {
+  const result = await request;
+  await refreshMenuBoard();
+  return result;
+}
+
 // ───────── 메뉴 (본사 공통) ─────────
 
 /** 판매 상태는 지점별이라 여기서는 ON_SALE 로 온다 — 화면이 고른 지점의 상태를 덮어쓴다 */
@@ -50,15 +69,15 @@ export async function getAdminMenus(): Promise<Menu[]> {
 }
 
 export async function createMenu(input: MenuInput): Promise<Menu> {
-  return toMenu(await api<MenuResponse>("/admin/menus", { method: "POST", body: toMenuRequest(input) }));
+  return toMenu(await change(api<MenuResponse>("/admin/menus", { method: "POST", body: toMenuRequest(input) })));
 }
 
 export async function updateMenu(id: number, input: MenuInput): Promise<Menu> {
-  return toMenu(await api<MenuResponse>(`/admin/menus/${id}`, { method: "PUT", body: toMenuRequest(input) }));
+  return toMenu(await change(api<MenuResponse>(`/admin/menus/${id}`, { method: "PUT", body: toMenuRequest(input) })));
 }
 
 export async function deleteMenu(id: number): Promise<void> {
-  await api<void>(`/admin/menus/${id}`, { method: "DELETE" });
+  await change(api<void>(`/admin/menus/${id}`, { method: "DELETE" }));
 }
 
 // ───────── 지점별 판매 상태 ─────────
@@ -91,29 +110,33 @@ export async function getAdminCategories(): Promise<Category[]> {
 /** 노출 순서는 서버가 맨 뒤로 정한다 */
 export async function createCategory(input: CategoryInput): Promise<Category> {
   return toCategory(
-    await api<AdminCategoryResponse>("/admin/categories", {
-      method: "POST",
-      body: { nameKor: input.name, nameEng: input.engName, visible: input.visible },
-    }),
+    await change(
+      api<AdminCategoryResponse>("/admin/categories", {
+        method: "POST",
+        body: { nameKor: input.name, nameEng: input.engName, visible: input.visible },
+      }),
+    ),
   );
 }
 
 /** 이름 · 노출 여부만 바꾼다(노출 순서는 그대로) */
 export async function updateCategory(id: number, input: CategoryInput): Promise<Category> {
   return toCategory(
-    await api<AdminCategoryResponse>(`/admin/categories/${id}`, {
-      method: "PUT",
-      body: { nameKor: input.name, nameEng: input.engName, visible: input.visible },
-    }),
+    await change(
+      api<AdminCategoryResponse>(`/admin/categories/${id}`, {
+        method: "PUT",
+        body: { nameKor: input.name, nameEng: input.engName, visible: input.visible },
+      }),
+    ),
   );
 }
 
 /** 메뉴가 남아 있으면 서버가 409 로 거절한다 */
 export async function deleteCategory(id: number): Promise<void> {
-  await api<void>(`/admin/categories/${id}`, { method: "DELETE" });
+  await change(api<void>(`/admin/categories/${id}`, { method: "DELETE" }));
 }
 
 /** ids 순서대로 노출 순서를 1, 2, 3 … 으로 다시 매긴다 */
 export async function reorderCategories(ids: number[]): Promise<Category[]> {
-  return (await api<AdminCategoryResponse[]>("/admin/categories/order", { method: "PUT", body: { ids } })).map(toCategory);
+  return (await change(api<AdminCategoryResponse[]>("/admin/categories/order", { method: "PUT", body: { ids } }))).map(toCategory);
 }

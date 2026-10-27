@@ -1,8 +1,9 @@
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import Image from "next/image";
 import Link from "next/link";
 import TicketBadge from "@/components/TicketBadge";
 import { pickLineup } from "../_lib/lineup";
+import { MENU_CACHE_TAG } from "../menu/_lib/menuCache";
 import { getCategories, getMenus } from "../menu/_lib/menuService";
 import type { Menu } from "../menu/_types";
 import styles from "./menuLineup.module.css";
@@ -21,6 +22,7 @@ const LINEUP_SIZE = 8;
 export default async function MenuLineup() {
   "use cache";
   cacheLife("hours");
+  cacheTag(MENU_CACHE_TAG); // 관리자가 메뉴 · 카테고리를 바꾸면 app/api/menu-cache 가 무효화한다
 
   const [menus, categories] = await Promise.all([getMenus(), getCategories()]);
   const lineup = pickLineup(menus, LINEUP_SIZE);
