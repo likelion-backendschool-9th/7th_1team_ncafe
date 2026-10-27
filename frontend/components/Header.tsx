@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRacePhase } from "@/lib/useCountdown";
 import BrandLogo from "./BrandLogo";
 import { useCart } from "./CartProvider";
-import { useUser } from "./UserProvider";
+import { useAuth } from "./AuthProvider";
 import styles from "./layout.module.css";
 
 const NAV = [
@@ -20,7 +20,8 @@ const NAV = [
 
 export default function Header() {
   const pathname = usePathname();
-  const { coupons } = useUser();
+  const { member, loading } = useAuth();
+  const coupons = member?.couponCount ?? 0;
   const { count: cartCount } = useCart();
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
@@ -61,6 +62,10 @@ export default function Header() {
         </nav>
 
         <div className={styles.utility}>
+          {member && ["ADMIN", "HQ_ADMIN", "BRANCH_ADMIN"].includes(member.role) && <Link href="/admin" className={styles.coupon}>관리자</Link>}
+          <Link href={member ? "/my" : "/login"} className={styles.coupon}>
+            {loading ? "확인 중" : member ? "내 정보" : "로그인"}
+          </Link>
           {/* 내 쿠폰 → 마이페이지의 쿠폰 섹션 */}
           <Link href="/my#coupons" className={styles.coupon} aria-label={`내 쿠폰 ${coupons}장 — 마이페이지 쿠폰으로 이동`}>
             <TicketIcon />

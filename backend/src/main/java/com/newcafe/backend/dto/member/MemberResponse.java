@@ -9,6 +9,7 @@ import com.newcafe.backend.entity.Member;
 public record MemberResponse(
         Long no,
         String loginId,
+        Integer gradeId,
         String role,
         String nickname,
         LocalDate birth,
@@ -26,6 +27,7 @@ public record MemberResponse(
         return new MemberResponse(
                 member.getNo(),
                 member.getLoginId(),
+                member.getGrade() == null ? null : member.getGrade().getId(),
                 member.getRole().name(),
                 member.getNickname(),
                 member.getBirth(),
