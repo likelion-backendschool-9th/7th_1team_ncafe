@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useId, useState, type ReactNode, type SubmitEvent } from "react";
-import { defaultHorse, HORSE_IMAGES, HORSE_TRAITS } from "@/app/(site)/race/_lib/horseStore";
+import { defaultHorse, HORSE_IMAGES, HORSE_TRAITS } from "@/app/(site)/race/_data/horses";
 import { TRAIT_LABEL } from "@/app/(site)/race/_lib/records";
 import type { Horse, HorseInput, HorseTrait } from "@/app/(site)/race/_types";
 import adminStyles from "../../_components/admin.module.css";

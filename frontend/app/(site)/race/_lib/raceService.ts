@@ -1,79 +1,178 @@
-// 레이스 도메인의 데이터 창구 — 백엔드 연결 시 이 파일만 fetch 로 교체한다.
-// 쿠폰 차감(useUser().spendCoupon)과 진행 상태(RaceProvider)는 호출한 쪽(useRace)이 반영하고,
-// 정산(결과 → 쿠폰 돌려주기)은 루트의 RaceSettlement 가 getRaceResult 로 결과를 받아 한다.
-// 관리자(/admin/race)의 쓰기 — 출전마 수정 · 시간표 변경 — 는 Mock 단계에서 localStorage 저장소(_lib/horseStore · lib/raceSchedule)에 남겨
-// 같은 브라우저의 사용자 화면에도 보이게 한다(사용자 결정 2026-10-14). 화면은 useRaceHorses · useRaceTimes 로 구독한다.
-import { announcedRaceTimes, saveRaceTimes, type RaceScheduleVersion } from "@/lib/raceSchedule";
-import { changeEffectiveFrom } from "@/lib/time";
-import { RACE_HISTORY } from "../_data/raceHistory";
-import type { Horse, HorseCondition, HorseInput, RaceBet, RaceResult } from "../_types";
-import { mockConditions } from "./condition";
-import { latestHorses, raceHorsesAt, saveHorses } from "./horseStore";
-import { latestRaceAt, raceStartAt, settledRaceUntil } from "./records";
-import { simulateRace } from "./simulation";
+// 레이스 도메인의 데이터 창구 — 백엔드(Spring) /api/v1/races/** · /api/v1/admin/** 를 부른다(lib/api.ts, next.config.ts 프록시).
+// 응답(DTO)을 화면 타입(_types)으로 바꾸는 일도 여기서 한다. 브라우저에서만 부른다 — 서버 렌더에는 경주 데이터가 없다.
+// 화면은 이 함수들을 직접 부르기보다 _lib/raceStores · lib/raceSchedule 의 저장소(주기적으로 다시 불러온다)를 구독한다.
+// 쿠폰 차감 · 정산은 서버가 한다 — 걸기는 placeBet, 정산 결과는 경주(status SETTLED) · 내 걸기(settledAt)로 다시 불러와 본다.
+import { api, ApiError } from "@/lib/api";
+import type { RaceEntry } from "@/types/common";
+import type { Horse, HorseCondition, HorseInput, HorseTrait, LosingStreakStatus, RaceRunner, ServerRace } from "../_types";
 
-/** GET /api/horses — 서버 렌더에서는 기본값, 브라우저에서는 관리자 변경까지 */
+interface HorseDto {
+  id: number;
+  nameKor: string;
+  nameEng: string;
+  color: string;
+  colorName: string | null;
+  image: string | null;
+  personality: string | null;
+  trait: string;
+  description: string | null;
+}
+
+interface RaceHorseDto {
+  horse: HorseDto;
+  trait: string;
+  gateNo: number | null;
+  ranking: number | null;
+  condition: string | null;
+}
+
+interface RaceDto {
+  no: number;
+  startTime: string;
+  status: "SCHEDULED" | "SETTLED";
+  seed: number | null;
+  horses: RaceHorseDto[];
+}
+
+interface BetDto {
+  id: number;
+  raceNo: number;
+  startTime: string;
+  horse: RaceHorseDto;
+  couponsIn: number;
+  couponsOut: number;
+  bettedTime: string;
+  settledTime: string | null;
+}
+
+function toHorse(d: HorseDto): Horse {
+  return {
+    id: d.id,
+    name: d.nameEng,
+    nameKo: d.nameKor,
+    color: d.color,
+    colorName: d.colorName ?? "",
+    image: d.image ?? "",
+    personality: d.personality ?? "",
+    trait: d.trait as HorseTrait,
+    description: d.description ?? "",
+  };
+}
+
+function toRunner(d: RaceHorseDto): RaceRunner {
+  return {
+    horse: toHorse(d.horse),
+    trait: d.trait as HorseTrait,
+    gate: d.gateNo,
+    rank: d.ranking,
+    condition: d.condition as HorseCondition | null,
+  };
+}
+
+function toRace(d: RaceDto): ServerRace {
+  return { raceNo: d.no, startsAt: Date.parse(d.startTime), status: d.status, seed: d.seed, runners: d.horses.map(toRunner) };
+}
+
+/** 내 걸기 한 건 → 내 레이스 기록. 게이트 번호가 아직 없으면(첫 정산 전) 말 id 로 둔다 */
+function toEntry(d: BetDto): RaceEntry {
+  return {
+    raceNo: d.raceNo,
+    startsAt: d.startTime,
+    horseId: d.horse.horse.id,
+    placedAt: d.bettedTime,
+    gate: d.horse.gateNo ?? d.horse.horse.id,
+    rank: d.settledTime ? d.horse.ranking : null,
+    payout: d.couponsOut,
+    settledAt: d.settledTime,
+  };
+}
+
+/** GET /api/v1/races/horses — 출전마 7마리(말 id 순) */
 export async function getHorses(): Promise<Horse[]> {
-  return structuredClone(latestHorses());
+  return (await api<HorseDto[]>("/races/horses")).map(toHorse);
 }
 
-/** GET /api/races/history — 최신 경주가 앞 */
-export async function getRaceHistory(): Promise<RaceResult[]> {
-  return structuredClone(RACE_HISTORY);
+/** GET /api/v1/races/schedule — 오늘(KST 0시)부터의 경주, 이른 순. 마감 전 경주는 시드가 비어 있다 */
+export async function getRaceSchedule(): Promise<ServerRace[]> {
+  return (await api<RaceDto[]>("/races/schedule")).map(toRace);
 }
 
-/** GET /api/horses/conditions?date — 그 날(KST)의 컨디션, 말 id → 컨디션. 표시용이라 경주 결과에는 영향이 없다 */
-export async function getHorseConditions(date: string): Promise<Record<number, HorseCondition>> {
-  return mockConditions(
-    latestHorses().map((h) => h.id),
-    date,
-  );
+/** GET /api/v1/races — 정산된 경주, 최신순 */
+export async function getRaceHistory(): Promise<ServerRace[]> {
+  return (await api<RaceDto[]>("/races")).map(toRace);
 }
 
-/** POST /api/races/{raceNo}/bets — 지금은 성공만 돌려준다(쿠폰 차감 · 중복 참가 확인은 서버 몫) */
-export async function placeBet(raceNo: number, startsAt: string, horseId: number): Promise<RaceBet> {
-  return { raceNo, startsAt, horseId, placedAt: new Date().toISOString() };
+/** POST /api/v1/races/{raceNo}/bets — 쿠폰 1장 차감 · 마감 · 중복 검사는 서버가 한다(실패하면 ApiError: COUPON_NOT_ENOUGH · RACE_CLOSED …) */
+export async function placeBet(raceNo: number, horseId: number): Promise<RaceEntry> {
+  return toEntry(await api<BetDto>(`/races/${raceNo}/bets`, { method: "POST", body: { horseId } }));
+}
+
+/** GET /api/v1/races/bets/me — 내 걸기 기록, 최신순. 로그인하지 않았으면 빈 목록 */
+export async function getMyBets(): Promise<RaceEntry[]> {
+  try {
+    return (await api<BetDto[]>("/races/bets/me")).map(toEntry);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return [];
+    throw e;
+  }
+}
+
+interface MyLosingStreakDto {
+  loseStreak: number;
+  dueTime: string | null;
+  coupons: number;
+  latest: { id: number; delta: number; note: string; createdDate: string } | null;
+}
+
+/** GET /api/v1/me/coupons/losing-streak — 연패 수 · 위로 쿠폰 지급 예정 시각 · 최근 위로 쿠폰. 로그인하지 않았으면 null */
+export async function getMyLosingStreak(): Promise<LosingStreakStatus | null> {
+  try {
+    const d = await api<MyLosingStreakDto>("/me/coupons/losing-streak");
+    return {
+      loseStreak: d.loseStreak,
+      dueAt: d.dueTime ? Date.parse(d.dueTime) : null,
+      coupons: d.coupons,
+      latest: d.latest
+        ? { id: d.latest.id, coupons: d.latest.delta, note: d.latest.note, grantedAt: Date.parse(d.latest.createdDate) }
+        : null,
+    };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return null;
+    throw e;
+  }
+}
+
+// ---------- 관리자 (ADMIN 로그인 필요) ----------
+
+/** GET /api/v1/admin/races — 모든 경주, 최신순 */
+export async function getAdminRaces(): Promise<ServerRace[]> {
+  return (await api<RaceDto[]>("/admin/races")).map(toRace);
 }
 
 /**
- * GET /api/races/{raceNo}/result — 결과가 확정되기 전(출발 + RACE_SETTLE_MS 전)이면 null.
- * Mock 은 /race 트랙과 같은 결정적 시뮬레이션(경주 번호 + 출발 시각 시드, 그 경주 당시의 출전마)으로 만들어 트랙에서 본 순위와 같다.
- * 출발 시각은 시간표에서 "N번째 경주"로 찾는다 — 걸어 둔 경주의 시각을 관리자가 바꿔도 같은 번호의 실제 경주 결과를 받는다.
+ * POST /api/v1/admin/races — 출발 시각만 보낸다. 번호 · 시드 · 출전마(성향 사본 · 게이트 · 컨디션)는 서버가 채운다.
+ * 지금부터 1분 이내 · 지난 시각 · 20분 간격 · 쿠폰이 걸린 경주 앞은 서버가 막는다(ApiError).
  */
-export async function getRaceResult(raceNo: number): Promise<RaceResult | null> {
-  const record = RACE_HISTORY.find((r) => r.raceNo === raceNo);
-  if (record) return structuredClone(record);
-  const at = raceStartAt(RACE_HISTORY, raceNo, settledRaceUntil(latestRaceAt(RACE_HISTORY), Date.now()));
-  if (at === null) return null;
-  return { raceNo, date: new Date(at).toISOString(), ranking: simulateRace(raceHorsesAt(at), raceNo, at).ranking };
+export async function createRace(startsAt: number): Promise<ServerRace> {
+  return toRace(await api<RaceDto>("/admin/races", { method: "POST", body: { startTime: new Date(startsAt).toISOString() } }));
 }
 
-// ---------- 관리자 ----------
-
-/**
- * PUT /api/admin/horses/{id} — 출전마 정보 수정(7마리 고정, id 는 그대로).
- * 지금부터 적용하되 다음 경주가 이미 마감됐으면 그 경주가 출발한 뒤부터(changeEffectiveFrom) — 성향은 이미 출발한 경주의 결과를 바꾸지 않는다.
- */
-export async function updateHorse(id: number, input: HorseInput): Promise<{ horse: Horse; from: number }> {
-  const current = latestHorses();
-  if (!current.some((h) => h.id === id)) throw new Error(`horse ${id} not found`);
-  const horse: Horse = { ...input, id };
-  const version = saveHorses(
-    current.map((h) => (h.id === id ? horse : h)),
-    changeEffectiveFrom(Date.now()),
-  );
-  return { horse: structuredClone(horse), from: version.from };
+/** DELETE /api/v1/admin/races/{raceNo} — 출발 1분 전까지, 쿠폰이 걸리지 않은 경주만(서버가 막는다) */
+export async function deleteRace(raceNo: number): Promise<void> {
+  await api<void>(`/admin/races/${raceNo}`, { method: "DELETE" });
 }
 
-/** GET /api/races/schedule — 지금 공지된 경주 시각(이른 순) */
-export async function getRaceTimes(): Promise<string[]> {
-  return [...announcedRaceTimes()];
-}
-
-/**
- * PUT /api/admin/races/schedule — 매일 열리는 경주 시각을 바꾼다. 이미 출발한 경주와 기록은 그대로이고
- * 지금 뒤에 출발하는 경주부터 새 시간표를 따른다(다음 경주가 마감 뒤면 그 경주 다음부터). 검증은 호출한 쪽(validateRaceTimes)이 한다.
- */
-export async function updateRaceTimes(times: string[]): Promise<RaceScheduleVersion> {
-  return saveRaceTimes(times, changeEffectiveFrom(Date.now()));
+/** PUT /api/v1/admin/horses/{id} — 출전마 수정. 성향은 아직 마감 전인 경주에도 서버가 반영한다 */
+export async function updateHorse(id: number, input: HorseInput): Promise<Horse> {
+  const body = {
+    nameKor: input.nameKo,
+    nameEng: input.name,
+    color: input.color,
+    colorName: input.colorName,
+    image: input.image,
+    personality: input.personality,
+    trait: input.trait,
+    description: input.description,
+  };
+  return toHorse(await api<HorseDto>(`/admin/horses/${id}`, { method: "PUT", body }));
 }

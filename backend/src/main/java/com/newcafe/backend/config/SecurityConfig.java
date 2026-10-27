@@ -38,6 +38,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/menus/**").permitAll()
+                        // 경주 조회(출전표 · 일정 · 결과 · 기록)는 로그인 없이. 내 걸기 기록은 아래 규칙(로그인 필요)으로
+                        .requestMatchers(HttpMethod.GET, "/api/v1/races/bets/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/races/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/members", "/api/v1/admin/members/**")
                         .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "HQ_ADMIN")

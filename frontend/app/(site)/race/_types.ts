@@ -1,11 +1,20 @@
 // 레이스 도메인 타입 — /race 와 RaceProvider(components/)가 함께 쓴다.
 
+// ---- 연패 위로 쿠폰 (GET /api/v1/me/coupons/losing-streak) ----
+/** 로그인 회원의 연패 위로 쿠폰 상태 — 정책 연패 수 이상 · 쿠폰 0장이면 마지막 경주 정산 뒤 지연 시간이 지나 서버가 준다 */
+export interface LosingStreakStatus {
+  loseStreak: number; // 지금 연패 수(3위 안에 들면 0)
+  dueAt: number | null; // 지급 예정 시각(epoch ms) — 대상이 아니면 null
+  coupons: number; // 지급 장수(정책)
+  latest: { id: number; coupons: number; note: string; grantedAt: number } | null; // 가장 최근에 받은 위로 쿠폰
+}
+
 // ---- Horse ----
 /** 주행 성향 — 8단계 시뮬레이션의 구간별 속도 배율 · 이벤트 확률에 쓰인다 */
 export type HorseTrait = "FAST_START" | "STEADY" | "LATE_SPURT" | "WILDCARD" | "BALANCED";
 
 export interface Horse {
-  id: number; // 1~7 — 말 식별자. 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매긴다(Gates, records.gatesFor)
+  id: number; // 1~7 — 말 식별자. 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매긴다(Gates — 서버 값, records.raceGates)
   name: string; // "Mocha" — 화면에는 대문자로
   nameKo: string; // "모카"
   color: string; // 대표색 hex = 이미지의 번호 조끼 색 — 번호 배지 · 내 말 레인 강조
@@ -35,14 +44,32 @@ export type Gates = Readonly<Record<number, number>>;
 // ---- Race ----
 export interface RaceResult {
   raceNo: number;
-  date: string; // ISO — 출발 시각(RACE_TIMES 의 한 칸). 시드의 재료이기도 하다
+  date: string; // ISO — 출발 시각
   ranking: number[]; // horseId 를 1위~7위 순서로
+}
+
+/** 서버 경주 한 건의 출전마 — 그 경주에서 쓴 성향 사본 · 게이트 번호 · 순위 · 컨디션 + 말 정보(지금 값) */
+export interface RaceRunner {
+  horse: Horse;
+  trait: HorseTrait; // 이 경주에서 쓴 주행 성향(race_horses.trait) — 시뮬레이션은 horse.trait 가 아니라 이 값을 쓴다
+  gate: number | null; // 앞 경주가 정산되기 전이면 null
+  rank: number | null; // 정산 전 null
+  condition: HorseCondition | null;
+}
+
+/** 서버 경주 한 건(GET /api/v1/races/**) — 출전마는 말 id 순(시뮬레이션에 넘기는 순서) */
+export interface ServerRace {
+  raceNo: number;
+  startsAt: number; // epoch ms
+  status: "SCHEDULED" | "SETTLED";
+  seed: number | null; // 마감(출발 10초 전) 전에는 null
+  runners: RaceRunner[];
 }
 
 /** 내가 건 경주 — 쿠폰 1장(RACE_ENTRY_COUPONS)을 이미 낸 상태 */
 export interface RaceBet {
   raceNo: number;
-  startsAt: string; // ISO — 그 경주의 출발 시각. 결과를 받을 때(시드) 쓴다
+  startsAt: string; // ISO — 그 경주의 출발 시각
   horseId: number;
   placedAt: string; // ISO
 }
@@ -56,10 +83,17 @@ export type RaceStageKind = "WAIT" | "RUNNING" | "FINISHED";
 export interface RaceStage {
   kind: RaceStageKind;
   raceNo: number;
-  startedAt: number; // 출발 시각(epoch ms) — 시뮬레이션 시드 · 경과 시간의 기준
+  startedAt: number; // 출발 시각(epoch ms) — 경과 시간의 기준
   bet: RaceBet | null; // 이 경주에 내가 건 말(없으면 관람)
   result: RaceResult | null; // FINISHED 일 때 그 경주의 결과
   gateClosed: boolean; // 출발 RACE_GATE_CLOSE_MS 전부터 true — 더는 걸 수 없다
+  run: StageRun | null; // 경기 화면을 그릴 입력 — 서버가 시드를 공개(마감)하기 전에는 null
+}
+
+/** 경기 화면 시뮬레이션 입력 — 서버 경주의 시드와 그 경주에서 쓴 성향(말 id 순). 정산 Route Handler 도 같은 값으로 순위를 낸다 */
+export interface StageRun {
+  seed: number;
+  horses: Pick<Horse, "id" | "trait">[];
 }
 
 export type RaceEventType = "BOOST" | "SLOW" | "SPURT" | "OVERTAKE" | "STUMBLE" | "LEAD_BATTLE";

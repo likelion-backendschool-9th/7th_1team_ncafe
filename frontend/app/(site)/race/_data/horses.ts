@@ -1,9 +1,9 @@
-import type { Horse } from "../_types";
+import type { Horse, HorseTrait } from "../_types";
 
-// 출전마 7마리 — 이름 · 설정 수정은 이 파일만 고친다(BLUEPRINT 5.1).
+// 출전마 7마리 기본값 — 백엔드 초기 데이터(backend horses_data.sql)와 같은 값이다. 화면의 출전마는 서버(GET /api/v1/races/horses)에서 받고,
+// 이 값은 관리자 수정 폼의 "기본값으로 채우기" · 고를 수 있는 이미지와 /race/lab 실험실에 쓴다.
 // 이미지는 말에셋.png 에서 이름에 어울리는 털색의 말을 골라 잘랐다(scripts/split-horses.mjs 의 PICKS).
 // 그래서 이미지 조끼에 적힌 숫자는 게이트 번호(id)와 다를 수 있다(사용자 결정). 대표색은 그 조끼 색이다.
-// 최근 성적은 _data/raceHistory.ts 의 경주 기록에서 계산한다.
 export const HORSES: Horse[] = [
   {
     id: 1,
@@ -83,3 +83,13 @@ export const HORSES: Horse[] = [
     description: "그날 기분에 따라 1등도 꼴찌도 하는, 변수가 많은 말",
   },
 ];
+
+export const HORSE_TRAITS: readonly HorseTrait[] = ["FAST_START", "STEADY", "LATE_SPURT", "WILDCARD", "BALANCED"];
+
+/** 관리자 폼에서 고를 수 있는 이미지 — 출전마 7장(경기 화면도 이 이미지를 쓴다) */
+export const HORSE_IMAGES: readonly string[] = HORSES.map((h) => h.image);
+
+/** 기본값 — 관리자 폼의 "기본값으로 되돌리기" */
+export function defaultHorse(id: number): Horse | null {
+  return HORSES.find((h) => h.id === id) ?? null;
+}

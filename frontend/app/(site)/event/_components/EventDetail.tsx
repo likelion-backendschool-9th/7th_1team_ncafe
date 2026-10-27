@@ -3,9 +3,7 @@
 import Link from "next/link";
 import HorseAvatar from "@/components/HorseAvatar";
 import layout from "@/components/layout.module.css";
-import { formatRaceTimes } from "@/lib/time";
-import { useKstToday } from "@/lib/useCountdown";
-import { useRaceTimes } from "@/lib/useRaceTimes";
+import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
 import { useEvents } from "../_hooks/useEvents";
 import { eventStatus, eventTimeText, formatEventPeriod, isShownOnSite, statusHint } from "../_lib/eventStatus";
 import { EventStatusChip } from "./EventCard";
@@ -19,7 +17,7 @@ import styles from "./event.module.css";
 export default function EventDetail({ id }: { id: number | null }) {
   const events = useEvents();
   const today = useKstToday();
-  const raceTimes = formatRaceTimes(useRaceTimes());
+  const raceTimes = useRaceDayText() ?? "";
 
   if (today === null) return <EventDetailSkeleton />;
 

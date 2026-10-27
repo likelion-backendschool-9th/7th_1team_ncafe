@@ -174,62 +174,135 @@
   gap: 4px 12px;
 }
 
-/* ===== 시간표 편집 ===== */
-.editor {
+/* ===== 경주 일정 달력 ===== */
+.planner {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.calendar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 8px;
+  min-height: 320px;
+  padding: 16px;
   border: 1px solid var(--cream-300);
   border-radius: var(--radius-md);
-  background: var(--cream-100);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 4px 4px 14px;
-  border: 1.5px solid var(--brand-700);
-  border-radius: var(--radius-pill);
   background: #fff;
+}
+
+.calHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.calMonth {
+  min-width: 96px;
+  text-align: center;
   font-size: 1rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text-strong);
 }
 
-.chipNew {
-  border-style: dashed;
-  background: var(--gold-100);
+.calToday {
+  margin-left: auto;
 }
 
-.chipTag {
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--brown-500);
-}
-
-.chipRemove {
+.calWeek,
+.calGrid {
   display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  font-size: 1rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calWeek span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.calDay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 2px 4px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--cream-100);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.calDay:hover {
+  border-color: var(--brown-300);
+}
+
+.calDayPast {
+  background: transparent;
   color: var(--text-muted);
 }
 
-.chipRemove:hover {
-  background: var(--red-100);
-  color: var(--red-600);
+.calDayToday {
+  border-color: var(--brand-700);
+  font-weight: 800;
+}
+
+.calDay[aria-pressed="true"] {
+  border-color: var(--brand-900);
+  background: var(--brand-900);
+  color: #fff;
+}
+
+.calCount {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--gold-100);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 16px;
+  color: var(--brown-700);
+}
+
+.calDay[aria-pressed="true"] .calCount {
+  background: var(--gold-500);
+  color: #fff;
+}
+
+.calLegend {
+  margin-top: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dayPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 320px;
+  padding: 20px;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  background: var(--cream-100);
+}
+
+.dayCount {
+  margin-left: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .addRow {
@@ -248,30 +321,12 @@
   color: var(--text-body);
 }
 
-.diff strong {
-  font-variant-numeric: tabular-nums;
-}
-
-.editorFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--cream-300);
-}
-
-.editorActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .rules {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--cream-300);
   font-size: 0.8rem;
   color: var(--text-muted);
 }
@@ -484,6 +539,15 @@
   .cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .planner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendar,
+  .dayPanel {
+    min-height: 0;
+  }
 }
 
 @media (max-width: 767px) {
@@ -504,8 +568,15 @@
     justify-content: flex-end;
   }
 
-  .editorActions,
-  .editorActions > * {
-    flex: 1 1 auto;
+  .dayPanel {
+    padding: 16px 14px;
+  }
+
+  .calendar {
+    padding: 12px;
+  }
+
+  .calDay {
+    min-height: 44px;
   }
 }

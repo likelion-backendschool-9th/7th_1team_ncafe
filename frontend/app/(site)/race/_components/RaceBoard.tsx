@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useId, useLayoutEffect, useState } from "react";
-import { ORDER_COUPON_REWARD } from "../../cart/_lib/orderService";
-import { useHorseConditions } from "../_hooks/useHorseConditions";
 import { useRace } from "../_hooks/useRace";
-import { useRaceHorses } from "../_hooks/useRaceHorses";
 import { byGate, recentRanks } from "../_lib/records";
-import type { Horse, RaceResult as Result } from "../_types";
+import type { Horse } from "../_types";
 import BetConfirmModal from "./BetConfirmModal";
 import HorseCard from "./HorseCard";
 import HorseTrack from "./HorseTrack";
@@ -21,21 +18,23 @@ const LINEUP_TITLE_ID = "lineup-title";
 
 /**
  * 출전표 + 트랙 무대 + 결과 + 지난 경주 기록 — BLUEPRINT 8.2 화면 구성 2~6.
- * 말을 고르면 확인창 → [사용하기] 로 쿠폰 1장을 건다. 경주는 경주 시각(RACE_TIMES)에 모두 함께 출발하고,
+ * 말을 고르면 확인창 → [사용하기] 로 쿠폰 1장을 건다(로그인 회원만 — 쿠폰 차감은 서버). 경주는 경주 시각에 모두 함께 출발하고,
  * 출발 10초 전부터 끝날 때까지는 걸 수 없다(관람). 끝나면 트랙과 출전표 사이에 순위가 보이고 다음 경주 출전표가 열린다.
- * 쿠폰 정산은 루트의 RaceSettlement 가 하고, 정산된 내 경주는 결과 모달로 한 번 알려 준다.
- * 게이트 번호는 경주마다 지난 경주 도착 순서로 다시 매기고(8.2 "게이트 번호 규칙") 출전표 카드도 그 순서로 놓는다.
- * 출전마 정보는 관리자 변경(같은 브라우저)을 겹친 값이다(useRaceHorses).
+ * 쿠폰 정산은 서버가 하고, 정산된 내 경주는 결과 모달로 한 번 알려 준다(RaceSettlement 가 서버 결과를 다시 불러온다).
+ * 경주 · 출전마 · 게이트 번호(지난 경주 도착 순서 — 8.2 "게이트 번호 규칙") · 컨디션은 모두 서버 값이고 출전표 카드는 게이트 순으로 놓는다.
  */
-export default function RaceBoard({ horses: serverHorses, history: baseHistory }: { horses: Horse[]; history: Result[] }) {
-  const horses = useRaceHorses(serverHorses);
+export default function RaceBoard() {
   const {
+    horses,
+    loaded,
+    error: loadError,
     stage,
     history,
     raceNo,
     gates,
     stageGates,
     gatesOf,
+    conditionOf,
     coupons,
     myBet,
     canBet,
@@ -45,8 +44,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
     betFor,
     announcement,
     dismissAnnouncement,
-  } = useRace(baseHistory, horses);
-  const conditions = useHorseConditions();
+  } = useRace();
   const [selected, setSelected] = useState<Horse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -70,14 +68,12 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
     setBusy(true);
     const outcome = await confirmBet(selected);
     setBusy(false);
-    if (outcome === "OK") {
+    if (outcome.ok) {
       setSelected(null);
       // 누른 카드 버튼이 사라지므로 포커스를 트랙 무대 제목으로
       requestAnimationFrame(() => document.getElementById(stageHeadingId)?.focus());
-    } else if (outcome === "NO_COUPON") {
-      setError("쿠폰이 부족해요. 메뉴를 주문하면 쿠폰이 적립돼요.");
-    } else if (outcome === "CLOSED") {
-      setError("이 경주는 마감됐어요. 다음 경주에 걸어 주세요.");
+    } else if (outcome.message) {
+      setError(outcome.message);
     }
   };
 
@@ -89,6 +85,8 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
 
   // 내가 건 카드의 상태 문구 — 무대가 이 경주의 것일 때만
   const pickedLabel = stage?.raceNo === raceNo ? (stage.kind === "RUNNING" ? "경주 중" : "출발 대기 중") : "출발 대기 중";
+  // 트랙 · 결과 · 기록은 말 정보로 그린다 — 출전마를 받기 전(경주 일정이 먼저 올 수 있다)에는 그리지 않는다
+  const hasHorses = horses.length > 0;
 
   return (
     <>
@@ -97,15 +95,15 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
           <div>
             <span className={styles.lineupEyebrow}>Today&apos;s Runners</span>
             <h2 id={LINEUP_TITLE_ID} tabIndex={-1} className={styles.lineupTitle}>
-              출전표 <span className={styles.lineupRace}>Race #{raceNo}</span>
+              출전표 {raceNo !== null && <span className={styles.lineupRace}>Race #{raceNo}</span>}
             </h2>
           </div>
           <PayoutGuide />
         </div>
 
-        {stage && <HorseTrack horses={horses} gates={stageGates} stage={stage} headingId={stageHeadingId} />}
+        {stage && hasHorses && <HorseTrack horses={horses} gates={stageGates} stage={stage} headingId={stageHeadingId} />}
 
-        {lastResult && stage?.kind !== "RUNNING" && (
+        {lastResult && hasHorses && stage?.kind !== "RUNNING" && (
           <RaceResult result={lastResult} gates={gatesOf(lastResult.raceNo)} horses={horses} entry={betFor(lastResult)} />
         )}
 
@@ -114,12 +112,32 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
             <strong>마감</strong> — 출발 10초 전부터 경주가 끝날 때까지는 걸 수 없어요. 트랙에서 관람해 주세요.
           </p>
         )}
+        {loadError && (
+          <p className={styles.noCoupon} role="alert">
+            <strong>경주 정보를 불러오지 못했어요</strong> — {loadError.message}
+          </p>
+        )}
+        {!loadError && !loaded && (
+          <p className={styles.noCoupon} role="status">
+            출전표를 불러오는 중이에요…
+          </p>
+        )}
+        {!myBet && lock === "NO_RACE" && (
+          <p className={styles.noCoupon} role="status">
+            <strong>예정된 경주가 없어요</strong> — 다음 경주 일정이 정해지면 여기서 응원할 말을 고를 수 있어요.
+          </p>
+        )}
+        {!myBet && lock === "LOGIN" && (
+          <p className={styles.noCoupon} role="status">
+            <strong>로그인하고 참여하세요</strong> — 로그인하면 쿠폰을 걸어 응원할 말을 고를 수 있어요.
+            <Link href="/login?next=/race" className={styles.noCouponLink}>
+              로그인 <span aria-hidden>›</span>
+            </Link>
+          </p>
+        )}
         {!myBet && lock === "NO_COUPON" && (
           <p className={styles.noCoupon} role="status">
-            <strong>쿠폰이 부족합니다</strong> — 메뉴를 주문하면 {ORDER_COUPON_REWARD}장 적립돼요.
-            <Link href="/menu" className={styles.noCouponLink}>
-              메뉴 보러 가기 <span aria-hidden>›</span>
-            </Link>
+            <strong>쿠폰이 부족합니다</strong> — 쿠폰이 1장 있어야 걸 수 있어요.
           </p>
         )}
 
@@ -130,7 +148,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
                 horse={horse}
                 gate={gates[horse.id]}
                 recent={recentRanks(history, horse.id)}
-                condition={conditions?.[horse.id] ?? null}
+                condition={conditionOf(horse.id)}
                 picked={myBet?.horseId === horse.id}
                 pickedLabel={pickedLabel}
                 action={myBet ? "none" : canBet ? "pick" : "disabled"}
@@ -143,7 +161,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
         <BetConfirmModal
           horse={selected}
           gate={selected ? gates[selected.id] : 0}
-          raceNo={raceNo}
+          raceNo={raceNo ?? 0}
           coupons={coupons}
           busy={busy}
           error={error}
@@ -152,7 +170,7 @@ export default function RaceBoard({ horses: serverHorses, history: baseHistory }
         />
       </section>
 
-      <RaceHistory history={history} horses={horses} gatesOf={gatesOf} betFor={betFor} />
+      {hasHorses && <RaceHistory history={history} horses={horses} gatesOf={gatesOf} betFor={betFor} />}
 
       {/* 확인창이 열려 있는 동안에는 기다렸다가 닫힌 뒤에 띄운다(모달 두 개가 겹치지 않게) */}
       <RaceResultModal

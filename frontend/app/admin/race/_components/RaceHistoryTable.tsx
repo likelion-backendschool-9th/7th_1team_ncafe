@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { gatesFor } from "@/app/(site)/race/_lib/records";
-import type { Horse, RaceResult } from "@/app/(site)/race/_types";
+import { raceGates, raceResult } from "@/app/(site)/race/_lib/records";
+import type { Horse, RaceResult, ServerRace } from "@/app/(site)/race/_types";
 import { formatRaceDate } from "@/lib/time";
 import adminStyles from "../../_components/admin.module.css";
 import HorseTag from "./HorseTag";
@@ -22,13 +22,17 @@ function matches(result: RaceResult, q: string, horses: Horse[]): boolean {
 }
 
 /**
- * 지난 경주 기록 — /race 와 같은 기록(이 세션에서 본 경주 + 지나간 경주 자동 보충 + Mock), 최신순. 읽기 전용.
- * 게이트 번호는 경주마다 그 경주 당시 번호다. 10개씩 더 보기.
+ * 지난 경주 기록 — 서버가 정산한 경주, 최신순. 읽기 전용.
+ * 게이트 번호는 경주마다 그 경주 당시 번호(서버 값)다. 10개씩 더 보기.
  */
-export default function RaceHistoryTable({ history, horses }: { history: RaceResult[]; horses: Horse[] }) {
+export default function RaceHistoryTable({ races, horses }: { races: ServerRace[]; horses: Horse[] }) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE);
-  const filtered = history.filter((r) => matches(r, query, horses));
+  const history = races.flatMap((race) => {
+    const result = raceResult(race);
+    return result ? [{ race, result }] : [];
+  });
+  const filtered = history.filter((h) => matches(h.result, query, horses));
   const visible = filtered.slice(0, limit);
   const horseOf = (id: number) => horses.find((h) => h.id === id);
 
@@ -76,8 +80,8 @@ export default function RaceHistoryTable({ history, horses }: { history: RaceRes
             </tr>
           </thead>
           <tbody>
-            {visible.map((r) => {
-              const gates = gatesFor(r.raceNo, history, horses);
+            {visible.map(({ race, result: r }) => {
+              const gates = raceGates(race, horses);
               return (
                 <tr key={r.raceNo}>
                   <td data-label="경주" className="font-board">

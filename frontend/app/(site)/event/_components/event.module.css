@@ -50,11 +50,13 @@
   color: #fff;
 }
 
+/* 경주 일정 문구("오늘 12:30 · 18:00" · "다음 경주 10/30(금) 05:17")가 STUB 폭에서 낱말 단위로 줄바꿈되게 */
 .time {
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  word-break: keep-all;
   color: var(--text-strong);
 }
 
@@ -361,10 +363,6 @@
 
   .serial {
     flex-basis: 100%;
-  }
-
-  .time {
-    font-size: 1rem;
   }
 
   .main,

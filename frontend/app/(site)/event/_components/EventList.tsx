@@ -1,8 +1,6 @@
 "use client";
 
-import { useKstToday } from "@/lib/useCountdown";
-import { formatRaceTimes } from "@/lib/time";
-import { useRaceTimes } from "@/lib/useRaceTimes";
+import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
 import { useEvents } from "../_hooks/useEvents";
 import { eventStatus, eventTimeText, isShownOnSite, sortForSite, statusHint } from "../_lib/eventStatus";
 import EventCard from "./EventCard";
@@ -11,12 +9,12 @@ import styles from "./event.module.css";
 /**
  * /event 목록 — 진행 중이거나 운영자가 노출을 허가한 이벤트만(사용자 결정 2026-10-14), 진행 중 → 예정 → 종료 순.
  * 진행 상태가 오늘 날짜(KST)에 달려 있어 시계를 읽기 전(정적 셸 · 하이드레이션 전)에는 자리만 보여 준다.
- * 목록 · 경주 시각은 관리자 변경(같은 브라우저)을 따른다.
+ * 목록 · 경주 일정 문구는 관리자 변경(같은 브라우저)을 따른다.
  */
 export default function EventList() {
   const events = useEvents();
   const today = useKstToday();
-  const raceTimes = formatRaceTimes(useRaceTimes());
+  const raceTimes = useRaceDayText() ?? "";
 
   if (today === null) {
     return (

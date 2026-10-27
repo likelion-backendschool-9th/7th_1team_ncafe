@@ -1,67 +1,58 @@
 "use client";
 
 import { useEffect } from "react";
-import { payoutFor, payoutLabel } from "@/app/(site)/race/_lib/payout";
-import { useRaceSession } from "./RaceProvider";
-import { useUser } from "./UserProvider";
+import { useMyBets } from "@/app/(site)/race/_hooks/useRaceData";
+import { losingStreakStore, myBetsStore, raceHistoryStore } from "@/app/(site)/race/_lib/raceStores";
+import { RACE_SETTLE_MS } from "@/app/(site)/race/_lib/simulation";
+import { authStore, useAuth } from "@/lib/auth";
+import { raceScheduleStore } from "@/lib/raceSchedule";
+import { useNow } from "@/lib/useCountdown";
+import { useRaceSchedule } from "@/lib/useRaceSchedule";
 
-/** 결과가 확정됐는지 다시 물어보는 간격 */
-const POLL_MS = 1000;
+/** 정산을 기다리는 동안 서버 결과를 다시 묻는 간격(서버 정산 스케줄러는 2초마다 돈다) */
+const POLL_MS = 2000;
 
 /**
- * 레이스 정산 — 서버가 할 일을 루트에서 대신한다(사용자 결정 2026-10-13: 어느 페이지에 있든 경주가 끝나면 정산).
- * 화면은 그리지 않는다. app/layout.tsx 에서 RaceProvider 안쪽에 둔다.
- * 1) 결과 받기: 내가 건 경주가 출발하면 결과가 확정될 때까지 POLL_MS 마다 raceService.getRaceResult 를 물어 RaceProvider 에 기록한다.
- *    /race 에서 끝까지 본 경주는 useRaceRun 이 먼저 기록한다. raceService(시뮬레이션 포함)는 동적 import 라 다른 페이지 번들에 들어가지 않는다.
- * 2) 정산: 결과가 기록된 경주에 걸었고 아직 정산 전이면 순위만큼 쿠폰을 돌려준다(RACE_PAYOUT, 4위 이하 0장).
- *    settleRace 가 경주당 한 번만 true 를 돌려주므로 결과가 두 경로로 들어와도 · 다른 페이지를 오가도 두 번 지급되지 않는다.
- * 결과 모달은 /race 가 띄운다(RaceProvider.resultSeenUpTo). 백엔드가 붙으면 서버가 정산하고, 여기는 결과 · 쿠폰을 다시 불러오는 일만 한다.
+ * 레이스 결과 받기 — 정산은 서버가 한다(출발 + 19.5초 뒤 스케줄러가 순위 · 쿠폰을 확정). 여기는 어느 페이지에 있든
+ * 결과가 확정될 때를 놓치지 않도록 서버 값을 다시 불러오기만 한다. 화면은 그리지 않는다. app/layout.tsx 에서 RaceProvider 안쪽에 둔다.
+ * 1) 결과 확정 시각이 지났는데 아직 정산 전인 경주(오늘 일정)나 내 걸기가 있으면 POLL_MS 마다 일정 · 기록 · 내 걸기 · 쿠폰 수 ·
+ *    연패 위로 쿠폰 상태를 다시 불러온다(정산되면 위로 쿠폰 지급 예정 시각이 생긴다 — LosingStreakNotice).
+ * 2) 로그인 · 로그아웃하면 내 걸기 · 연패 위로 쿠폰 상태를 다시 불러온다.
+ * 결과 모달(정산된 내 경주를 /race 에서 한 번)은 useRace 가 이 값으로 띄운다.
  */
 export default function RaceSettlement() {
-  const { results, recordResult } = useRaceSession();
-  const { races, settleRace, earnCoupons } = useUser();
+  const now = useNow();
+  const { member } = useAuth();
+  const schedule = useRaceSchedule().data;
+  const myBets = useMyBets().data;
+  const memberNo = member?.no ?? null;
 
-  // 1) 결과 받기 — 출발 전에는 묻지 않는다
+  // 2) 로그인한 회원이 바뀌면 내 걸기를 다시
   useEffect(() => {
-    const waiting = races.filter((r) => r.settledAt === null && !results.some((x) => x.raceNo === r.raceNo));
-    if (waiting.length === 0) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    void myBetsStore.refresh();
+    void losingStreakStore.refresh();
+  }, [memberNo]);
 
-    const check = async () => {
-      const { getRaceResult } = await import("@/app/(site)/race/_lib/raceService");
-      for (const entry of waiting) {
-        if (Date.now() < Date.parse(entry.startsAt)) continue;
-        // 경주 번호로 묻는다 — 관리자가 시간표를 바꿔 그 경주의 시각이 달라져도 같은 번호의 실제 결과가 온다
-        const result = await getRaceResult(entry.raceNo);
-        if (cancelled) return;
-        if (result) recordResult(result);
-      }
-      if (!cancelled) timer = setTimeout(check, POLL_MS);
-    };
-
-    const firstStart = Math.min(...waiting.map((r) => Date.parse(r.startsAt)));
-    timer = setTimeout(check, Math.max(0, firstStart - Date.now()));
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [races, results, recordResult]);
-
-  // 2) 정산
+  // 1) 결과 확정을 기다리는 경주가 있으면 서버 값을 다시
+  const waiting =
+    now !== null &&
+    (schedule.some((r) => r.status === "SCHEDULED" && now >= r.startsAt + RACE_SETTLE_MS) ||
+      myBets.some((b) => b.settledAt === null && now >= Date.parse(b.startsAt) + RACE_SETTLE_MS));
   useEffect(() => {
-    for (const entry of races) {
-      if (entry.settledAt !== null) continue;
-      const result = results.find((r) => r.raceNo === entry.raceNo);
-      if (!result) continue;
-      const rank = result.ranking.indexOf(entry.horseId) + 1;
-      if (rank < 1) continue;
-      const payout = payoutFor(rank);
-      if (settleRace(entry.raceNo, rank, payout) && payout > 0) {
-        earnCoupons(payout, "RACE_PAYOUT", payoutLabel(entry.raceNo, rank, payout));
+    if (!waiting) return;
+    const refreshAll = () => {
+      void raceScheduleStore.refresh();
+      void raceHistoryStore.refresh();
+      if (memberNo !== null) {
+        void myBetsStore.refresh();
+        void authStore.refresh();
+        void losingStreakStore.refresh();
       }
-    }
-  }, [races, results, settleRace, earnCoupons]);
+    };
+    refreshAll();
+    const timer = setInterval(refreshAll, POLL_MS);
+    return () => clearInterval(timer);
+  }, [waiting, memberNo]);
 
   return null;
 }

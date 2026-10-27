@@ -79,7 +79,7 @@ function toInput(d: Draft): CafeEventInput {
 interface EventFormProps {
   initial: CafeEvent | null; // null = 등록
   today: string; // KST — "자동이면 지금 무엇인지" 안내
-  raceTimes: string; // "12:30 · 18:00" — 경주 시간표 따라가기 안내
+  raceTimes: string; // "오늘 12:30 · 18:00" — 경주 일정 따라가기 안내
   errors: EventErrors;
   busy: boolean;
   onSubmit: (input: CafeEventInput) => void;
@@ -194,7 +194,7 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
             </label>
             <label className={adminStyles.radio}>
               <input type="radio" name={id("timeMode")} checked={draft.timeMode === "RACE"} onChange={() => set("timeMode", "RACE")} />
-              경주 시간표 따라가기 ({raceTimes})
+              경주 일정 따라가기 ({raceTimes})
             </label>
           </div>
           {draft.timeMode === "TEXT" && (
