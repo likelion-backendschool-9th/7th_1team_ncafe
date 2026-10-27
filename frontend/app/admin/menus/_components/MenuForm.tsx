@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useId, useState, type FormEvent } from "react";
 import { MENU_SIZES } from "@/app/(site)/menu/_lib/menuSize";
-import type { Category, Menu, MenuBadge, MenuInput, MenuSize, MenuStatus, SizePrices } from "@/app/(site)/menu/_types";
+import type { Category, GradeInfo, Menu, MenuBadge, MenuInput, MenuSize, MenuStatus, SizePrices } from "@/app/(site)/menu/_types";
 import styles from "../../_components/admin.module.css";
 import { MENU_LIMITS, type MenuErrors } from "../_lib/validateMenu";
 
@@ -19,6 +19,8 @@ const BADGE_OPTIONS: { value: MenuBadge | ""; label: string }[] = [
 interface MenuFormProps {
   initial: Menu | null; // null = 등록
   categories: Category[];
+  /** 해금 등급 선택지(낮은 등급부터) */
+  grades: GradeInfo[];
   imageOptions: { path: string; label: string }[];
   errors: MenuErrors;
   busy: boolean;
@@ -41,6 +43,7 @@ interface Draft {
   image: string;
   badge: MenuBadge | "";
   status: MenuStatus;
+  requiredGradeId: string; // "" = 누구나
 }
 
 const toText = (n: number | undefined) => (n === undefined ? "" : String(n));
@@ -59,10 +62,11 @@ function toDraft(menu: Menu | null, categories: Category[], imageOptions: { path
     image: menu?.image ?? imageOptions[0]?.path ?? "",
     badge: menu?.badge ?? "",
     status: menu?.status ?? "ON_SALE",
+    requiredGradeId: menu?.requiredGrade ? String(menu.requiredGrade.id) : "",
   };
 }
 
-function toInput(d: Draft): MenuInput {
+function toInput(d: Draft, grades: GradeInfo[]): MenuInput {
   const sizePrices: SizePrices | null = d.sized
     ? { S: toNumber(d.sizePrices.S), M: toNumber(d.sizePrices.M), L: toNumber(d.sizePrices.L), XL: toNumber(d.sizePrices.XL) }
     : null;
@@ -76,11 +80,12 @@ function toInput(d: Draft): MenuInput {
     image: d.image,
     badge: d.badge === "" ? undefined : d.badge,
     status: d.status,
+    requiredGrade: grades.find((g) => String(g.id) === d.requiredGradeId) ?? null,
   };
 }
 
 /** 메뉴 등록/수정 폼 — 검증은 useMenuAdmin.save 가 하고, 결과(errors)를 받아 필드 옆에 보여 준다. */
-export default function MenuForm({ initial, categories, imageOptions, errors, busy, onSubmit, onCancel }: MenuFormProps) {
+export default function MenuForm({ initial, categories, grades, imageOptions, errors, busy, onSubmit, onCancel }: MenuFormProps) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial, categories, imageOptions));
   const uid = useId();
   const id = (name: string) => `${uid}-${name}`;
@@ -100,7 +105,7 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit(toInput(draft));
+    onSubmit(toInput(draft, grades));
   }
 
   const errorCount = Object.keys(errors).length;
@@ -169,6 +174,24 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
                 {o.label}
               </option>
             ))}
+          </select>
+        </Field>
+
+        <Field id={id("requiredGrade")} label="해금 등급">
+          <select
+            id={id("requiredGrade")}
+            className={styles.input}
+            value={draft.requiredGradeId}
+            onChange={(e) => set("requiredGradeId", e.target.value)}
+          >
+            <option value="">없음 — 누구나 주문</option>
+            {grades
+              .filter((g) => g.minTotalCoupons > 0) // 가장 낮은 등급은 "없음"과 같다
+              .map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} — 누적 쿠폰 {g.minTotalCoupons}장부터
+                </option>
+              ))}
           </select>
         </Field>
 

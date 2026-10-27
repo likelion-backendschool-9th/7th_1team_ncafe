@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { Category, Menu, MenuStatus } from "@/app/(site)/menu/_types";
+import type { Category, GradeInfo, Menu, MenuStatus } from "@/app/(site)/menu/_types";
 import type { Branch } from "@/app/(site)/seat/_types";
 import Modal from "@/components/Modal";
 import TicketBadge from "@/components/TicketBadge";
@@ -22,11 +22,13 @@ interface MenuAdminTableProps {
   categories: Category[];
   /** 판매 상태를 관리할 지점(첫 번째가 기본) */
   branches: Branch[];
+  /** 해금 등급 선택지 */
+  grades: GradeInfo[];
   imageOptions: { path: string; label: string }[];
 }
 
 /** 메뉴 관리 화면 — 검색·필터 + 목록 표 + 등록/수정 폼 + 삭제 확인. 상태 칸은 고른 지점의 판매 상태다. */
-export default function MenuAdminTable({ initialMenus, categories, branches, imageOptions }: MenuAdminTableProps) {
+export default function MenuAdminTable({ initialMenus, categories, branches, grades, imageOptions }: MenuAdminTableProps) {
   const a = useMenuAdmin(initialMenus, categories, branches);
   const statusReady = branches.length > 0 && !a.statusLoading && !a.statusError;
   const branchName = branches.find((b) => b.id === a.branchId)?.name;
@@ -167,6 +169,7 @@ export default function MenuAdminTable({ initialMenus, categories, branches, ima
                   <div className={styles.nameBlock}>
                     <strong>{m.name}</strong>
                     <span>{m.engName}</span>
+                    {m.requiredGrade && <span>해금: {m.requiredGrade.name}부터</span>}
                   </div>
                 </td>
                 <td data-label="카테고리">{categoryName.get(m.categoryId) ?? "(삭제된 카테고리)"}</td>
@@ -223,6 +226,7 @@ export default function MenuAdminTable({ initialMenus, categories, branches, ima
             key={a.editing.mode === "edit" ? a.editing.menu.id : "new"}
             initial={a.editing.mode === "edit" ? a.editing.menu : null}
             categories={categories}
+            grades={grades}
             imageOptions={imageOptions}
             errors={a.errors}
             busy={a.busy}

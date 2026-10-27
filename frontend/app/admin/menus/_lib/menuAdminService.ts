@@ -37,6 +37,7 @@ const toMenuRequest = (input: MenuInput) => ({
   description: input.description,
   image: input.image,
   label: input.badge ?? null,
+  requiredGradeId: input.requiredGrade?.id ?? null,
   sizes: input.sizePrices
     ? Object.entries(input.sizePrices).map(([size, price]) => ({ size, price }))
     : [{ size: "F", price: input.price }],
@@ -79,6 +80,9 @@ export async function updateMenu(id: number, input: MenuInput): Promise<Menu> {
 export async function deleteMenu(id: number): Promise<void> {
   await change(api<void>(`/admin/menus/${id}`, { method: "DELETE" }));
 }
+
+/** 회원 등급 목록(낮은 등급부터) — 해금 등급 선택지 */
+export { getGrades } from "@/app/(site)/menu/_lib/gradeService";
 
 // ───────── 지점별 판매 상태 ─────────
 

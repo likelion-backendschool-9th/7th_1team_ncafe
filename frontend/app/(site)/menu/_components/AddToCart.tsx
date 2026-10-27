@@ -5,6 +5,8 @@ import { useId, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import QuantityStepper from "@/components/QuantityStepper";
 import { CART_MAX_QUANTITY, lineKey } from "@/lib/cart";
+import { useMyGrade } from "../_hooks/useMyGrade";
+import { lockOf } from "../_lib/gradeService";
 import { MENU_SIZES, priceOf } from "../_lib/menuSize";
 import type { Menu, MenuSize } from "../_types";
 import styles from "./menuDetail.module.css";
@@ -13,10 +15,14 @@ import styles from "./menuDetail.module.css";
  * 상세의 주문 영역 — 사이즈(음료만) · 수량 · 합계 · [메뉴판으로] [장바구니 담기].
  * 사이즈 버튼마다 그 사이즈 가격이 적혀 있어 사이즈별 가격표 역할도 한다(기본 선택은 S).
  * 품절이면 가격은 그대로 보여 주고 고르거나 담을 수 없다.
+ * 해금 등급이 내 등급보다 높으면(잠김) 마찬가지로 담을 수 없고, 필요한 등급을 안내한다.
  */
 export default function AddToCart({ menu }: { menu: Menu }) {
   const { lines, add } = useCart();
   const soldOut = menu.status === "SOLD_OUT";
+  const { loggedIn, minTotal, totalEarned } = useMyGrade();
+  const locked = lockOf(menu, minTotal);
+  const blocked = soldOut || locked !== null;
   const [size, setSize] = useState<MenuSize | null>(menu.sizePrices ? MENU_SIZES[0] : null);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState("");
@@ -44,7 +50,7 @@ export default function AddToCart({ menu }: { menu: Menu }) {
   return (
     <div className={styles.order}>
       {menu.sizePrices && (
-        <fieldset className={styles.sizePicker} disabled={soldOut}>
+        <fieldset className={styles.sizePicker} disabled={blocked}>
           <legend className={styles.orderLabel}>사이즈</legend>
           <div className={styles.sizeOptions}>
             {MENU_SIZES.map((s) => (
@@ -73,7 +79,7 @@ export default function AddToCart({ menu }: { menu: Menu }) {
           <span className={styles.orderLabel} aria-hidden>
             수량
           </span>
-          <QuantityStepper value={quantity} onChange={setQuantity} label={`${label} 수량`} disabled={soldOut} />
+          <QuantityStepper value={quantity} onChange={setQuantity} label={`${label} 수량`} disabled={blocked} />
         </div>
         <p className={styles.orderTotal}>
           합계
@@ -88,10 +94,23 @@ export default function AddToCart({ menu }: { menu: Menu }) {
         <Link href="/menu" className="btn btn-outline">
           <span aria-hidden>←</span> 메뉴판으로
         </Link>
-        <button type="button" className={`btn btn-gold ${styles.addButton}`} disabled={soldOut} onClick={handleAdd}>
-          {soldOut ? "품절" : "장바구니 담기"}
+        <button type="button" className={`btn btn-gold ${styles.addButton}`} disabled={blocked} onClick={handleAdd}>
+          {soldOut ? "품절" : locked ? `${locked.name} 등급부터` : "장바구니 담기"}
         </button>
       </div>
+
+      {locked && !soldOut && (
+        <p className={styles.lockNotice}>
+          <strong>{locked.name}</strong> 등급(누적 쿠폰 {locked.minTotalCoupons}장)부터 주문할 수 있는 메뉴예요.{" "}
+          {loggedIn ? (
+            `지금 누적 ${totalEarned}장 — ${Math.max(locked.minTotalCoupons - totalEarned, 0)}장 더 모으면 열려요.`
+          ) : (
+            <Link href="/login" className={styles.noticeLink}>
+              로그인 <span aria-hidden>›</span>
+            </Link>
+          )}
+        </p>
+      )}
 
       <p role="status" className={styles.notice}>
         {notice && (

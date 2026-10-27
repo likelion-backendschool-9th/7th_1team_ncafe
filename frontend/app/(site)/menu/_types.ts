@@ -14,6 +14,13 @@ export type MenuBadge = "BEST" | "WINNER" | "NEW";
 export type MenuSize = "S" | "M" | "L" | "XL";
 export type SizePrices = Record<MenuSize, number>;
 
+/** 회원 등급 — 지금까지 받은 쿠폰 수(누적) 기준. 메뉴의 해금 등급으로도 쓴다(GET /api/v1/grades) */
+export interface GradeInfo {
+  id: number;
+  name: string; // "준마"
+  minTotalCoupons: number; // 이 등급에 필요한 누적 쿠폰
+}
+
 export interface Menu {
   id: number;
   categoryId: number;
@@ -25,6 +32,7 @@ export interface Menu {
   image: string; // /images/menus/xxx.svg
   badge?: MenuBadge;
   status: MenuStatus; // HIDDEN 은 /menu 에 안 보임, SOLD_OUT 은 "품절" 표시
+  requiredGrade?: GradeInfo | null; // 해금 등급 — 없으면 누구나 주문, 있으면 그 등급 이상만
 }
 
 /** 등록·수정 폼 값 */
