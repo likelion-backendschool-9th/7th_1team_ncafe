@@ -20,6 +20,7 @@ public record MemberResponse(
         String address1,
         String address2,
         int couponCount,
+        int totalEarnedCoupons, // 지금까지 받은 쿠폰 수 (등급 기준)
         int loseStreak,
         OffsetDateTime joinDate) {
 
@@ -38,6 +39,7 @@ public record MemberResponse(
                 member.getAddress1(),
                 member.getAddress2(),
                 member.getCouponCount(),
+                member.getTotalEarnedCoupons(),
                 member.getLoseStreak(),
                 member.getJoinDate());
     }

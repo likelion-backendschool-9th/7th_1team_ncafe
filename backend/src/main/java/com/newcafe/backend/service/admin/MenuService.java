@@ -17,9 +17,11 @@ import com.newcafe.backend.dto.menu.admin.MenuRequest;
 import com.newcafe.backend.dto.menu.admin.MenuResponse;
 import com.newcafe.backend.dto.menu.admin.MenuSizeRequest;
 import com.newcafe.backend.entity.Category;
+import com.newcafe.backend.entity.Grade;
 import com.newcafe.backend.entity.Menu;
 import com.newcafe.backend.entity.MenuSize;
 import com.newcafe.backend.repository.CategoryRepository;
+import com.newcafe.backend.repository.GradeRepository;
 import com.newcafe.backend.repository.MenuRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ public class MenuService {
 
     private final MenuRepository menuRepository;
     private final CategoryRepository categoryRepository;
+    private final GradeRepository gradeRepository;
 
     // 메뉴 목록 조회 (삭제된 메뉴 제외)
     public List<MenuResponse> findAll() {
@@ -93,6 +96,15 @@ public class MenuService {
         return new NotFoundException("MENU_NOT_FOUND", "메뉴를 찾을 수 없습니다. id=" + id);
     }
 
+    // 해금 등급 (null이면 누구나)
+    private Grade getGrade(Integer gradeId) {
+        if (gradeId == null) {
+            return null;
+        }
+        return gradeRepository.findById(gradeId)
+                .orElseThrow(() -> new NotFoundException("GRADE_NOT_FOUND", "등급을 찾을 수 없습니다. id=" + gradeId));
+    }
+
     private Category getCategory(Integer categoryId) {
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException("CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다. id=" + categoryId));
@@ -105,6 +117,7 @@ public class MenuService {
         menu.setDescription(request.description());
         menu.setImage(request.image());
         menu.setLabel(normalizeLabel(request.label()));
+        menu.setRequiredGrade(getGrade(request.requiredGradeId()));
     }
 
     // 요청의 사이즈 목록에 맞춰 추가 / 가격 변경 / 삭제

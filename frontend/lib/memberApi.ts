@@ -1,5 +1,6 @@
 export interface Member {
   no: number; loginId: string; gradeId: number | null; role: string;
+  totalEarnedCoupons: number; // 지금까지 받은 쿠폰 수 — 등급 기준(쿠폰을 써도 줄지 않는다)
   nickname: string; birth: string | null; gender: string | null;
   phoneNumber: string | null; email: string | null; postcode: string | null;
   address1: string | null; address2: string | null;

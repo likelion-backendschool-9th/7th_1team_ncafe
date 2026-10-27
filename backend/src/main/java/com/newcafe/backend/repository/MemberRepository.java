@@ -38,7 +38,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     // 쿠폰 적립 (CouponService.earn). 변경된 행 수를 반환하며 0이면 없거나 탈퇴한 회원.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update Member m set m.couponCount = m.couponCount + :amount where m.no = :no and m.deleted = false")
+    @Query("""
+            update Member m
+               set m.couponCount = m.couponCount + :amount,
+                   m.totalEarnedCoupons = m.totalEarnedCoupons + :amount
+             where m.no = :no and m.deleted = false
+            """)
     int increaseCoupons(@Param("no") Long no, @Param("amount") int amount);
 
     // 회원 탈퇴 (논리 삭제). 변경된 행 수를 반환하며 0이면 대상 회원이 없거나 이미 탈퇴한 상태.

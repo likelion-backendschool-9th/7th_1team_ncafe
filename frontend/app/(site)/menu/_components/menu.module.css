@@ -521,3 +521,19 @@
   font-size: 0.82rem;
   color: var(--text-muted);
 }
+
+/* 해금 등급 — 내 등급보다 높은 등급이 필요한 메뉴 */
+.lockTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  width: fit-content;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}

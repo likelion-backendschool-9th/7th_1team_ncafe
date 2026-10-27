@@ -10,5 +10,6 @@ public record MenuRequest(
         String description,
         String image,
         String label,
+        Integer requiredGradeId, // 해금 등급 (없으면 누구나)
         List<MenuSizeRequest> sizes) {
 }

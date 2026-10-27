@@ -3,6 +3,8 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import type { Branch } from "../../seat/_types";
 import { matchesMenu, normalizeQuery } from "../_lib/menuSearch";
+import { useMyGrade } from "../_hooks/useMyGrade";
+import { lockOf } from "../_lib/gradeService";
 import { getMenuStatuses } from "../_lib/menuService";
 import type { Category, Menu, MenuStatus } from "../_types";
 import MenuBranchPicker from "./MenuBranchPicker";
@@ -35,6 +37,7 @@ export default function MenuBoard({ categories, menus, branches, children }: Men
   const [query, setQuery] = useState("");
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const [loaded, setLoaded] = useState<{ branchId: string; statuses: Map<number, MenuStatus> | null } | null>(null);
+  const { minTotal } = useMyGrade();
   const idBase = useId();
   const panelId = `${idBase}-panel`;
   const searchId = `${idBase}-search`;
@@ -111,7 +114,7 @@ export default function MenuBoard({ categories, menus, branches, children }: Men
           <ul className={styles.grid}>
             {shown.map((menu) => (
               <li key={menu.id}>
-                <MenuCard menu={menu} />
+                <MenuCard menu={menu} lockedBy={lockOf(menu, minTotal)} />
               </li>
             ))}
           </ul>

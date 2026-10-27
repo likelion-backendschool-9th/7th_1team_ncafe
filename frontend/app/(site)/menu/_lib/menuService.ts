@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { MENU_IMAGES } from "../_data/menus";
 import { MENU_SIZES } from "./menuSize";
 import type { Branch } from "../../seat/_types";
-import type { Category, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
+import type { Category, GradeInfo, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
 
 // ───────── 백엔드 응답 → 프론트 타입 ─────────
 
@@ -21,6 +21,8 @@ export interface MenuResponse {
   label: string | null;
   /** 지점별 판매 상태 — ?branchId= 로 조회했을 때만 온다(그 지점에서 숨긴 메뉴는 아예 빠진다) */
   status: MenuStatus | null;
+  /** 해금 등급(없으면 null) */
+  requiredGrade?: GradeInfo | null;
   sizes: { size: string; price: number }[];
 }
 
@@ -57,6 +59,7 @@ export function toMenu(m: MenuResponse): Menu {
     image: m.image || FALLBACK_IMAGE,
     badge: m.label && BADGES.includes(m.label) ? (m.label as MenuBadge) : undefined,
     status: m.status ?? "ON_SALE",
+    requiredGrade: m.requiredGrade ?? null,
   };
 }
 
