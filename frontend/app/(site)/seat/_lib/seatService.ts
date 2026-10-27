@@ -1,12 +1,12 @@
-// 좌석 데이터 창구(BLUEPRINT 6) — 지금은 Mock. 백엔드 연결 시 이 파일만 API 호출로 바꾼다.
-// 읽기: 지점 · 좌석 · 평면도 · 시간대 · 시간대별 좌석 상태 · 잔여석(지점 하나 · 메인용 지점 전체). 쓰기: 예약 · 예약대기 · 취소(결과만 돌려주고 반영은 호출한 쪽의 UserProvider 가 한다).
-// 좌석 상태는 지점 · 날짜 · 시간대로 시드한 결정적 Mock(_lib/mockStatus.ts)이라 새로고침해도 같은 시간대는 같다.
-import { addDays, kstDate, kstMinutes, minutesOf } from "@/lib/kst";
+// 좌석 데이터 창구(BLUEPRINT 6) — 백엔드(Spring) /api/v1/seats/** · /api/v1/branches 를 부른다(lib/api.ts, next.config.ts 프록시).
+// 지점 · 좌석 배치 · 시간대는 /seat · 메인의 "use cache" 셸이 서버에서 읽는다(apiFetch).
+// 시간대별 좌석 상태 · 잔여석 · 내 예약 · 예약 · 예약대기 · 취소는 브라우저에서 부른다(api — 쓰기 요청에는 CSRF 토큰을 붙인다).
+// 실패하면 ApiError(서버 code · message) — 예약이 막힌 이유(자리를 뺏김 · 예약 수 초과 · 노쇼 제한)는 message 를 그대로 보여 준다.
+// 평면도(창문 · 카운터 같은 구조물)는 아직 서버에 없어 _data/floorPlan.ts 를 그대로 쓴다.
+import { api, ApiError, apiFetch } from "@/lib/api";
 import type { SeatReservation } from "@/types/common";
-import { BRANCHES } from "../_data/branches";
 import { FLOOR_PLAN } from "../_data/floorPlan";
-import { MAX_PEOPLE, TIME_BLOCKS } from "../_data/schedule";
-import { SEATS } from "../_data/seats";
+import { MAX_PEOPLE } from "../_data/schedule";
 import type {
   Branch,
   BranchOccupancy,
@@ -19,120 +19,78 @@ import type {
   TimeBlock,
   WaitlistRequest,
 } from "../_types";
-import { mockChairStatuses } from "./mockStatus";
-import { blockState, hasOpenBlock } from "./schedule";
-import { summarize, totalChairs } from "./summary";
 
-/** 한 번에 예약할 수 있는 최대 인원 — 컴포넌트는 _data 대신 여기서 읽는다 */
+/** 한 번에 예약할 수 있는 최대 인원 — 컴포넌트는 _data 대신 여기서 읽는다(서버 SeatSchedule.MAX_PEOPLE 과 같은 값) */
 export const SEAT_MAX_PEOPLE = MAX_PEOPLE;
 
-/** GET /api/branches */
+/** GET /api/v1/branches — 영업 중인 지점만(영업하지 않는 지점은 예약할 수 없다). 서버 순서(지점 id 순) 그대로 */
 export async function getBranches(): Promise<Branch[]> {
-  return structuredClone(BRANCHES);
+  const branches = await apiFetch<(Branch & { open: boolean })[]>("/api/v1/branches");
+  return branches.filter((b) => b.open).map(({ id, name, address }) => ({ id, name, address }));
 }
 
-/** GET /api/seats */
-export async function getSeats(): Promise<Seat[]> {
-  return structuredClone(SEATS);
+/** GET /api/v1/seats?branchId= — 그 지점의 좌석 배치. 지점마다 배치는 같고 상태(예약 · 수리 중)만 다르다 */
+export async function getSeats(branchId: string): Promise<Seat[]> {
+  return apiFetch<Seat[]>(`/api/v1/seats?branchId=${encodeURIComponent(branchId)}`);
 }
 
-/** GET /api/seats/floor-plan */
+/** 평면도 구조물 — 서버에 생기기 전까지 프론트 데이터 */
 export async function getFloorPlan(): Promise<FloorPlan> {
   return structuredClone(FLOOR_PLAN);
 }
 
-/** GET /api/seats/time-blocks */
+/** GET /api/v1/seats/time-blocks — 1시간 블록 13개(09:00~22:00) */
 export async function getTimeBlocks(): Promise<TimeBlock[]> {
-  return structuredClone(TIME_BLOCKS);
+  return apiFetch<TimeBlock[]>("/api/v1/seats/time-blocks");
 }
 
-function blockOf(start: string, end: string): TimeBlock {
-  return TIME_BLOCKS.find((b) => b.start === start) ?? { start, end };
+/** GET /api/v1/seats/status?branchId&date&start — 그 시간대의 의자 상태(의자 id → 상태, 빈 의자는 빠진다) */
+export async function getChairStatuses(slot: SeatSlot): Promise<ChairStatusMap> {
+  const query = new URLSearchParams({ branchId: slot.branchId, date: slot.date, start: slot.start });
+  return api<ChairStatusMap>(`/seats/status?${query}`);
 }
 
-/** GET /api/seats/status?branch&date&start — 그 시간대의 의자 상태(의자 id → 상태) */
-export async function getChairStatuses(slot: SeatSlot, now: number): Promise<ChairStatusMap> {
-  return mockChairStatuses(SEATS, slot, blockState(slot.date, blockOf(slot.start, slot.end), now));
+/** GET /api/v1/seats/availability?branchId&date — 그 날 시간대마다 빈 의자 수 · 상태(지남 · 진행 중 · 예약 가능). 내 예약도 찬 자리로 센다 */
+export async function getSlotAvailability(branchId: string, date: string): Promise<SlotAvailability[]> {
+  const query = new URLSearchParams({ branchId, date });
+  return api<SlotAvailability[]>(`/seats/availability?${query}`);
 }
 
-/** GET /api/seats/availability?branch&date — 그 날 시간대마다 빈 의자 수 · 상태(지남 · 진행 중 · 예약 가능) */
-export async function getSlotAvailability(branchId: string, date: string, now: number): Promise<SlotAvailability[]> {
-  return TIME_BLOCKS.map((block) => {
-    const state = blockState(date, block, now);
-    const statuses = mockChairStatuses(SEATS, { branchId, date, ...block }, state);
-    const { available, total } = summarize(SEATS, statuses);
-    return { ...block, state, available, total };
+/**
+ * GET /api/v1/seats/occupancy — 메인 "지점별 좌석 현황". 영업 중인 지점마다 그 날 시간대별 잔여석.
+ * 날짜는 오늘, 오늘 시간대가 모두 지났으면(영업 종료 뒤) 내일 — /seat 의 기본 날짜와 같은 규칙이다(서버가 정한다).
+ */
+export async function getBranchOccupancy(): Promise<{ date: string; branches: BranchOccupancy[] }> {
+  return api<{ date: string; branches: BranchOccupancy[] }>("/seats/occupancy");
+}
+
+/** GET /api/v1/seats/reservations/me — 내 예약 · 예약대기, 최신순(취소한 건은 빠진다). 로그인하지 않았으면 빈 목록 */
+export async function getMySeatReservations(): Promise<SeatReservation[]> {
+  try {
+    return await api<SeatReservation[]>("/seats/reservations/me");
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return [];
+    throw e;
+  }
+}
+
+/** POST /api/v1/seats/reservations — 의자 단위 예약. 결제 없음. 같은 시간대의 내 예약대기는 서버가 함께 취소한다 */
+export async function reserveChairs(req: ReservationRequest): Promise<SeatReservation> {
+  return api<SeatReservation>("/seats/reservations", {
+    method: "POST",
+    body: { slot: req.slot, people: req.people, chairIds: req.chairIds },
   });
 }
 
-/**
- * GET /api/seats/occupancy — 메인 "지점별 좌석 현황". 지점마다 그 날 시간대별 잔여석.
- * 날짜는 오늘, 오늘 시간대가 모두 지났으면(영업 종료 뒤) 내일 — /seat 의 기본 날짜와 같은 규칙이다.
- */
-export async function getBranchOccupancy(now: number): Promise<{ date: string; branches: BranchOccupancy[] }> {
-  const today = kstDate(now);
-  const date = hasOpenBlock(today, TIME_BLOCKS, now) ? today : addDays(today, 1);
-  const branches = await Promise.all(
-    BRANCHES.map(async (branch) => ({ branch: structuredClone(branch), slots: await getSlotAvailability(branch.id, date, now) })),
-  );
-  return { date, branches };
-}
-
-// Mock 예약 번호 — 실제로는 서버가 정한다.
-let nextNo = 1;
-const newId = () => `S-${String(nextNo++).padStart(4, "0")}`;
-
-/** POST /api/seats/reservations — 의자 단위 예약. 결제 없음. */
-export async function reserveChairs(req: ReservationRequest): Promise<SeatReservation> {
-  if (req.chairIds.length === 0) throw new Error("예약할 의자를 골라 주세요.");
-  if (req.chairIds.length !== req.people) throw new Error("인원 수만큼 의자를 골라야 합니다.");
-  return {
-    id: newId(),
-    kind: "RESERVED",
-    branchId: req.slot.branchId,
-    branchName: req.branchName,
-    date: req.slot.date,
-    start: req.slot.start,
-    end: req.slot.end,
-    people: req.people,
-    chairIds: [...req.chairIds],
-    chairLabels: [...req.chairLabels],
-    reservedAt: new Date().toISOString(),
-  };
-}
-
-/** POST /api/seats/waitlist — 자리가 없을 때 예약대기. 요금 없음. */
+/** POST /api/v1/seats/waitlist — 자리가 없을 때 예약대기. 요금 없음. 시간대 시작 전까지만 */
 export async function joinWaitlist(req: WaitlistRequest): Promise<SeatReservation> {
-  return {
-    id: newId(),
-    kind: "WAITING",
-    branchId: req.slot.branchId,
-    branchName: req.branchName,
-    date: req.slot.date,
-    start: req.slot.start,
-    end: req.slot.end,
-    people: req.people,
-    chairIds: [],
-    chairLabels: [],
-    reservedAt: new Date().toISOString(),
-  };
+  return api<SeatReservation>("/seats/waitlist", {
+    method: "POST",
+    body: { slot: req.slot, people: req.people },
+  });
 }
 
-/** DELETE /api/seats/reservations/{id} — 예약 · 예약대기 취소 */
-export async function cancelReservation(id: string): Promise<{ ok: true; id: string }> {
-  return { ok: true, id };
-}
-
-/**
- * 메인 대시보드(14단계)용 요약 — 본점의 지금 시간대(영업 전이면 첫 시간대) 빈 의자 수.
- * 영업이 끝났으면 block 이 null 이고 available 은 0.
- */
-export async function getSeatSummary(now: number): Promise<{ available: number; total: number; block: TimeBlock | null }> {
-  const total = totalChairs(SEATS);
-  const minute = kstMinutes(now);
-  const block = TIME_BLOCKS.find((b) => minute < minutesOf(b.end)) ?? null;
-  if (!block) return { available: 0, total, block: null };
-  const slot: SeatSlot = { branchId: BRANCHES[0].id, date: kstDate(now), ...block };
-  const statuses = mockChairStatuses(SEATS, slot, blockState(slot.date, block, now));
-  return { available: summarize(SEATS, statuses).available, total, block };
+/** DELETE /api/v1/seats/reservations/{id} — 예약(시작 전까지) · 예약대기(언제든) 취소 */
+export async function cancelReservation(id: number): Promise<void> {
+  await api<void>(`/seats/reservations/${id}`, { method: "DELETE" });
 }

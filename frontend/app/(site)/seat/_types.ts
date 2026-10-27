@@ -95,12 +95,11 @@ export interface SeatSlot {
 /** 의자 id → 상태. 없는 의자는 AVAILABLE 로 본다 */
 export type ChairStatusMap = Readonly<Record<string, SeatStatus>>;
 
+/** 지점 이름 · 의자 이름 · 끝 시각은 서버가 정한다 — 보내지 않는다 */
 export interface ReservationRequest {
   slot: SeatSlot;
-  branchName: string;
   people: number;
   chairIds: string[];
-  chairLabels: string[];
 }
 
-export type WaitlistRequest = Omit<ReservationRequest, "chairIds" | "chairLabels">;
+export type WaitlistRequest = Omit<ReservationRequest, "chairIds">;

@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useUser } from "@/components/UserProvider";
 import { formatKstTime, kstDate } from "@/lib/kst";
-import type { SeatReservation } from "@/types/common";
 import { useMinuteClock } from "../seat/_hooks/useMinuteClock";
 import { getBranchOccupancy } from "../seat/_lib/seatService";
 import type { Branch, BranchOccupancy, SlotAvailability } from "../seat/_types";
@@ -38,16 +36,6 @@ function rateOf(slot: { available: number; total: number }): number {
   return slot.total === 0 ? 0 : 1 - slot.available / slot.total;
 }
 
-/** 내 예약만큼 잔여석을 뺀다 — /seat 의 시간대 카드와 같은 숫자가 되게 */
-function withMine(item: BranchOccupancy, date: string, mine: SeatReservation[]): SlotAvailability[] {
-  return item.slots.map((s) => {
-    const taken = mine
-      .filter((r) => r.kind === "RESERVED" && r.branchId === item.branch.id && r.date === date && r.start === s.start)
-      .reduce((n, r) => n + r.chairIds.length, 0);
-    return { ...s, available: Math.max(0, s.available - taken) };
-  });
-}
-
 interface BranchCard {
   branch: Branch;
   slots: SlotAvailability[];
@@ -61,16 +49,19 @@ interface BranchCard {
  * 시각을 알기 전(정적 셸)에는 지점 이름만 있는 빈 카드를 그리고, 1분마다 다시 받는다.
  */
 export default function SeatStatus({ branches }: { branches: Branch[] }) {
-  const { seatReservations } = useUser();
   const now = useMinuteClock();
   const [data, setData] = useState<{ at: number; date: string; branches: BranchOccupancy[] } | null>(null);
 
   useEffect(() => {
     if (now === null) return;
     let alive = true;
-    getBranchOccupancy(now).then((res) => {
-      if (alive) setData({ at: now, ...res });
-    });
+    // 실패하면 지난 값(없으면 지점 이름만 있는 빈 카드)을 그대로 둔다 — 1분 뒤 다시 받는다
+    getBranchOccupancy().then(
+      (res) => {
+        if (alive) setData({ at: now, ...res });
+      },
+      () => {},
+    );
     return () => {
       alive = false;
     };
@@ -78,14 +69,14 @@ export default function SeatStatus({ branches }: { branches: Branch[] }) {
 
   const cards: BranchCard[] = useMemo(() => {
     if (!data) return branches.map((branch) => ({ branch, slots: [], current: null }));
-    const list = data.branches.map((item) => {
-      const slots = withMine(item, data.date, seatReservations);
+    // 잔여석은 서버가 내 예약까지 찬 자리로 세어 준 값 그대로 — /seat 의 시간대 카드와 같은 숫자
+    const list = data.branches.map(({ branch, slots }) => {
       const current = slots.find((s) => s.state === "LIVE") ?? slots.find((s) => s.state === "OPEN") ?? null;
-      return { branch: item.branch, slots, current };
+      return { branch, slots, current };
     });
     // 여유로운 순 — 기준 시간대의 빈 의자 비율이 높은 지점부터(같으면 원래 순서)
     return list.sort((a, b) => (a.current ? rateOf(a.current) : 1) - (b.current ? rateOf(b.current) : 1));
-  }, [data, branches, seatReservations]);
+  }, [data, branches]);
 
   const today = now === null ? null : kstDate(now);
   const isTomorrow = data !== null && today !== null && data.date !== today;
