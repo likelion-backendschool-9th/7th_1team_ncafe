@@ -4,9 +4,15 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "./AuthProvider";
 import MemberFields, { profileFromForm } from "./MemberFields";
 import { ApiError, memberApi, type Member } from "@/lib/memberApi";
+import { useMyGrade } from "@/app/(site)/menu/_hooks/useMyGrade";
 import styles from "./member.module.css";
 export default function MemberAccount() {
   const { member, loading, error: loadError, setMember, refresh, logout } = useAuth();
+  // 등급은 지금까지 받은 쿠폰(누적)으로 매긴다 — 이름 · 누적 · 다음 등급까지 남은 장수
+  const { grade, next, totalEarned } = useMyGrade();
+  const gradeText = grade
+    ? `${grade.name} · 누적 ${totalEarned}장 · ${next ? `${next.name}까지 ${next.minTotalCoupons - totalEarned}장` : "최고 등급"}`
+    : member?.gradeId == null ? "미지정" : "-";
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -27,7 +33,7 @@ export default function MemberAccount() {
   if (!member) return <section className={styles.card}><h1>마이페이지</h1>{message && <p role="status">{message}</p>}{error && <p className={styles.error} role="alert">{error}</p>}<p>로그인하면 회원정보를 확인하고 수정할 수 있어요.</p><div className={styles.links}><Link className={styles.button} href="/login">로그인</Link><Link href="/signup">회원가입</Link></div></section>;
   return <section className={styles.card}>
     <h1>{member.nickname}님의 마이페이지</h1>
-    <dl className={styles.details}><dt>아이디</dt><dd>{member.loginId}</dd><dt>회원번호</dt><dd>{member.no}</dd><dt>가입일</dt><dd>{new Date(member.joinDate).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}</dd><dt>등급</dt><dd>{member.gradeId === null ? "미지정" : member.gradeId}</dd><dt>보유 쿠폰</dt><dd>{member.couponCount}장</dd></dl>
+    <dl className={styles.details}><dt>아이디</dt><dd>{member.loginId}</dd><dt>회원번호</dt><dd>{member.no}</dd><dt>가입일</dt><dd>{new Date(member.joinDate).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}</dd><dt>등급</dt><dd>{gradeText}</dd><dt>보유 쿠폰</dt><dd>{member.couponCount}장</dd></dl>
     <button className={styles.button} disabled={pending} onClick={() => void perform(async () => { await logout(); setMessage("로그아웃했습니다."); })}>로그아웃</button>
     {error && <p className={styles.error} role="alert">{error}</p>}{message && <p className={styles.success} role="status">{message}</p>}
     <section className={styles.section}><h2>회원정보 수정</h2>
