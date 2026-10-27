@@ -9,7 +9,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { isHeadOffice } from "./AdminAccess";
 
 const NAV = [
-  { href: "/admin/branches/members", label: "회원 관리", en: "MEMBERS", icon: "👤" },
+  { href: "/admin/branches", label: "지점 관리", en: "BRANCHES", icon: "🏬" },
+  { href: "/admin/members", label: "회원 관리", en: "MEMBERS", icon: "👤" },
   { href: "/admin/menus", label: "메뉴 관리", en: "MENUS", icon: "☕" },
   { href: "/admin/categories", label: "카테고리 관리", en: "CATEGORIES", icon: "🗂" },
   { href: "/admin/race", label: "경주 관리", en: "RACE", icon: "🏇" },
