@@ -22,10 +22,12 @@ import lombok.RequiredArgsConstructor;
 public class BranchMenuController {
 
     private final BranchMenuService branchMenuService;
+    private final com.newcafe.backend.service.BranchAdminService branchAccess;
 
     // GET /api/v1/admin/branches/{branchId}/menus
     @GetMapping
-    public List<BranchMenuResponse> findAll(@PathVariable String branchId) {
+    public List<BranchMenuResponse> findAll(@PathVariable String branchId, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
         return branchMenuService.findAll(branchId);
     }
 
@@ -33,7 +35,8 @@ public class BranchMenuController {
     @PatchMapping("/{menuId}/status")
     public BranchMenuResponse updateStatus(@PathVariable String branchId,
                                            @PathVariable Long menuId,
-                                           @RequestBody BranchMenuStatusRequest request) {
-        return branchMenuService.updateStatus(branchId, menuId, request);
+                                           @RequestBody BranchMenuStatusRequest request, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
+        return branchMenuService.updateStatus(branchId, menuId, request, com.newcafe.backend.service.AuthService.loginMemberNo(auth));
     }
 }

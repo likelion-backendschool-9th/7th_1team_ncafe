@@ -205,7 +205,7 @@ public class SeatReservationService {
             if (seat == null || ref.no() < 1 || ref.no() > seat.getCapacity()) {
                 throw invalidChair(ref.code() + "-" + ref.no());
             }
-            if (seat.isUnderRepair()) {
+            if (seat.isChairUnderRepair(ref.no())) {
                 throw new ConflictException("SEAT_UNDER_REPAIR", "수리 중인 자리예요. seat=" + seat.getCode());
             }
             reservation.addChair(seat, ref.no());

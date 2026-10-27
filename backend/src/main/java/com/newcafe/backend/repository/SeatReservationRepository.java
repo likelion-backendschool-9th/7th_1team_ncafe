@@ -19,6 +19,17 @@ import org.springframework.data.repository.query.Param;
 //   예약 · 예약대기: saveAndFlush(reservation)  (의자는 reservation.chairs에 담아 함께 저장. flush로 중복 의자를 바로 확인)
 //   취소: 영속 상태의 reservation.status를 바꾸고 chairs를 비운다
 public interface SeatReservationRepository extends JpaRepository<SeatReservation, Long> {
+    @EntityGraph(attributePaths = { "member", "chairs", "chairs.seat" })
+    @Query("""
+            select distinct r from SeatReservation r join r.chairs c
+            where c.seat.id = :seatId and (:chairNo is null or c.chairNo = :chairNo)
+              and r.status in :statuses
+              and (r.date > :date or (r.date = :date and r.endTime > :time))
+            order by r.date, r.startTime, r.id
+            """)
+    List<SeatReservation> findRepairConflicts(@Param("seatId") Long seatId, @Param("chairNo") Integer chairNo,
+            @Param("date") LocalDate date, @Param("time") LocalTime time,
+            @Param("statuses") Collection<SeatReservation.Status> statuses);
     // 내 예약 목록, 최신순 (지점 · 의자 포함)
     @EntityGraph(attributePaths = { "branch", "chairs", "chairs.seat" })
     List<SeatReservation> findAllByMemberNoAndStatusInOrderByReservedAtDesc(Long memberNo,
@@ -27,6 +38,10 @@ public interface SeatReservationRepository extends JpaRepository<SeatReservation
     // 예약 하나 (의자 포함) — 취소 · 관리자 처리
     @EntityGraph(attributePaths = { "member", "branch", "chairs", "chairs.seat" })
     Optional<SeatReservation> findWithChairsById(Long id);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SeatReservation r where r.id = :id")
+    Optional<SeatReservation> findForAdminUpdate(@Param("id") Long id);
 
     // 같은 시간대에 이미 예약 · 예약대기가 있는지 — 같은 시간대 중복 신청 확인
     boolean existsByMemberNoAndBranchIdAndDateAndStartTimeAndKindAndStatus(Long memberNo, String branchId,

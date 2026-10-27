@@ -17,6 +17,7 @@ interface CafeFloorPlanProps {
   mine: Set<string>;
   selected: Set<string>;
   interactive: boolean;
+  allowOccupiedSelection?: boolean;
   /** 미니맵 — 글자 없이 모양만 */
   compact?: boolean;
   /** 필터에 맞지 않는 자리(seat id) — 반투명 */
@@ -46,6 +47,7 @@ export default function CafeFloorPlan({
   mine,
   selected,
   interactive,
+  allowOccupiedSelection = false,
   compact = false,
   dimSeats = NONE,
   recommendedSeats = NONE,
@@ -105,6 +107,7 @@ export default function CafeFloorPlan({
           mine={mine.has(chair.id)}
           selected={selected.has(chair.id)}
           interactive={interactive}
+          allowOccupiedSelection={allowOccupiedSelection}
           compact={compact}
           dim={dimSeats.has(chair.seat.id)}
           star={recommendedChairs.has(chair.id)}

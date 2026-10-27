@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRacePhase } from "@/lib/useCountdown";
 import BrandLogo from "./BrandLogo";
 import { useCart } from "./CartProvider";
@@ -18,11 +18,20 @@ const NAV = [
   { href: "/my", label: "MY", ko: "마이페이지" },
 ];
 
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
 export default function Header() {
   const pathname = usePathname();
-  const { member, loading } = useAuth();
+  // 인증 조회가 Suspense 안의 헤더보다 먼저 끝나도 첫 렌더는 서버 HTML과 맞춘다.
+  const hydrated = useSyncExternalStore(subscribeHydration, clientSnapshot, serverSnapshot);
+  const auth = useAuth();
+  const member = hydrated ? auth.member : null;
+  const loading = !hydrated || auth.loading;
   const coupons = member?.couponCount ?? 0;
-  const { count: cartCount } = useCart();
+  const { count } = useCart();
+  const cartCount = hydrated ? count : 0;
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
 

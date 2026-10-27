@@ -22,13 +22,19 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     // 한 지점의 좌석 하나 — 관리자 수리 중 설정
     Optional<Seat> findByBranchIdAndCode(String branchId, String code);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Seat s where s.branch.id = :branchId and s.code = :code")
+    Optional<Seat> findForUpdate(@Param("branchId") String branchId, @Param("code") String code);
+
     // 한 지점의 수리 중 좌석 — 의자 상태에서 REPAIR로 표시
     List<Seat> findAllByBranchIdAndUnderRepairTrue(String branchId);
 
     // 한 지점에서 코드로 좌석 찾기 — 예약 요청의 의자 id("T03-1")에서 좌석 코드만 뽑아 조회한다
-    List<Seat> findAllByBranchIdAndCodeIn(String branchId, Collection<String> codes);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Seat s where s.branch.id = :branchId and s.code in :codes order by s.id")
+    List<Seat> findAllByBranchIdAndCodeIn(@Param("branchId") String branchId, @Param("codes") Collection<String> codes);
 
     // 한 지점에서 예약할 수 있는 의자 수 (수리 중 좌석 제외) — 취소 뒤 예약대기 알림 판단
-    @Query("select coalesce(sum(s.capacity), 0) from Seat s where s.branch.id = :branchId and s.underRepair = false")
+    @Query("select coalesce(sum(s.capacity - size(s.repairChairNos)), 0) from Seat s where s.branch.id = :branchId and s.underRepair = false")
     long sumUsableCapacity(@Param("branchId") String branchId);
 }

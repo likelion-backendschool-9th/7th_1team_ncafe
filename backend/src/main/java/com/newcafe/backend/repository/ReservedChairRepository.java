@@ -18,8 +18,13 @@ public interface ReservedChairRepository extends JpaRepository<ReservedChair, Lo
     List<ReservedChair> findAllBySeatBranchIdAndDateAndStartTime(String branchId, LocalDate date, LocalTime startTime);
 
     // 한 시간대에 찬 의자 수 (수리 중 좌석 제외) — 취소 뒤 예약대기 알림 판단
-    long countBySeatBranchIdAndDateAndStartTimeAndSeatUnderRepairFalse(String branchId, LocalDate date,
-            LocalTime startTime);
+    @Query("""
+            select count(c) from ReservedChair c
+            where c.seat.branch.id = :branchId and c.date = :date and c.startTime = :startTime
+              and c.seat.underRepair = false and c.chairNo not member of c.seat.repairChairNos
+            """)
+    long countBySeatBranchIdAndDateAndStartTimeAndSeatUnderRepairFalse(@Param("branchId") String branchId,
+            @Param("date") LocalDate date, @Param("startTime") LocalTime startTime);
 
     // 한 지점 · 날짜의 시간대별 찬 의자 수 (예약이 없는 시간대는 빠진다)
     // 수리 중 좌석은 잔여석 계산에서 통째로 빠지므로 그 좌석의 예약은 세지 않는다
@@ -27,6 +32,7 @@ public interface ReservedChairRepository extends JpaRepository<ReservedChair, Lo
             select c.startTime as startTime, count(c) as count
               from ReservedChair c
              where c.seat.branch.id = :branchId and c.date = :date and c.seat.underRepair = false
+               and c.chairNo not member of c.seat.repairChairNos
              group by c.startTime
             """)
     List<SlotCount> countGroupByStartTime(@Param("branchId") String branchId, @Param("date") LocalDate date);
@@ -36,6 +42,7 @@ public interface ReservedChairRepository extends JpaRepository<ReservedChair, Lo
             select c.seat.branch.id as branchId, c.startTime as startTime, count(c) as count
               from ReservedChair c
              where c.date = :date and c.seat.underRepair = false
+               and c.chairNo not member of c.seat.repairChairNos
              group by c.seat.branch.id, c.startTime
             """)
     List<BranchSlotCount> countGroupByBranchAndStartTime(@Param("date") LocalDate date);

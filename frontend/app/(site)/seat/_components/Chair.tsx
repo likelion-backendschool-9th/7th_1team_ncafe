@@ -15,6 +15,7 @@ interface ChairProps {
   selected: boolean;
   /** false 면 미리보기 — 누를 수 없다(일정 선택 중 · 완료 화면) */
   interactive: boolean;
+  allowOccupiedSelection?: boolean;
   /** 미니맵 — 글자 · 아이콘 없이 상자만 */
   compact?: boolean;
   /** 필터에 맞지 않는 자리 — 반투명(숨기지 않는다, 지시서 19절) */
@@ -53,7 +54,7 @@ export function chairGlyph(status: SeatStatus, { mine = false, selected = false 
  * 의자 하나(버튼) — 지시서 17절의 좌석 클릭 단위. 배치도 논리 px 로 절대 배치되고 캔버스가 통째로 배율을 바꾼다.
  * 색 + 아이콘 + 텍스트(aria-label · title) 세 가지로 상태를 알린다. 히트 영역은 ::before 로 넓힌다.
  */
-function ChairView({ chair, status, mine, selected, interactive, compact = false, dim = false, star = false, onToggle }: ChairProps) {
+function ChairView({ chair, status, mine, selected, interactive, allowOccupiedSelection = false, compact = false, dim = false, star = false, onToggle }: ChairProps) {
   const { seat, no } = chair;
   const className = [
     chairClassName(status, { mine, selected, bar: seat.type === "BAR" }),
@@ -66,9 +67,11 @@ function ChairView({ chair, status, mine, selected, interactive, compact = false
 
   if (compact) return <span className={className} style={style} />;
 
-  const stateLabel = selected ? "선택됨" : mine ? "내 예약" : STATUS_LABEL[status];
+  const stateLabel = allowOccupiedSelection
+    ? `${STATUS_LABEL[status]}${selected ? ", 관리 선택됨" : ""}`
+    : selected ? "선택됨" : mine ? "내 예약" : STATUS_LABEL[status];
   const name = chairLabel(seat, no);
-  const glyph = chairGlyph(status, { mine, selected });
+  const glyph = chairGlyph(status, { mine, selected: selected && !allowOccupiedSelection });
 
   return (
     <button
@@ -77,7 +80,7 @@ function ChairView({ chair, status, mine, selected, interactive, compact = false
       style={style}
       disabled={!interactive}
       aria-pressed={selected}
-      aria-disabled={!selected && (mine || status !== "AVAILABLE") ? true : undefined}
+      aria-disabled={!allowOccupiedSelection && !selected && (mine || status !== "AVAILABLE") ? true : undefined}
       aria-label={`${name}, ${chairDescription(seat)}, ${stateLabel}${star ? ", 추천" : ""}${dim && !selected ? ", 필터와 맞지 않음" : ""}`}
       title={`${name} · ${stateLabel}`}
       data-chair={chair.id}

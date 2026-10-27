@@ -8,7 +8,8 @@ public record SeatResponse(
         Seat.Section section,
         Seat.Type type,
         int capacity,
-        boolean underRepair) {
+        boolean underRepair,
+        java.util.List<Integer> repairChairNos) {
 
     public static SeatResponse from(Seat seat) {
         return new SeatResponse(
@@ -16,6 +17,7 @@ public record SeatResponse(
                 seat.getSection(),
                 seat.getType(),
                 seat.getCapacity(),
-                seat.isUnderRepair());
+                seat.isUnderRepair(),
+                seat.getRepairChairNos().stream().sorted().toList());
     }
 }
