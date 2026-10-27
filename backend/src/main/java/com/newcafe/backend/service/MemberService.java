@@ -21,7 +21,7 @@ import com.newcafe.backend.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
 // 회원 생성·조회·수정. 회원가입(AuthService)과 관리자 회원 추가·수정(service.admin.MemberService)도
-// createMember / updateMember를 호출해 같은 검증 규칙을 쓴다.
+// createMember / updateMember를 호출해 같은 검증 규칙을 쓴다. 쿠폰 수는 CouponService가 바꾼다.
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
