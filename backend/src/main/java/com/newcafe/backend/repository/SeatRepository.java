@@ -4,6 +4,7 @@ import com.newcafe.backend.entity.Seat;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,9 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     // 한 지점의 좌석 배치 (특징 포함)
     @EntityGraph(attributePaths = "features")
     List<Seat> findAllByBranchIdOrderByIdAsc(String branchId);
+
+    // 한 지점의 좌석 하나 — 관리자 수리 중 설정
+    Optional<Seat> findByBranchIdAndCode(String branchId, String code);
 
     // 한 지점의 수리 중 좌석 — 의자 상태에서 REPAIR로 표시
     List<Seat> findAllByBranchIdAndUnderRepairTrue(String branchId);
