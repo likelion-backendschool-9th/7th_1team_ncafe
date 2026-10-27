@@ -57,6 +57,7 @@ export interface SeatReservation {
   chairIds: string[]; // 의자 id("T03-1") — 예약대기는 빈 배열
   chairLabels: string[]; // 표시용 "T03 1번" · "B07"
   reservedAt: string; // ISO
+  notifiedAt?: string | null; // 예약대기만 — 같은 시간대 취소로 인원만큼 자리가 난 시각(ISO). 없으면 아직 자리가 안 났다
 }
 
 /** 마이페이지에 모이는 "내 것" — 페이지를 넘나들어 Context(UserProvider)에 둔다. */
