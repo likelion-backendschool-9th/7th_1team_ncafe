@@ -1,6 +1,9 @@
 package com.newcafe.backend;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.newcafe.backend.entity.Branch;
@@ -71,5 +74,69 @@ class BranchApiTests {
         branch.setFixtures("[]");
         branch.setOpen(open);
         repository.saveAndFlush(branch);
+    }
+
+    private org.springframework.mock.web.MockHttpSession session(String role) {
+        var authentication = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                "test", "", java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority(role)));
+        var session = new org.springframework.mock.web.MockHttpSession();
+        session.setAttribute("SPRING_SECURITY_CONTEXT",
+                new org.springframework.security.core.context.SecurityContextImpl(authentication));
+        return session;
+    }
+
+    private static final String CREATE = """
+            {"id":"mapo","name":" 마포점 ","address":" 서울시 ","open":true}
+            """;
+
+    @Test
+    void onlyAdminCanCreateBranch() throws Exception {
+        mvc.perform(post("/api/v1/admin/branches").contentType("application/json").content(CREATE))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_USER"))
+                .contentType("application/json").content(CREATE)).andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/admin/branches/mapo").contentType("application/json").content(CREATE))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/admin/branches/mapo").session(session("ROLE_USER"))
+                .contentType("application/json").content(CREATE)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanCreateAndUpdateWithoutChangingIdOrCreationDate() throws Exception {
+        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+                .contentType("application/json").content(CREATE))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("마포점"))
+                .andExpect(jsonPath("$.sections").value("[]"));
+        var createdDate = repository.findById("mapo").orElseThrow().getCreatedDate();
+        mvc.perform(put("/api/v1/admin/branches/mapo").session(session("ROLE_ADMIN"))
+                .contentType("application/json").content("""
+                    {"name":"마포 본점","address":"서울 마포구","open":false,
+                     "sections":"[{\\\"section\\\":\\\"LOUNGE\\\"}]","fixtures":"[]"}
+                    """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.open").value(false));
+        repository.flush();
+        var branch = repository.findById("mapo").orElseThrow();
+        assertEquals("마포 본점", branch.getName());
+        assertEquals(createdDate, branch.getCreatedDate());
+        assertEquals("mapo", branch.getId());
+    }
+
+    @Test
+    void rejectsDuplicateMissingAndInvalidBranches() throws Exception {
+        save("mapo", true);
+        mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+                .contentType("application/json").content(CREATE))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("BRANCH_ID_DUPLICATED"));
+        mvc.perform(put("/api/v1/admin/branches/missing").session(session("ROLE_ADMIN"))
+                .contentType("application/json").content(CREATE)).andExpect(status().isNotFound());
+        for (String invalid : java.util.List.of(
+                "{\"id\":\"new\",\"name\":\" \",\"address\":\"서울\",\"open\":true}",
+                "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\"}",
+                "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\",\"open\":true,\"sections\":\"invalid\"}",
+                "{\"id\":\"new\",\"name\":\"신규점\",\"address\":\"서울\",\"open\":true,\"fixtures\":\"{}\"}")) {
+            mvc.perform(post("/api/v1/admin/branches").session(session("ROLE_ADMIN"))
+                    .contentType("application/json").content(invalid)).andExpect(status().isBadRequest());
+        }
+        assertEquals(1, repository.count());
     }
 }
