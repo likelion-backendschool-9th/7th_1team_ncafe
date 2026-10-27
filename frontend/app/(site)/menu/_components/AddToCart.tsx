@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import QuantityStepper from "@/components/QuantityStepper";
+import { ApiError } from "@/lib/api";
 import { CART_MAX_QUANTITY, lineKey } from "@/lib/cart";
 import { useBranchStatuses, useSelectedBranch } from "../_hooks/useMenuBranch";
 import { useMyGrade } from "../_hooks/useMyGrade";
@@ -33,25 +34,37 @@ export default function AddToCart({ menu }: { menu: Menu }) {
   const [size, setSize] = useState<MenuSize | null>(menu.sizePrices ? MENU_SIZES[0] : null);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState("");
+  const [addError, setAddError] = useState("");
+  const [adding, setAdding] = useState(false);
   const uid = useId();
 
   const unitPrice = priceOf(menu, size);
   const label = size ? `${menu.name} ${size}` : menu.name;
 
-  function handleAdd() {
+  // 로그인 회원은 서버 장바구니에 담는다 — 서버가 거절하면(잠긴 메뉴 · 삭제된 메뉴 등) 그 이유를 보여 준다
+  async function handleAdd() {
     const inCart = lines.find((l) => l.key === lineKey(menu.id, size))?.quantity ?? 0;
     const added = Math.min(quantity, CART_MAX_QUANTITY - inCart);
+    setAddError("");
     if (added <= 0) {
       setNotice(`${label} — 이미 최대 ${CART_MAX_QUANTITY}개를 담았어요.`);
       return;
     }
-    add({ menuId: menu.id, size, name: menu.name, engName: menu.engName, image: menu.image, unitPrice }, added);
-    setNotice(
-      added < quantity
-        ? `한 메뉴는 ${CART_MAX_QUANTITY}개까지 담을 수 있어 ${label} ${added}개만 담았어요.`
-        : `장바구니에 ${label} ${added}개를 담았어요.`,
-    );
-    setQuantity(1);
+    setAdding(true);
+    try {
+      await add({ menuId: menu.id, size, name: menu.name, engName: menu.engName, image: menu.image, unitPrice }, added);
+      setNotice(
+        added < quantity
+          ? `한 메뉴는 ${CART_MAX_QUANTITY}개까지 담을 수 있어 ${label} ${added}개만 담았어요.`
+          : `장바구니에 ${label} ${added}개를 담았어요.`,
+      );
+      setQuantity(1);
+    } catch (e) {
+      setNotice("");
+      setAddError(e instanceof ApiError ? e.message : "장바구니에 담지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setAdding(false);
+    }
   }
 
   return (
@@ -101,8 +114,21 @@ export default function AddToCart({ menu }: { menu: Menu }) {
         <Link href="/menu" className="btn btn-outline">
           <span aria-hidden>←</span> 메뉴판으로
         </Link>
-        <button type="button" className={`btn btn-gold ${styles.addButton}`} disabled={blocked} onClick={handleAdd}>
-          {soldOut ? "품절" : notSold ? "이 지점 미판매" : locked ? `${locked.name} 등급부터` : "장바구니 담기"}
+        <button
+          type="button"
+          className={`btn btn-gold ${styles.addButton}`}
+          disabled={blocked || adding}
+          onClick={handleAdd}
+        >
+          {soldOut
+            ? "품절"
+            : notSold
+              ? "이 지점 미판매"
+              : locked
+                ? `${locked.name} 등급부터`
+                : adding
+                  ? "담는 중…"
+                  : "장바구니 담기"}
         </button>
       </div>
 
@@ -116,6 +142,12 @@ export default function AddToCart({ menu }: { menu: Menu }) {
               로그인 <span aria-hidden>›</span>
             </Link>
           )}
+        </p>
+      )}
+
+      {addError && (
+        <p role="alert" className={styles.lockNotice}>
+          {addError}
         </p>
       )}
 

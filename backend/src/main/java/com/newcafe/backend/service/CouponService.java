@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 
 // 쿠폰 — 보유 수(members.coupon_count)와 증감 내역(coupons_log)을 함께 다룬다. 쿠폰 수는 이 클래스의 spend · earn으로만 바꾸고,
 // 바꿀 때마다 같은 트랜잭션에서 내역을 한 줄 남겨 delta 합계와 보유 수가 어긋나지 않게 한다(WBS 10.5).
-// 레이스 걸기(RaceService)가 spend를, 레이스 정산 · 가입 축하 · 연패 위로 쿠폰이 earn을 쓴다. 주문 적립(WBS 9.6)은 추후.
+// 레이스 걸기(RaceService)가 spend를, 레이스 정산 · 가입 축하 · 연패 위로 쿠폰 · 주문 결제 적립(PaymentService)이 earn을 쓴다.
 //
 // 연패 위로 쿠폰(사용자 결정 2026-10-27) — 정책은 coupons_losing_streak 한 줄(관리자 쿠폰 관리에서 바꾼다).
 // 정책 연패 수 이상 연속으로 4위 이하(members.lose_streak — 정산할 때 RaceService가 갱신)이고 지금 쿠폰이 0장인 회원에게
@@ -155,7 +155,7 @@ public class CouponService {
         addLog(memberNo, -amount, note);
     }
 
-    // 쿠폰 적립 (가입 축하 · 이벤트 · 레이스 정산 · 연패 위로 · 추후 주문 적립). 누적 쿠폰도 같이 늘고, 등급을 다시 매긴다.
+    // 쿠폰 적립 (가입 축하 · 이벤트 · 레이스 정산 · 연패 위로 · 주문 적립). 누적 쿠폰도 같이 늘고, 등급을 다시 매긴다.
     @Transactional
     public void earn(Long memberNo, int amount, String note) {
         checkAmount(amount);

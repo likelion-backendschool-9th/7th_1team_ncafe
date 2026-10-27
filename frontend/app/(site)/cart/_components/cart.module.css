@@ -74,6 +74,13 @@
   margin-left: 6px;
 }
 
+/* 서버가 장바구니 변경을 거절했을 때 — 목록 바로 위 */
+.listError {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--red-600);
+}
+
 /* 한 줄: 일러스트 · 이름/사이즈/단가 · 수량 · 금액 · 삭제 */
 .row {
   display: grid;
@@ -127,6 +134,16 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fff;
+}
+
+/* 고른 지점에서 주문할 수 없는 줄(품절 · 미판매) — 위험 동작이 아니라 안내라 빨강 대신 테두리만 */
+.unavailableTag {
+  padding: 0 8px;
+  border: 1px solid var(--text-strong);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-strong);
 }
 
 .eng {
@@ -267,6 +284,13 @@
   font-size: 0.82rem;
   text-align: center;
   color: var(--red-600);
+}
+
+/* 지금 주문할 수 없는 이유 — 버튼을 막는 대신 이유를 적어 둔다 */
+.summaryHint {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-strong);
 }
 
 /* ----- 비어 있을 때 · 주문 완료 ----- */

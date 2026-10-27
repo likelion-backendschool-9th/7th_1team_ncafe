@@ -6,6 +6,11 @@ import { useAuth } from "./AuthProvider";
 import MemberFields, { profileFromForm } from "./MemberFields";
 import { memberApi, type Member } from "@/lib/memberApi";
 import styles from "./member.module.css";
+// /login?next=/cart — 로그인한 뒤 돌아갈 화면(장바구니 · 결제 확인 · 관리자 화면). 다른 사이트로 보내지 않게 이 사이트 경로만 받는다
+function nextPath(): string | null {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !/^\/[/\\]/.test(next) ? next : null; // "//…" · "/\…" 는 다른 사이트로 간다
+}
 export default function MemberEntry({ signup = false }: { signup?: boolean }) {
   const { member, setMember } = useAuth();
   const router = useRouter();
@@ -22,7 +27,7 @@ export default function MemberEntry({ signup = false }: { signup?: boolean }) {
     try {
       const result = await memberApi<Member>(signup ? "/auth/signup" : "/auth/login", "POST", { ...(signup ? profileFromForm(data) : {}), loginId: String(data.get("loginId")).trim(), password });
       if (signup) setCreated(true);
-      else { setMember(result); router.replace(["ADMIN", "HQ_ADMIN", "BRANCH_ADMIN"].includes(result.role) ? "/admin/branches/members" : "/my"); }
+      else { setMember(result); router.replace(nextPath() ?? (["ADMIN", "HQ_ADMIN", "BRANCH_ADMIN"].includes(result.role) ? "/admin/branches/members" : "/my")); }
     } catch (e) { setError(e instanceof Error ? e.message : "요청에 실패했습니다."); }
     finally { setPending(false); }
   }

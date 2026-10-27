@@ -232,6 +232,12 @@
   color: var(--text-strong);
 }
 
+.orderBranch {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
 .orderAt {
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;

@@ -16,15 +16,21 @@ export interface CouponLog {
   at: string; // ISO
 }
 
-/** 주문 한 건 — 주문하는 순간의 장바구니 사본을 그대로 남긴다(메뉴 가격이 바뀌어도 내역은 그대로). */
+/**
+ * 주문 한 건 — 서버 주문(GET /api/v1/orders). 사이즈 · 단가는 주문할 때 값이라 메뉴 가격이 바뀌어도 내역은 그대로다.
+ * 주문하면 결제 대기로 만들어지고, 토스 결제 승인이 끝나야 paid 가 된다(주문 내역에는 결제한 주문만 보인다).
+ */
 export interface Order {
-  orderNo: number;
+  orderNo: number; // 서버 orders.id — "ORDER No.0001"
+  branchName: string; // 주문한 지점
   orderedAt: string; // ISO
   lines: CartLine[];
   count: number; // 총 수량
-  total: number; // 합계 금액
-  summary: string; // "아메리카노 외 2건"
-  couponReward: number; // 이 주문으로 적립된 쿠폰 수
+  total: number; // 합계 금액(서버가 메뉴 가격으로 계산)
+  summary: string; // "아메리카노 외 2건" — 토스 결제창의 주문명으로도 쓴다
+  paid: boolean; // 결제 완료(PAID)
+  pgOrderId: string; // 토스 orderId — 결제창에 넘기고, 성공 페이지가 이 값으로 주문을 찾는다
+  couponReward: number; // 이 주문으로 적립된 쿠폰 수(결제 전 0)
 }
 
 /**
@@ -67,8 +73,8 @@ export interface UserState {
   earnCoupons: (amount: number, reason: CouponReason, label: string) => void; // amount 장 적립 + 내역 기록
   favorites: number[]; // 찜한 메뉴 id, 최근 찜한 순
   toggleFavorite: (menuId: number) => void;
-  orders: Order[]; // 주문 내역, 최신순
-  addOrder: (order: Order) => void;
+  orders: Order[]; // 주문 내역(결제한 주문), 최신순 — 서버 값
+  reloadOrders: () => void; // 결제를 마친 뒤 다시 불러온다
   seatReservations: SeatReservation[]; // 좌석 예약 · 예약대기, 최신순
   addSeatReservation: (reservation: SeatReservation) => void;
   cancelSeatReservation: (id: string) => boolean; // 목록에서 지운다 — 없으면 false
@@ -82,19 +88,26 @@ export interface CartLine {
   name: string;
   engName: string;
   image: string;
-  unitPrice: number; // 담을 때의 그 사이즈 가격 — 주문 API 가 생기면 서버가 다시 계산한다
+  unitPrice: number; // 그 사이즈의 지금 가격(서버 장바구니) — 주문할 때 서버가 다시 계산한다
   quantity: number;
 }
 
 /** 담을 메뉴 — 줄 key 와 수량은 장바구니가 정한다. */
 export type CartItem = Omit<CartLine, "key" | "quantity">;
 
+/**
+ * 장바구니 — 로그인 회원은 서버(/api/v1/me/cart), 비로그인은 이 브라우저(localStorage)에 둔다.
+ * 수량 변경 · 삭제는 화면을 먼저 바꾸고 저장하며, 서버가 거절하면 서버 값으로 되돌리고 이유를 error 에 남긴다.
+ */
 export interface CartState {
   lines: CartLine[]; // 담은 순서
   count: number; // 총 수량(Header 숫자)
   total: number; // 합계 금액
-  add: (item: CartItem, quantity: number) => void;
+  loaded: boolean; // 처음 불러오기가 끝났는가 — 끝나기 전에는 빈 장바구니로 보이지 않게 한다
+  error: string; // 마지막 변경이 서버에서 거절된 이유(없으면 "")
+  add: (item: CartItem, quantity: number) => Promise<void>; // 서버가 거절하면(잠긴 메뉴 등) ApiError
   setQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
+  reload: () => void; // 서버 장바구니 다시 불러오기 — 결제를 마치면 주문한 줄이 빠져 있다
 }
