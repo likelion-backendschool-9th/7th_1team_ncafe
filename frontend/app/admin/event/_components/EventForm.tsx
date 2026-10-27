@@ -1,100 +1,100 @@
 "use client";
 
 import { useId, useState, type ReactNode, type SubmitEvent } from "react";
-import { autoStatus, EVENT_STATUS_LABEL, EVENT_STATUSES } from "@/app/(site)/event/_lib/eventStatus";
-import type { CafeEvent, CafeEventInput, EventStatus, EventTimeMode } from "@/app/(site)/event/_types";
+import { autoStatus, crowdedOf, EVENT_STATUS_LABEL, EVENT_STATUSES, hasApplicants } from "@/app/(site)/event/_lib/eventStatus";
+import type { CafeEvent, CafeEventInput, EventStatus } from "@/app/(site)/event/_types";
+import { BRANCHES } from "@/app/(site)/seat/_data/branches";
 import adminStyles from "../../_components/admin.module.css";
 import { EVENT_LIMITS, type EventErrors } from "../_lib/validateEvent";
 import styles from "./eventAdmin.module.css";
 
-/** 버튼이 이동할 사이트 페이지 — 고르거나 직접 입력 */
-const CTA_PAGES = [
-  { href: "/race", label: "레이스 출전표 (/race)" },
-  { href: "/menu", label: "메뉴판 (/menu)" },
-  { href: "/seat", label: "좌석 예약 (/seat)" },
-  { href: "/my#coupons", label: "내 쿠폰 (/my#coupons)" },
-  { href: "/my", label: "마이페이지 (/my)" },
-  { href: "/event", label: "이벤트 목록 (/event)" },
-];
-const CUSTOM = "__custom";
-
 /**
- * 폼 입력값 — 날짜는 빈 문자열(= 없음)로, 참여 방법 · 유의 사항은 한 줄에 하나인 글로, 상태는 "AUTO"(날짜 기준) 포함으로 들고 있다가
- * 제출할 때 CafeEventInput 으로 바꾼다.
+ * 폼 입력값 — 날짜 · 숫자 · 이미지 경로는 입력 그대로의 글자(빈 문자열 = 없음)로, 상태는 "AUTO"(날짜 기준) 포함으로 들고 있다가
+ * 제출할 때 CafeEventInput 으로 바꾼다. 참여 방법 · 유의 사항은 TEXT 칼럼 그대로 한 줄에 하나.
  */
 interface Draft {
+  branchId: string;
   title: string;
-  period: string;
-  startDate: string;
-  endDate: string;
+  dateStart: string;
+  dateEnd: string;
   status: EventStatus | "AUTO";
   visible: boolean;
-  timeMode: EventTimeMode;
-  time: string;
+  coupon: boolean;
+  couponAmount: string;
+  capacity: string;
   description: string;
-  steps: string;
+  howTo: string;
   notes: string;
-  ctaLabel: string;
-  ctaHref: string;
+  thumbnail: string;
+  imageHero: string;
+  imageDetail: string;
 }
 
 function toDraft(event: CafeEvent | null): Draft {
   return {
+    branchId: event?.branchId ?? "",
     title: event?.title ?? "",
-    period: event?.period ?? "기간 한정",
-    startDate: event?.startDate ?? "",
-    endDate: event?.endDate ?? "",
-    status: event?.statusOverride ?? "AUTO",
+    dateStart: event?.dateStart ?? "",
+    dateEnd: event?.dateEnd ?? "",
+    status: event?.status ?? "AUTO",
     visible: event?.visible ?? false,
-    timeMode: event?.timeMode ?? "NONE",
-    time: event?.time ?? "",
+    coupon: event?.coupon ?? true,
+    couponAmount: event?.couponAmount != null ? String(event.couponAmount) : "1",
+    capacity: event?.capacity != null ? String(event.capacity) : "",
     description: event?.description ?? "",
-    steps: event?.steps.join("\n") ?? "",
-    notes: event?.notes.join("\n") ?? "",
-    ctaLabel: event?.ctaLabel ?? "",
-    ctaHref: event?.ctaHref ?? "",
+    howTo: event?.howTo ?? "",
+    notes: event?.notes ?? "",
+    thumbnail: event?.thumbnail ?? "",
+    imageHero: event?.imageHero ?? "",
+    imageDetail: event?.imageDetail ?? "",
   };
 }
 
-const lines = (text: string) => text.split("\n").map((s) => s.trim()).filter(Boolean);
+/** 숫자 칸 — 0 이상의 정수만 숫자로, 그 밖(빈칸 · 소수 · 글자)은 null 이라 검증에서 걸린다 */
+const toCount = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text.trim()) : null);
 
 function toInput(d: Draft): CafeEventInput {
   return {
+    branchId: d.branchId,
     title: d.title,
-    period: d.period,
-    timeMode: d.timeMode,
-    time: d.time,
+    thumbnail: d.thumbnail.trim() || null,
+    imageHero: d.imageHero.trim() || null,
+    imageDetail: d.imageDetail.trim() || null,
     description: d.description,
-    steps: lines(d.steps),
-    notes: lines(d.notes),
-    startDate: d.startDate || null,
-    endDate: d.endDate || null,
-    statusOverride: d.status === "AUTO" ? null : d.status,
+    howTo: d.howTo,
+    notes: d.notes,
+    dateStart: d.dateStart || null,
+    dateEnd: d.dateEnd || null,
+    coupon: d.coupon,
+    couponAmount: d.coupon ? toCount(d.couponAmount) : null,
+    capacity: d.coupon ? toCount(d.capacity) : null,
     visible: d.visible,
-    ctaLabel: d.ctaLabel,
-    ctaHref: d.ctaHref,
+    status: d.status === "AUTO" ? null : d.status,
   };
 }
 
 interface EventFormProps {
   initial: CafeEvent | null; // null = 등록
   today: string; // KST — "자동이면 지금 무엇인지" 안내
-  raceTimes: string; // "오늘 12:30 · 18:00" — 경주 일정 따라가기 안내
   errors: EventErrors;
   busy: boolean;
   onSubmit: (input: CafeEventInput) => void;
   onCancel: () => void;
 }
 
-/** 이벤트 등록/수정 폼 — 검증은 useEventEditor.save 가 하고 결과(errors)를 필드 옆에 보여 준다 */
-export default function EventForm({ initial, today, raceTimes, errors, busy, onSubmit, onCancel }: EventFormProps) {
+/**
+ * 이벤트 등록/수정 폼 — 검증은 useEventEditor.save 가 하고 결과(errors)를 필드 옆에 보여 준다.
+ * 신청자가 있는 이벤트는 종류(쿠폰 지급 여부)와 지급 쿠폰 수를 글자로만 보여 주고 바꿀 수 없게 한다(사용자 결정 2026-10-27).
+ */
+export default function EventForm({ initial, today, errors, busy, onSubmit, onCancel }: EventFormProps) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
-  const [customHref, setCustomHref] = useState(() => Boolean(initial?.ctaHref) && !CTA_PAGES.some((p) => p.href === initial?.ctaHref));
   const uid = useId();
   const id = (name: string) => `${uid}-${name}`;
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const errorCount = Object.keys(errors).length;
-  const auto = autoStatus({ startDate: draft.startDate || null, endDate: draft.endDate || null }, today);
+  const auto = autoStatus({ dateStart: draft.dateStart || null, dateEnd: draft.dateEnd || null }, today);
+  const crowded = initial ? crowdedOf(initial) : 0;
+  const couponLocked = initial ? hasApplicants(initial) : false;
 
   function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -112,7 +112,24 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
       )}
 
       <div className={adminStyles.formGrid}>
-        <Field id={id("title")} label="이벤트 이름" required error={errors.title} hint="손님 화면에 크게 보여요 · 예: DAILY RACE">
+        <Field id={id("branchId")} label="작성 지점" required error={errors.branchId} hint="손님 화면 카드에 지점 이름으로 보여요">
+          <select
+            id={id("branchId")}
+            className={adminStyles.input}
+            value={draft.branchId}
+            onChange={(e) => set("branchId", e.target.value)}
+            aria-invalid={!!errors.branchId}
+          >
+            <option value="">지점 선택</option>
+            {BRANCHES.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field id={id("title")} label="이벤트 이름" required error={errors.title} hint="손님 화면에 크게 보여요 · 예: FIRST GATE 30">
           <input
             id={id("title")}
             className={adminStyles.input}
@@ -123,32 +140,22 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
           />
         </Field>
 
-        <Field id={id("period")} label="운영 안내" required error={errors.period} hint="티켓 왼쪽 알약 · 예: 매일 · 상시 · 첫 방문">
-          <input
-            id={id("period")}
-            className={adminStyles.input}
-            value={draft.period}
-            onChange={(e) => set("period", e.target.value)}
-            aria-invalid={!!errors.period}
-          />
-        </Field>
-
         <DateField
-          id={id("startDate")}
+          id={id("dateStart")}
           label="시작일"
-          value={draft.startDate}
-          error={errors.startDate}
+          value={draft.dateStart}
+          error={errors.dateStart}
           emptyHint="비우면 이미 시작한 것으로 봐요"
-          onChange={(v) => set("startDate", v)}
+          onChange={(v) => set("dateStart", v)}
         />
         <DateField
-          id={id("endDate")}
+          id={id("dateEnd")}
           label="종료일"
-          value={draft.endDate}
-          min={draft.startDate || undefined}
-          error={errors.endDate}
+          value={draft.dateEnd}
+          min={draft.dateStart || undefined}
+          error={errors.dateEnd}
           emptyHint="비우면 상시(종료일 없음) · 종료일 당일까지 진행 중"
-          onChange={(v) => set("endDate", v)}
+          onChange={(v) => set("dateEnd", v)}
         />
 
         <fieldset className={`${adminStyles.field} ${adminStyles.fieldWide}`}>
@@ -167,7 +174,7 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
           </div>
           <span className={adminStyles.hint}>
             {draft.status === "AUTO"
-              ? "시작일 전이면 예정, 종료일이 지나면 종료로 저절로 바뀌어요."
+              ? "시작일 전이면 예정, 종료일이 지나면 종료로 저절로 바뀌어요. 진행 중일 때만 참여 신청을 받아요."
               : "직접 지정한 상태가 날짜보다 우선해요(예: 조기 종료). 자동으로 되돌리면 다시 날짜를 따라요."}
           </span>
         </fieldset>
@@ -182,37 +189,75 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
         </fieldset>
 
         <fieldset className={`${adminStyles.field} ${adminStyles.fieldWide}`}>
-          <legend className={adminStyles.label}>시각 표시</legend>
-          <div className={adminStyles.radioRow}>
-            <label className={adminStyles.radio}>
-              <input type="radio" name={id("timeMode")} checked={draft.timeMode === "NONE"} onChange={() => set("timeMode", "NONE")} />
-              없음
-            </label>
-            <label className={adminStyles.radio}>
-              <input type="radio" name={id("timeMode")} checked={draft.timeMode === "TEXT"} onChange={() => set("timeMode", "TEXT")} />
-              직접 입력
-            </label>
-            <label className={adminStyles.radio}>
-              <input type="radio" name={id("timeMode")} checked={draft.timeMode === "RACE"} onChange={() => set("timeMode", "RACE")} />
-              경주 일정 따라가기 ({raceTimes})
-            </label>
-          </div>
-          {draft.timeMode === "TEXT" && (
-            <input
-              className={`${adminStyles.input} ${styles.timeText}`}
-              aria-label="시각 문구"
-              value={draft.time}
-              placeholder="평일 15:00"
-              onChange={(e) => set("time", e.target.value)}
-              aria-invalid={!!errors.time}
-            />
-          )}
-          {errors.time ? (
-            <span className={adminStyles.error}>{errors.time}</span>
+          <legend className={adminStyles.label}>
+            이벤트 종류
+            <span className={adminStyles.required} aria-label="필수">
+              *
+            </span>
+          </legend>
+          {couponLocked ? (
+            <p className={styles.locked}>
+              <strong>{initial!.coupon ? `쿠폰 지급 이벤트 · 한 명에 ${initial!.couponAmount}장` : "일반 참여 이벤트 · 쿠폰 없음"}</strong>
+              <span>신청자가 {initial?.coupon ? crowded : initial?.applyCount}명 있어 종류와 지급 쿠폰 수를 바꿀 수 없어요.</span>
+            </p>
           ) : (
-            draft.timeMode === "RACE" && <span className={adminStyles.hint}>경주 관리에서 시간표를 바꾸면 함께 바뀌어요.</span>
+            <div className={adminStyles.radioRow}>
+              <label className={adminStyles.radio}>
+                <input type="radio" name={id("coupon")} checked={draft.coupon} onChange={() => set("coupon", true)} />
+                쿠폰 지급 — 선착순 인원 안에 신청하면 쿠폰을 줘요
+              </label>
+              <label className={adminStyles.radio}>
+                <input type="radio" name={id("coupon")} checked={!draft.coupon} onChange={() => set("coupon", false)} />
+                일반 참여 — 쿠폰 없이 신청만 받아요
+              </label>
+            </div>
+          )}
+          {errors.coupon ? (
+            <span className={adminStyles.error}>{errors.coupon}</span>
+          ) : (
+            !couponLocked && <span className={adminStyles.hint}>신청자가 생기면 종류와 지급 쿠폰 수는 바꿀 수 없어요.</span>
           )}
         </fieldset>
+
+        {draft.coupon && (
+          <>
+            {/* 잠기면 지급 쿠폰 수는 위 종류 칸에 글자로만 보인다 */}
+            {!couponLocked && (
+              <Field id={id("couponAmount")} label="지급 쿠폰 수" required error={errors.couponAmount} hint="신청한 한 명에게 주는 쿠폰 수">
+                <span className={styles.numRow}>
+                  <input
+                    id={id("couponAmount")}
+                    className={`${adminStyles.input} ${styles.numInput}`}
+                    inputMode="numeric"
+                    value={draft.couponAmount}
+                    onChange={(e) => set("couponAmount", e.target.value)}
+                    aria-invalid={!!errors.couponAmount}
+                  />
+                  장
+                </span>
+              </Field>
+            )}
+            <Field
+              id={id("capacity")}
+              label="선착순 인원"
+              required
+              error={errors.capacity}
+              hint={crowded > 0 ? `지금 ${crowded}명 참여 — 그보다 적게 줄일 수 없어요` : "참여 인원이 이 인원에 닿으면 선착순 마감돼요"}
+            >
+              <span className={styles.numRow}>
+                <input
+                  id={id("capacity")}
+                  className={`${adminStyles.input} ${styles.numInput}`}
+                  inputMode="numeric"
+                  value={draft.capacity}
+                  onChange={(e) => set("capacity", e.target.value)}
+                  aria-invalid={!!errors.capacity}
+                />
+                명
+              </span>
+            </Field>
+          </>
+        )}
 
         <Field
           id={id("description")}
@@ -233,18 +278,18 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
         </Field>
 
         <Field
-          id={id("steps")}
+          id={id("howTo")}
           label="참여 방법"
-          error={errors.steps}
+          error={errors.howTo}
           hint={`한 줄에 하나 · 최대 ${EVENT_LIMITS.itemsMax}줄 · 상세에 번호를 붙여 보여요`}
         >
           <textarea
-            id={id("steps")}
+            id={id("howTo")}
             className={`${adminStyles.input} ${adminStyles.textarea} ${styles.listInput}`}
             rows={4}
-            value={draft.steps}
-            onChange={(e) => set("steps", e.target.value)}
-            aria-invalid={!!errors.steps}
+            value={draft.howTo}
+            onChange={(e) => set("howTo", e.target.value)}
+            aria-invalid={!!errors.howTo}
           />
         </Field>
 
@@ -259,45 +304,37 @@ export default function EventForm({ initial, today, raceTimes, errors, busy, onS
           />
         </Field>
 
-        <Field id={id("ctaLabel")} label="버튼 문구" error={errors.ctaLabel} hint="비우면 이동 버튼 없음 · 예: Race 참여하기">
+        <Field id={id("thumbnail")} label="썸네일 이미지" error={errors.thumbnail} hint="목록 카드 · 비우면 이미지 없이 티켓만">
           <input
-            id={id("ctaLabel")}
-            className={adminStyles.input}
-            value={draft.ctaLabel}
-            onChange={(e) => set("ctaLabel", e.target.value)}
-            aria-invalid={!!errors.ctaLabel}
+            id={id("thumbnail")}
+            className={`${adminStyles.input} ${adminStyles.pathInput}`}
+            value={draft.thumbnail}
+            placeholder="/events/first-gate-thumb.png"
+            onChange={(e) => set("thumbnail", e.target.value)}
+            aria-invalid={!!errors.thumbnail}
           />
         </Field>
 
-        <Field id={id("ctaHref")} label="이동할 페이지" error={errors.ctaHref}>
-          <select
-            id={id("ctaHref")}
-            className={adminStyles.input}
-            value={customHref ? CUSTOM : draft.ctaHref}
-            onChange={(e) => {
-              const custom = e.target.value === CUSTOM;
-              setCustomHref(custom);
-              if (!custom) set("ctaHref", e.target.value);
-            }}
-            aria-invalid={!!errors.ctaHref}
-          >
-            <option value="">없음</option>
-            {CTA_PAGES.map((p) => (
-              <option key={p.href} value={p.href}>
-                {p.label}
-              </option>
-            ))}
-            <option value={CUSTOM}>직접 입력</option>
-          </select>
-          {customHref && (
-            <input
-              className={`${adminStyles.input} ${adminStyles.pathInput}`}
-              aria-label="이동할 주소 직접 입력"
-              value={draft.ctaHref}
-              placeholder="/menu/3"
-              onChange={(e) => set("ctaHref", e.target.value)}
-            />
-          )}
+        <Field id={id("imageHero")} label="히어로 이미지" error={errors.imageHero} hint="상세 맨 위 넓은 이미지">
+          <input
+            id={id("imageHero")}
+            className={`${adminStyles.input} ${adminStyles.pathInput}`}
+            value={draft.imageHero}
+            placeholder="/events/first-gate-hero.png"
+            onChange={(e) => set("imageHero", e.target.value)}
+            aria-invalid={!!errors.imageHero}
+          />
+        </Field>
+
+        <Field id={id("imageDetail")} label="상세 이미지" error={errors.imageDetail} hint="상세 아래 긴 안내 이미지" wide>
+          <input
+            id={id("imageDetail")}
+            className={`${adminStyles.input} ${adminStyles.pathInput}`}
+            value={draft.imageDetail}
+            placeholder="/events/first-gate-detail.png"
+            onChange={(e) => set("imageDetail", e.target.value)}
+            aria-invalid={!!errors.imageDetail}
+          />
         </Field>
       </div>
 

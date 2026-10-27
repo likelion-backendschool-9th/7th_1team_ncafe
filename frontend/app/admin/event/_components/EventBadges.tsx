@@ -7,7 +7,7 @@ export function StatusBadges({ event, status, hint }: { event: CafeEvent; status
   return (
     <span className={styles.badges}>
       <span className={`${styles.status} ${styles[`status_${status}`]}`}>{EVENT_STATUS_LABEL[status]}</span>
-      <span className={event.statusOverride ? styles.modeManual : styles.modeAuto}>{event.statusOverride ? "수동" : "자동"}</span>
+      <span className={event.status ? styles.modeManual : styles.modeAuto}>{event.status ? "수동" : "자동"}</span>
       {hint && <span className={styles.hint}>{hint}</span>}
     </span>
   );

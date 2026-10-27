@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useEvents } from "@/app/(site)/event/_hooks/useEvents";
-import { resetEvents } from "@/app/(site)/event/_lib/eventService";
+import { useEffect, useState } from "react";
+import { useAdminEvents } from "@/app/(site)/event/_hooks/useEvents";
 import {
+  branchName,
+  crowdedOf,
   EVENT_STATUS_LABEL,
   EVENT_STATUSES,
+  EVENT_TYPE_LABEL,
   eventStatus,
-  eventTimeText,
   formatEventPeriod,
+  isFull,
   isShownOnSite,
   statusHint,
 } from "@/app/(site)/event/_lib/eventStatus";
-import type { EventStatus } from "@/app/(site)/event/_types";
+import { adminEventsStore } from "@/app/(site)/event/_lib/eventStore";
+import type { CafeEvent, EventStatus } from "@/app/(site)/event/_types";
+import { BRANCHES } from "@/app/(site)/seat/_data/branches";
 import Modal from "@/components/Modal";
-import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
+import { useKstToday } from "@/lib/useCountdown";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast from "../../_components/AdminToast";
 import ConfirmDialog from "../../_components/ConfirmDialog";
@@ -26,20 +30,27 @@ import styles from "./eventAdmin.module.css";
 
 type StatusFilter = EventStatus | "ALL";
 type SiteFilter = "ALL" | "SHOWN" | "HIDDEN";
+type TypeFilter = "ALL" | "COUPON" | "JOIN";
 
 /**
- * 이벤트 관리 목록 — 검색 · 상태 · 손님 화면 노출로 거르고, 표에서 노출 허가를 바로 켜고 끈다. 이름을 누르면 상세(/admin/event/[id]).
- * 상태는 오늘 날짜(KST)로 계산하므로 시계를 읽은 뒤에 그린다.
+ * 이벤트 관리 목록 — 검색 · 지점 · 종류 · 상태 · 손님 화면 노출로 거르고, 표에서 노출 허가를 바로 켜고 끈다. 이름을 누르면 상세(/admin/event/[id]).
+ * 신청 칸은 신청 인원만 보여 준다 — 쿠폰 지급(선착순)은 참여 인원 / 마감 인원, 일반 참여는 신청 기록 수.
+ * 목록은 서버 값(GET /api/v1/admin/events — ADMIN 로그인 필요)이고, 상태는 오늘 날짜(KST)로 계산하므로 시계를 읽고 목록을 받은 뒤에 그린다.
  */
 export default function EventAdminList() {
-  const events = useEvents();
+  const { data: events, loaded, error } = useAdminEvents();
   const today = useKstToday();
-  const raceTimes = useRaceDayText() ?? "";
   const a = useEventEditor(events);
   const [query, setQuery] = useState("");
+  const [branchFilter, setBranchFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [siteFilter, setSiteFilter] = useState<SiteFilter>("ALL");
-  const [resetting, setResetting] = useState(false);
+
+  // 들어올 때마다(로그인한 뒤 포함) 새로 불러온다
+  useEffect(() => {
+    void adminEventsStore.refresh();
+  }, []);
 
   const head = (
     <header className={adminStyles.pageHead}>
@@ -58,7 +69,16 @@ export default function EventAdminList() {
     </header>
   );
 
-  if (today === null) {
+  if (error) {
+    return (
+      <>
+        {head}
+        <AdminEventsError status={error.status} message={error.message} next="/admin/event" />
+      </>
+    );
+  }
+
+  if (today === null || !loaded) {
     return (
       <>
         {head}
@@ -70,26 +90,24 @@ export default function EventAdminList() {
   }
 
   const q = query.trim().toLowerCase();
-  const filtering = q !== "" || statusFilter !== "ALL" || siteFilter !== "ALL";
+  const filtering = q !== "" || branchFilter !== "ALL" || typeFilter !== "ALL" || statusFilter !== "ALL" || siteFilter !== "ALL";
   const filtered = events.filter((e) => {
     const shown = isShownOnSite(e, today);
     return (
+      (branchFilter === "ALL" || e.branchId === branchFilter) &&
+      (typeFilter === "ALL" || (typeFilter === "COUPON") === e.coupon) &&
       (statusFilter === "ALL" || eventStatus(e, today) === statusFilter) &&
       (siteFilter === "ALL" || (siteFilter === "SHOWN") === shown) &&
-      (!q || e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q) || e.period.includes(q))
+      (!q || e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q) || branchName(e.branchId).includes(q))
     );
   });
   const resetFilters = () => {
     setQuery("");
+    setBranchFilter("ALL");
+    setTypeFilter("ALL");
     setStatusFilter("ALL");
     setSiteFilter("ALL");
   };
-
-  async function confirmReset() {
-    await resetEvents();
-    setResetting(false);
-    a.show("기본 이벤트로 되돌렸어요.");
-  }
 
   return (
     <>
@@ -101,10 +119,29 @@ export default function EventAdminList() {
           <input
             type="search"
             className={adminStyles.input}
-            placeholder="이름 · 설명 · 운영 안내"
+            placeholder="이름 · 설명 · 지점"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+        </label>
+        <label className={adminStyles.toolField}>
+          <span className={adminStyles.label}>지점</span>
+          <select className={adminStyles.input} value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+            <option value="ALL">전체</option>
+            {BRANCHES.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={adminStyles.toolField}>
+          <span className={adminStyles.label}>종류</span>
+          <select className={adminStyles.input} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>
+            <option value="ALL">전체</option>
+            <option value="COUPON">{EVENT_TYPE_LABEL.COUPON}</option>
+            <option value="JOIN">{EVENT_TYPE_LABEL.JOIN}</option>
+          </select>
         </label>
         <label className={adminStyles.toolField}>
           <span className={adminStyles.label}>상태</span>
@@ -154,8 +191,10 @@ export default function EventAdminList() {
           <thead>
             <tr>
               <th scope="col">No.</th>
+              <th scope="col">지점</th>
               <th scope="col">이벤트</th>
               <th scope="col">기간</th>
+              <th scope="col">신청</th>
               <th scope="col">상태</th>
               <th scope="col">손님 화면</th>
               <th scope="col">
@@ -167,25 +206,25 @@ export default function EventAdminList() {
             {filtered.map((e) => {
               const status = eventStatus(e, today);
               const shown = isShownOnSite(e, today);
-              const time = eventTimeText(e, raceTimes);
               return (
                 <tr key={e.id} className={shown ? undefined : adminStyles.rowMuted}>
                   <td data-label="No." className={styles.serial}>
                     {String(e.id).padStart(2, "0")}
                   </td>
+                  <td data-label="지점">{branchName(e.branchId)}</td>
                   <td data-label="이벤트" className={adminStyles.cellName}>
                     <div className={adminStyles.nameBlock}>
                       <Link href={`/admin/event/${e.id}`} className={styles.titleLink}>
                         {e.title}
                       </Link>
-                      <span>
-                        {e.period}
-                        {time && ` · ${time}`}
-                      </span>
+                      <TypeText event={e} />
                     </div>
                   </td>
                   <td data-label="기간" className={styles.period}>
                     {formatEventPeriod(e)}
+                  </td>
+                  <td data-label="신청">
+                    <AppliesText event={e} />
                   </td>
                   <td data-label="상태">
                     <StatusBadges event={e} status={status} hint={statusHint(e, today)} />
@@ -226,11 +265,8 @@ export default function EventAdminList() {
 
       <div className={styles.listFoot}>
         <p className={adminStyles.note}>
-          손님 화면(/event)에는 진행 중인 이벤트와 노출 허가를 켠 이벤트만 보여요. 상태는 날짜로 자동 계산되고, 상세에서 직접 지정할 수 있어요.
+          손님 화면(/event)에는 진행 중인 이벤트와 노출 허가를 켠 이벤트만 보여요. 신청자가 있는 이벤트는 삭제할 수 없고, 종류 · 지급 쿠폰 수도 바꿀 수 없어요.
         </p>
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => setResetting(true)}>
-          기본 이벤트로 되돌리기
-        </button>
       </div>
 
       <Modal
@@ -246,7 +282,6 @@ export default function EventAdminList() {
             key={a.editing.mode === "edit" ? a.editing.event.id : "new"}
             initial={a.editing.mode === "edit" ? a.editing.event : null}
             today={today}
-            raceTimes={raceTimes}
             errors={a.errors}
             busy={a.busy}
             onSubmit={a.save}
@@ -271,16 +306,43 @@ export default function EventAdminList() {
         onCancel={a.cancelDelete}
       />
 
-      <ConfirmDialog
-        open={resetting}
-        title="기본 이벤트로 되돌리기"
-        message={<>등록 · 수정 · 삭제한 내용을 모두 지우고 처음 이벤트 목록으로 되돌릴까요? (Mock 전용 — 이 브라우저의 저장값만 지워요)</>}
-        confirmLabel="되돌리기"
-        onConfirm={confirmReset}
-        onCancel={() => setResetting(false)}
-      />
-
       <AdminToast toast={a.toast} />
     </>
+  );
+}
+
+/** 종류 — "쿠폰 지급 · 2장" / "일반 참여" */
+function TypeText({ event }: { event: CafeEvent }) {
+  return event.coupon ? (
+    <span className={styles.typeCoupon}>
+      {EVENT_TYPE_LABEL.COUPON} · {event.couponAmount}장
+    </span>
+  ) : (
+    <span className={styles.typeJoin}>{EVENT_TYPE_LABEL.JOIN}</span>
+  );
+}
+
+/** 신청 인원 — 쿠폰 지급(선착순)은 참여 인원 / 마감 인원 "12 / 30명"(마감이면 "선착순 마감"), 일반 참여는 신청 기록 수 "8명" */
+function AppliesText({ event }: { event: CafeEvent }) {
+  return (
+    <span className={styles.applies}>
+      {event.coupon ? `${crowdedOf(event)} / ${event.capacity}명` : `${event.applyCount}명`}
+      {isFull(event) && <span className={styles.appliesFull}>선착순 마감</span>}
+    </span>
+  );
+}
+
+/** 관리자 목록을 못 받았을 때 — 로그인이 필요하면(401 · 403) 로그인 안내, 그 밖에는 오류 문구. 상세 화면도 쓴다 */
+export function AdminEventsError({ status, message, next }: { status: number; message: string; next: string }) {
+  const needLogin = status === 401 || status === 403;
+  return (
+    <div className={adminStyles.empty}>
+      <p>{needLogin ? "관리자 계정으로 로그인해야 이벤트를 관리할 수 있어요." : `이벤트를 불러오지 못했어요 — ${message}`}</p>
+      {needLogin && (
+        <Link href={`/login?next=${encodeURIComponent(next)}`} className="btn btn-outline btn-sm">
+          로그인
+        </Link>
+      )}
+    </div>
   );
 }

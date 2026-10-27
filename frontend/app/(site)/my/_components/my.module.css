@@ -814,6 +814,114 @@
   color: var(--red-600);
 }
 
+/* ----- 내 이벤트 참여 — 신청 날짜 · 시각 STUB ┊ 지점 · 이벤트 ┊ 결과(쿠폰 지급 / 참여 완료) ----- */
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eventRow {
+  --notch: 7px;
+  --stub: 120px;
+  display: grid;
+  grid-template-columns: var(--stub) minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 72px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, transparent 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.eventStub {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  border-right: 2px dashed var(--border-strong);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.eventDate {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+}
+
+.eventTime {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.eventBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 18px;
+}
+
+.eventBranch {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.eventTitle {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--text-strong);
+}
+
+a.eventTitle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.eventResult {
+  padding: 0 22px 0 8px;
+}
+
+.eventCoupon {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-900);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.eventCoupon strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.eventJoined {
+  padding: 3px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
 /* ----- 반응형 ----- */
 @media (max-width: 1023px) {
   .overview {
@@ -965,5 +1073,29 @@
 
   .seatActions {
     padding: 10px 12px 10px 4px;
+  }
+
+  .eventRow {
+    --stub: 76px;
+  }
+
+  .eventStub {
+    padding: 0 6px;
+  }
+
+  .eventDate {
+    font-size: 0.74rem;
+  }
+
+  .eventTime {
+    font-size: 0.68rem;
+  }
+
+  .eventBody {
+    padding: 10px 12px;
+  }
+
+  .eventResult {
+    padding: 0 12px 0 4px;
   }
 }

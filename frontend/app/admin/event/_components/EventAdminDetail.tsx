@@ -2,40 +2,54 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEvents } from "@/app/(site)/event/_hooks/useEvents";
+import { useEffect } from "react";
+import { useAdminEvents } from "@/app/(site)/event/_hooks/useEvents";
 import {
   autoStatus,
+  branchName,
+  crowdedOf,
+  hasApplicants,
   EVENT_STATUS_LABEL,
   EVENT_STATUSES,
+  EVENT_TYPE_LABEL,
   eventStatus,
   formatEventPeriod,
+  isFull,
   isShownOnSite,
+  seatsLeft,
   statusHint,
   statusReason,
+  textLines,
   visibilityReason,
 } from "@/app/(site)/event/_lib/eventStatus";
+import { adminEventsStore } from "@/app/(site)/event/_lib/eventStore";
 import type { CafeEvent } from "@/app/(site)/event/_types";
 import Modal from "@/components/Modal";
-import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
+import { useKstToday } from "@/lib/useCountdown";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast from "../../_components/AdminToast";
 import ConfirmDialog from "../../_components/ConfirmDialog";
 import { useEventEditor } from "../_hooks/useEventEditor";
+import { AdminEventsError } from "./EventAdminList";
 import { SiteBadge, StatusBadges } from "./EventBadges";
 import EventForm from "./EventForm";
 import styles from "./eventAdmin.module.css";
 
 /**
  * 이벤트 상세(관리자) — /admin/event/[id]. 진행 상태(자동/직접 지정) · 손님 화면 노출(노출 허가)을 바로 바꾸고,
- * 이벤트 정보 전체를 표로 본다. [수정]은 목록과 같은 폼(모달), [삭제]하면 목록으로 돌아간다.
+ * 이벤트 정보 전체를 표로 본다(신청은 인원만 — 참여자 목록은 두지 않는다, 사용자 결정 2026-10-27).
+ * [수정]은 목록과 같은 폼(모달), [삭제]하면 목록으로 돌아간다(신청자가 있으면 안내만). 값은 관리자 이벤트 목록(서버)에서 찾는다.
  */
 export default function EventAdminDetail({ id }: { id: number | null }) {
-  const events = useEvents();
+  const { data: events, loaded, error } = useAdminEvents();
   const today = useKstToday();
-  const raceTimes = useRaceDayText() ?? "";
   const a = useEventEditor(events);
   const router = useRouter();
   const event = id === null ? null : (events.find((e) => e.id === id) ?? null);
+
+  useEffect(() => {
+    void adminEventsStore.refresh();
+  }, []);
 
   async function handleDelete() {
     if (await a.confirmDelete()) router.push("/admin/event");
@@ -53,7 +67,16 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
     </nav>
   );
 
-  if (today === null) {
+  if (error) {
+    return (
+      <>
+        {crumbs}
+        <AdminEventsError status={error.status} message={error.message} next={`/admin/event/${id ?? ""}`} />
+      </>
+    );
+  }
+
+  if (today === null || !loaded) {
     return (
       <>
         {crumbs}
@@ -120,22 +143,12 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
             <legend className="visually-hidden">진행 상태 지정</legend>
             <div className={styles.segment}>
               <label>
-                <input
-                  type="radio"
-                  name="status-override"
-                  checked={event.statusOverride === null}
-                  onChange={() => a.setStatus(event, null)}
-                />
+                <input type="radio" name="status-override" checked={event.status === null} onChange={() => a.setStatus(event, null)} />
                 자동 ({EVENT_STATUS_LABEL[autoStatus(event, today)]})
               </label>
               {EVENT_STATUSES.map((s) => (
                 <label key={s}>
-                  <input
-                    type="radio"
-                    name="status-override"
-                    checked={event.statusOverride === s}
-                    onChange={() => a.setStatus(event, s)}
-                  />
+                  <input type="radio" name="status-override" checked={event.status === s} onChange={() => a.setStatus(event, s)} />
                   {EVENT_STATUS_LABEL[s]}
                 </label>
               ))}
@@ -167,7 +180,7 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
         </section>
       </div>
 
-      <EventInfo event={event} raceTimes={raceTimes} />
+      <EventInfo event={event} />
 
       <Modal open={a.editing !== null} onClose={a.closeForm} label="이벤트 수정" size="lg" variant="sheet" dismissible={false}>
         {a.editing?.mode === "edit" && (
@@ -175,7 +188,6 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
             key={a.editing.event.id}
             initial={a.editing.event}
             today={today}
-            raceTimes={raceTimes}
             errors={a.errors}
             busy={a.busy}
             onSubmit={a.save}
@@ -205,25 +217,36 @@ export default function EventAdminDetail({ id }: { id: number | null }) {
   );
 }
 
-const TIME_MODE_LABEL = { NONE: "없음", TEXT: "직접 입력", RACE: "경주 일정 따라감" } as const;
+/** 이벤트 정보 전체 — 폼에 들어가는 값 + 신청 인원을 한눈에 */
+function EventInfo({ event }: { event: CafeEvent }) {
+  const steps = textLines(event.howTo);
+  const notes = textLines(event.notes);
+  const left = seatsLeft(event);
 
-/** 이벤트 정보 전체 — 폼에 들어가는 값을 한눈에 */
-function EventInfo({ event, raceTimes }: { event: CafeEvent; raceTimes: string }) {
   return (
     <dl className={styles.info}>
+      <dt>작성 지점</dt>
+      <dd>
+        {branchName(event.branchId)} <span className={styles.code}>{event.branchId}</span>
+      </dd>
+
       <dt>기간</dt>
       <dd>
         {formatEventPeriod(event)}
-        {!event.endDate && <span className={styles.muted}> · 종료일 없음</span>}
+        {!event.dateEnd && <span className={styles.muted}> · 종료일 없음</span>}
       </dd>
 
-      <dt>운영 안내</dt>
-      <dd>{event.period}</dd>
-
-      <dt>시각 표시</dt>
+      <dt>종류</dt>
       <dd>
-        {event.timeMode === "RACE" ? raceTimes : event.timeMode === "TEXT" ? event.time : <span className={styles.muted}>표시 안 함</span>}
-        {event.timeMode !== "NONE" && <span className={styles.muted}> · {TIME_MODE_LABEL[event.timeMode]}</span>}
+        {event.coupon ? `${EVENT_TYPE_LABEL.COUPON} — 한 명에 쿠폰 ${event.couponAmount}장 · 선착순 ${event.capacity}명` : `${EVENT_TYPE_LABEL.JOIN} — 쿠폰 없음`}
+        {hasApplicants(event) && <span className={styles.muted}> · 신청자가 있어 종류 · 지급 쿠폰 수 잠김</span>}
+      </dd>
+
+      <dt>신청 인원</dt>
+      <dd>
+        {event.coupon ? `${crowdedOf(event)}명 참여` : `${event.applyCount}명 신청`}
+        {left !== null && <span className={styles.muted}>{isFull(event) ? " · 선착순 마감" : ` · 남은 자리 ${left}명`}</span>}
+        {event.coupon && <span className={styles.muted}> · 신청 기록 {event.applyCount}건</span>}
       </dd>
 
       <dt>설명</dt>
@@ -231,22 +254,22 @@ function EventInfo({ event, raceTimes }: { event: CafeEvent; raceTimes: string }
 
       <dt>참여 방법</dt>
       <dd>
-        {event.steps.length ? (
+        {steps.length ? (
           <ol>
-            {event.steps.map((s, i) => (
+            {steps.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ol>
         ) : (
-          <span className={styles.muted}>없음 — 손님 화면에는 &quot;자동으로 적용돼요&quot;로 보여요</span>
+          <span className={styles.muted}>없음 — 손님 화면에는 &quot;[참여 신청]을 누르면 바로 신청돼요&quot;로 보여요</span>
         )}
       </dd>
 
       <dt>유의 사항</dt>
       <dd>
-        {event.notes.length ? (
+        {notes.length ? (
           <ul>
-            {event.notes.map((s, i) => (
+            {notes.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
@@ -255,16 +278,20 @@ function EventInfo({ event, raceTimes }: { event: CafeEvent; raceTimes: string }
         )}
       </dd>
 
-      <dt>이동 버튼</dt>
+      <dt>이미지</dt>
       <dd>
-        {event.ctaLabel && event.ctaHref ? (
-          <>
-            {event.ctaLabel} <span className={styles.code}>→ {event.ctaHref}</span>
-          </>
-        ) : (
-          <span className={styles.muted}>없음</span>
-        )}
+        <ImagePath label="썸네일" path={event.thumbnail} />
+        <ImagePath label="히어로" path={event.imageHero} />
+        <ImagePath label="상세" path={event.imageDetail} />
       </dd>
     </dl>
+  );
+}
+
+function ImagePath({ label, path }: { label: string; path: string | null }) {
+  return (
+    <span className={styles.imagePath}>
+      {label} {path ? <span className={styles.code}>{path}</span> : <span className={styles.muted}>없음</span>}
+    </span>
   );
 }

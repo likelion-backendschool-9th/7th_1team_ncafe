@@ -1,32 +1,34 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import HorseAvatar from "@/components/HorseAvatar";
 import layout from "@/components/layout.module.css";
-import { useKstToday, useRaceDayText } from "@/lib/useCountdown";
+import { useKstToday } from "@/lib/useCountdown";
 import { useEvents } from "../_hooks/useEvents";
-import { eventStatus, eventTimeText, formatEventPeriod, isShownOnSite, statusHint } from "../_lib/eventStatus";
-import { EventStatusChip } from "./EventCard";
+import { branchName, eventStatus, formatEventPeriod, isShownOnSite, statusHint, textLines } from "../_lib/eventStatus";
+import EventApplyAction from "./EventApplyAction";
+import { ApplyProgress, EventStatusChip, EventTypeTag } from "./EventCard";
 import styles from "./event.module.css";
 
 /**
- * 이벤트 상세 — /event/[id]. 목록 티켓을 크게 펼친 머리 + 참여 방법 · 유의 사항 + 이동 버튼.
+ * 이벤트 상세 — /event/[id]. (히어로 이미지) → 목록 티켓을 크게 펼친 머리(종류 · 신청 현황 · 참여 신청) → 참여 방법 · 유의 사항 → (상세 이미지).
  * 손님 화면에 보이는 이벤트(진행 중 · 노출 허가)만 연다 — 그 밖(없는 id · 예정/종료인데 노출 허가 없음)은 안내 상자.
- * 이벤트는 관리자 변경(같은 브라우저)을 따르므로 클라이언트에서 그린다. 시계를 읽기 전에는 스켈레톤.
+ * 이벤트는 서버 값(GET /api/v1/events — 손님 화면 목록)이라 클라이언트에서 그린다. 시계를 읽기 전 · 목록을 받기 전에는 스켈레톤.
  */
 export default function EventDetail({ id }: { id: number | null }) {
-  const events = useEvents();
+  const { data: events, loaded } = useEvents();
   const today = useKstToday();
-  const raceTimes = useRaceDayText() ?? "";
 
-  if (today === null) return <EventDetailSkeleton />;
+  if (today === null || !loaded) return <EventDetailSkeleton />;
 
   const event = id === null ? null : (events.find((e) => e.id === id) ?? null);
   if (!event || !isShownOnSite(event, today)) return <EventUnavailable />;
 
   const status = eventStatus(event, today);
-  const timeText = eventTimeText(event, raceTimes);
-  const showCta = Boolean(event.ctaHref && event.ctaLabel) && status !== "ENDED";
+  const branch = branchName(event.branchId);
+  const steps = textLines(event.howTo);
+  const notes = textLines(event.notes);
 
   return (
     <>
@@ -37,18 +39,26 @@ export default function EventDetail({ id }: { id: number | null }) {
       </nav>
 
       <article aria-labelledby="event-headline">
+        {event.imageHero && (
+          <div className={styles.hero}>
+            <Image src={event.imageHero} alt="" fill priority sizes="(max-width: 1200px) 100vw, 1200px" className={styles.heroImg} />
+          </div>
+        )}
+
         <header className={`${styles.ticket} ${styles.ticketLg} ${status === "ENDED" ? styles.ticketEnded : ""}`}>
           <div className={styles.stub}>
             <span className={styles.serial} aria-hidden>
               EVENT No.{String(event.id).padStart(2, "0")}
             </span>
-            <span className={styles.period}>{event.period}</span>
-            {timeText && <span className={styles.time}>{timeText}</span>}
+            <span className={styles.branch}>
+              <span className="visually-hidden">작성 지점 </span>
+              {branch}
+            </span>
             <EventStatusChip status={status} hint={statusHint(event, today)} />
           </div>
           <div className={styles.main}>
             <div className={styles.text}>
-              <span className="eyebrow">Race Event</span>
+              <EventTypeTag event={event} />
               <h1 id="event-headline" className={styles.headline}>
                 {event.title}
               </h1>
@@ -57,12 +67,11 @@ export default function EventDetail({ id }: { id: number | null }) {
                 {formatEventPeriod(event)}
               </p>
               <p className={styles.desc}>{event.description}</p>
+              <ApplyProgress event={event} />
             </div>
-            {showCta && (
-              <Link href={event.ctaHref!} className={`btn ${styles.cta}`}>
-                {event.ctaLabel} <span aria-hidden>›</span>
-              </Link>
-            )}
+            <div className={styles.applyBox}>
+              <EventApplyAction event={event} today={today} variant="detail" />
+            </div>
           </div>
         </header>
 
@@ -74,14 +83,14 @@ export default function EventDetail({ id }: { id: number | null }) {
                 참여 방법
               </h2>
             </div>
-            {event.steps.length ? (
+            {steps.length ? (
               <ol className={styles.steps}>
-                {event.steps.map((step, i) => (
+                {steps.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
               </ol>
             ) : (
-              <p className={styles.boxEmpty}>따로 참여할 필요 없이 자동으로 적용돼요.</p>
+              <p className={styles.boxEmpty}>[참여 신청]을 누르면 바로 신청돼요.</p>
             )}
           </section>
 
@@ -92,9 +101,9 @@ export default function EventDetail({ id }: { id: number | null }) {
                 유의 사항
               </h2>
             </div>
-            {event.notes.length ? (
+            {notes.length ? (
               <ul className={styles.notes}>
-                {event.notes.map((note, i) => (
+                {notes.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
               </ul>
@@ -104,15 +113,23 @@ export default function EventDetail({ id }: { id: number | null }) {
           </section>
         </div>
 
+        {event.imageDetail && (
+          <figure className={styles.detailImage}>
+            <Image
+              src={event.imageDetail}
+              alt={`${event.title} 상세 안내`}
+              width={1200}
+              height={1600}
+              sizes="(max-width: 1200px) 100vw, 1200px"
+              className={styles.detailImg}
+            />
+          </figure>
+        )}
+
         <div className={styles.detailFoot}>
           <Link href="/event" className="btn btn-outline">
             <span aria-hidden>←</span> 이벤트 목록
           </Link>
-          {showCta && (
-            <Link href={event.ctaHref!} className="btn">
-              {event.ctaLabel} <span aria-hidden>›</span>
-            </Link>
-          )}
         </div>
       </article>
     </>
