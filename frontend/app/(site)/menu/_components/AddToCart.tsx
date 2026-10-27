@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import QuantityStepper from "@/components/QuantityStepper";
 import { CART_MAX_QUANTITY, lineKey } from "@/lib/cart";
+import { useBranchStatuses, useSelectedBranch } from "../_hooks/useMenuBranch";
 import { useMyGrade } from "../_hooks/useMyGrade";
 import { lockOf } from "../_lib/gradeService";
 import { MENU_SIZES, priceOf } from "../_lib/menuSize";
@@ -16,13 +17,19 @@ import styles from "./menuDetail.module.css";
  * 사이즈 버튼마다 그 사이즈 가격이 적혀 있어 사이즈별 가격표 역할도 한다(기본 선택은 S).
  * 품절이면 가격은 그대로 보여 주고 고르거나 담을 수 없다.
  * 해금 등급이 내 등급보다 높으면(잠김) 마찬가지로 담을 수 없고, 필요한 등급을 안내한다.
+ * 품절 · 미판매는 고른 지점(메뉴판에서 고른 지점, 사이트 공통) 기준이다.
  */
 export default function AddToCart({ menu }: { menu: Menu }) {
   const { lines, add } = useCart();
-  const soldOut = menu.status === "SOLD_OUT";
+  const branch = useSelectedBranch();
+  const { statuses } = useBranchStatuses(branch?.id ?? null);
+  // 그 지점에서 숨긴 메뉴는 상태 목록에 없다 — 이 지점에서는 담을 수 없다
+  const branchStatus = statuses ? (statuses.get(menu.id) ?? "HIDDEN") : menu.status;
+  const soldOut = branchStatus === "SOLD_OUT";
+  const notSold = branchStatus === "HIDDEN";
   const { loggedIn, minTotal, totalEarned } = useMyGrade();
   const locked = lockOf(menu, minTotal);
-  const blocked = soldOut || locked !== null;
+  const blocked = soldOut || notSold || locked !== null;
   const [size, setSize] = useState<MenuSize | null>(menu.sizePrices ? MENU_SIZES[0] : null);
   const [quantity, setQuantity] = useState(1);
   const [notice, setNotice] = useState("");
@@ -95,11 +102,11 @@ export default function AddToCart({ menu }: { menu: Menu }) {
           <span aria-hidden>←</span> 메뉴판으로
         </Link>
         <button type="button" className={`btn btn-gold ${styles.addButton}`} disabled={blocked} onClick={handleAdd}>
-          {soldOut ? "품절" : locked ? `${locked.name} 등급부터` : "장바구니 담기"}
+          {soldOut ? "품절" : notSold ? "이 지점 미판매" : locked ? `${locked.name} 등급부터` : "장바구니 담기"}
         </button>
       </div>
 
-      {locked && !soldOut && (
+      {locked && !soldOut && !notSold && (
         <p className={styles.lockNotice}>
           <strong>{locked.name}</strong> 등급(누적 쿠폰 {locked.minTotalCoupons}장)부터 주문할 수 있는 메뉴예요.{" "}
           {loggedIn ? (

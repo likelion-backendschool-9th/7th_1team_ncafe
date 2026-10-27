@@ -380,7 +380,7 @@
 }
 
 /* 품절 — 일러스트를 흐리게 + 빨간 스탬프 */
-.ticketSoldOut .visualImg {
+.visualSoldOut .visualImg {
   opacity: 0.4;
 }
 

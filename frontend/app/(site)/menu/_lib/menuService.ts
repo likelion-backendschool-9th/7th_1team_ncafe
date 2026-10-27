@@ -84,10 +84,10 @@ export async function getMenuStatuses(branchId: string): Promise<Map<number, Men
   return new Map(menus.map((m) => [m.id, m.status ?? "ON_SALE"]));
 }
 
-/** GET /api/v1/branches — 메뉴판 지점 선택 칩. 등록된 지점이 없으면 빈 배열(칩을 숨긴다) */
+/** GET /api/v1/branches — 메뉴판 지점 선택 칩. 영업 중인 지점만(좌석 예약과 같다), 없으면 빈 배열(칩을 숨긴다) */
 export async function getMenuBranches(): Promise<Branch[]> {
-  const branches = await apiFetch<{ id: string; name: string; address: string }[]>("/api/v1/branches");
-  return branches.map(({ id, name, address }) => ({ id, name, address }));
+  const branches = await apiFetch<{ id: string; name: string; address: string; open: boolean }[]>("/api/v1/branches");
+  return branches.filter((b) => b.open).map(({ id, name, address }) => ({ id, name, address }));
 }
 
 export async function getTodayWinnerMenu(): Promise<Menu | null> {
