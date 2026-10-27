@@ -22,6 +22,8 @@ interface MenuResponse {
   description: string | null;
   image: string | null;
   label: string | null;
+  /** 지점별 판매 상태 — ?branchId= 로 조회했을 때만 온다(그 지점에서 숨긴 메뉴는 아예 빠진다) */
+  status: MenuStatus | null;
   sizes: { size: string; price: number }[];
 }
 
@@ -37,7 +39,7 @@ const FALLBACK_IMAGE = MENU_IMAGES[0].path;
 
 /**
  * 사이즈 S·M·L·XL 가 모두 있으면 사이즈 메뉴(대표 가격 = S), 아니면 단일 가격 메뉴(대표 가격 = 가장 싼 값).
- * 판매 상태는 아직 백엔드에 없어 모두 ON_SALE 로 둔다(삭제된 메뉴는 백엔드가 빼고 준다).
+ * 판매 상태는 지점별이라, 지점 없이 조회하면 오지 않아 ON_SALE 로 둔다(삭제된 메뉴는 백엔드가 빼고 준다).
  */
 function toMenu(m: MenuResponse): Menu {
   const priceBySize = new Map(m.sizes.map((s) => [s.size, s.price]));
@@ -57,7 +59,7 @@ function toMenu(m: MenuResponse): Menu {
     description: m.description ?? "",
     image: m.image || FALLBACK_IMAGE,
     badge: m.label && BADGES.includes(m.label) ? (m.label as MenuBadge) : undefined,
-    status: "ON_SALE",
+    status: m.status ?? "ON_SALE",
   };
 }
 
@@ -67,10 +69,10 @@ function toCategory(c: CategoryResponse, index: number): Category {
 
 // ───────── 조회 ─────────
 
-/** GET /api/v1/menus — 카테고리 필터는 아직 백엔드에 없어 받은 뒤 거른다 */
+/** GET /api/v1/menus?categoryId= */
 export async function getMenus(categoryId?: number): Promise<Menu[]> {
-  const menus = (await apiFetch<MenuResponse[]>("/api/v1/menus")).map(toMenu);
-  return categoryId === undefined ? menus : menus.filter((m) => m.categoryId === categoryId);
+  const query = categoryId === undefined ? "" : `?categoryId=${categoryId}`;
+  return (await apiFetch<MenuResponse[]>(`/api/v1/menus${query}`)).map(toMenu);
 }
 
 export async function getTodayWinnerMenu(): Promise<Menu | null> {
