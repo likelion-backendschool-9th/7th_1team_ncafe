@@ -3,6 +3,7 @@ import { cacheLife } from "next/cache";
 import MenuBoard from "./_components/MenuBoard";
 import { selectBoard } from "./_lib/menuBoard";
 import { getCategories, getMenus } from "./_lib/menuService";
+import { getBranches } from "../seat/_lib/seatService";
 
 export const metadata: Metadata = { title: "MENU BOARD" };
 
@@ -17,12 +18,12 @@ export default async function MenuPage() {
   "use cache";
   cacheLife("hours");
 
-  const [categories, menus] = await Promise.all([getCategories(), getMenus()]);
+  const [categories, menus, branches] = await Promise.all([getCategories(), getMenus(), getBranches()]);
   const board = selectBoard(categories, menus);
 
   return (
     <div className="container page">
-      <MenuBoard categories={board.categories} menus={board.menus}>
+      <MenuBoard categories={board.categories} menus={board.menus} branches={branches}>
         <div className="section-head">
           <span className="eyebrow">Today&apos;s Line-up</span>
           <h1 className="title-xl">MENU BOARD</h1>

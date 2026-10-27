@@ -17,6 +17,11 @@ import com.newcafe.backend.common.dto.ErrorResponse;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleIntegrity(org.springframework.dao.DataIntegrityViolationException e) {
+        return respond(HttpStatus.CONFLICT, "DATA_CONFLICT", "중복되거나 다른 데이터에서 참조 중인 값입니다.");
+    }
+
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	// Service가 던진 업무 예외

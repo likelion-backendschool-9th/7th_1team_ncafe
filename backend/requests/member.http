@@ -1,0 +1,63 @@
+# VS Code REST Client 확장에서 위에서 아래 순서로 Send Request를 실행한다.
+# 클라이언트의 쿠키 저장을 활성화해야 한다 (REST Client 기본값).
+# H2 실행: .\gradlew.bat bootRun --args='--spring.profiles.active=h2'
+@baseUrl = http://localhost:8080
+@loginId = member_demo
+@password = newpassword123
+
+### 1. 로그인 전 CSRF 토큰 (세션 쿠키도 자동 저장)
+# @name beforeLoginCsrf
+GET {{baseUrl}}/api/v1/auth/csrf
+
+### 2. 회원가입 (같은 아이디로 재실행하면 409)
+POST {{baseUrl}}/api/v1/auth/signup
+Content-Type: application/json
+X-CSRF-TOKEN: {{beforeLoginCsrf.response.body.$.token}}
+
+{
+  "loginId": "{{loginId}}",
+  "password": "{{password}}",
+  "nickname": "회원 테스트",
+  "email": "member@example.com"
+}
+
+### 3. 로그인
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+X-CSRF-TOKEN: {{beforeLoginCsrf.response.body.$.token}}
+
+{"loginId":"{{loginId}}","password":"{{password}}"}
+
+### 4. 로그인 후 새 CSRF 토큰
+# @name afterLoginCsrf
+GET {{baseUrl}}/api/v1/auth/csrf
+
+### 5. 내 정보 조회
+GET {{baseUrl}}/api/v1/auth/me
+
+### 6. 프로필 수정
+PATCH {{baseUrl}}/api/v1/me/{{login.response.body.$.no}}
+Content-Type: application/json
+X-CSRF-TOKEN: {{afterLoginCsrf.response.body.$.token}}
+
+{"nickname":"변경한 닉네임","address1":"서울","address2":"상세주소"}
+
+### 7. 비밀번호 변경 (성공 시 로그아웃됨)
+# 이 요청 이후에는 password 변수를 newpassword123으로 바꾸고 1, 3, 4를 다시 실행한다.
+PATCH {{baseUrl}}/api/v1/me/{{login.response.body.$.no}}/password
+Content-Type: application/json
+X-CSRF-TOKEN: {{afterLoginCsrf.response.body.$.token}}
+
+{"currentPassword":"{{password}}","newPassword":"newpassword123"}
+
+### 8. 회원탈퇴 (로그인된 상태에서 실행, 개인정보 제거)
+DELETE {{baseUrl}}/api/v1/me/{{login.response.body.$.no}}
+Content-Type: application/json
+X-CSRF-TOKEN: {{afterLoginCsrf.response.body.$.token}}
+
+{"password":"{{password}}"}
+
+### 선택: 로그아웃 (로그인된 상태에서 실행)
+POST {{baseUrl}}/api/v1/auth/logout
+X-CSRF-TOKEN: {{afterLoginCsrf.response.body.$.token}}
