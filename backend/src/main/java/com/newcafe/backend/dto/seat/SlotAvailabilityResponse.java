@@ -2,10 +2,12 @@ package com.newcafe.backend.dto.seat;
 
 import java.time.LocalTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 // 시간대 하나의 잔여석 응답 (프론트 SlotAvailability 타입)
 public record SlotAvailabilityResponse(
-        LocalTime start,
-        LocalTime end,
+        @JsonFormat(pattern = "HH:mm") LocalTime start,
+        @JsonFormat(pattern = "HH:mm") LocalTime end,
         BlockState state,
         int available,          // 빈 의자 수
         int total) {            // 전체 의자 수
