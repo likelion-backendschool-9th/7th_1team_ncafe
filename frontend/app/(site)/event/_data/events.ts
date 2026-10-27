@@ -1,95 +1,12 @@
-import type { CafeEvent } from "../_types";
+// 지점 이벤트는 서버 값이다(GET /api/v1/events — 초기 데이터는 backend events_data.sql). 여기는 서버에 없는 DAILY RACE 고정 카드만 둔다.
 
-// 이벤트 기본 Mock — 값만 둔다. 문구는 BLUEPRINT 7 "쿠폰 규칙"과 맞춘다.
-// 관리자(/admin/event)가 바꾸면 같은 브라우저에서는 localStorage 의 목록이 이 값을 대신한다(_lib/eventStore.ts).
-// DAILY RACE 의 시각은 timeMode "RACE" — 관리자 경주 관리의 일정(lib/raceSchedule.ts)으로 만든 문구를 그대로 보여 준다.
-export const EVENTS: CafeEvent[] = [
-  {
-    id: 1,
-    title: "DAILY RACE",
-    period: "일정별",
-    timeMode: "RACE",
-    time: "",
-    description: "쿠폰 1장으로 7마리 말 중 한 마리를 응원하세요. 내 말이 1~3위면 건 쿠폰과 함께 추가 쿠폰을 돌려받아요.",
-    steps: [
-      "출전표에서 응원할 말을 고르고 쿠폰 1장을 걸어요.",
-      "경주 시각이 되면 모든 손님이 같은 경주를 함께 봐요.",
-      "내 말이 1위면 4장, 2위면 3장, 3위면 2장을 돌려받아요(건 쿠폰 포함).",
-    ],
-    notes: [
-      "출발 10초 전부터는 쿠폰을 걸 수 없어요.",
-      "한 경주에 한 번, 쿠폰 1장만 걸 수 있어요.",
-      "카페 내부 이벤트 쿠폰으로 진행되며 현금 · 실제 금전 거래와 무관해요.",
-    ],
-    startDate: null,
-    endDate: null,
-    statusOverride: null,
-    visible: false,
-    ctaLabel: "Race 참여하기",
-    ctaHref: "/race",
-  },
-  {
-    id: 2,
-    title: "ORDER STAMP",
-    period: "상시",
-    timeMode: "NONE",
-    time: "",
-    description: "주문할 때마다 쿠폰 1장이 적립돼요. 담은 수량과 상관없이 주문 한 번에 한 장씩 쌓여요.",
-    steps: ["메뉴를 장바구니에 담아 주문해요.", "주문이 접수되면 쿠폰 1장이 바로 적립돼요."],
-    notes: ["주문 한 번에 1장 — 담은 수량과는 상관없어요.", "적립 내역은 마이페이지 쿠폰 섹션에서 볼 수 있어요."],
-    startDate: null,
-    endDate: null,
-    statusOverride: null,
-    visible: false,
-    ctaLabel: "메뉴 보러 가기",
-    ctaHref: "/menu",
-  },
-  {
-    id: 3,
-    title: "WELCOME TICKET",
-    period: "첫 방문",
-    timeMode: "NONE",
-    time: "",
-    description: "처음 오신 분께 레이스 쿠폰 5장을 드려요. 마이페이지에서 보유 쿠폰을 확인해 보세요.",
-    steps: ["처음 방문하면 레이스 쿠폰 5장이 자동으로 지급돼요.", "받은 쿠폰으로 바로 DAILY RACE 에 참여할 수 있어요."],
-    notes: ["첫 방문 한 번만 받을 수 있어요."],
-    startDate: null,
-    endDate: null,
-    statusOverride: null,
-    visible: false,
-    ctaLabel: "내 쿠폰 보기",
-    ctaHref: "/my#coupons",
-  },
-  // 아래 두 개는 관리자 화면에서 예정 · 종료 상태를 보여 주는 예시다. 노출 허가가 꺼져 있어 손님 화면(/event)에는 보이지 않는다
-  // (화면에서 실제로 동작하지 않는 혜택은 손님에게 보이지 않게 — BLUEPRINT 5.6).
-  {
-    id: 4,
-    title: "AUTUMN DERBY WEEK",
-    period: "기간 한정",
-    timeMode: "TEXT",
-    time: "주말 18:00",
-    description: "가을 더비 주간 — 기간 동안 주말 18:00 경주를 매장 전광판에서도 함께 중계해요.",
-    steps: ["매장에 방문해 전광판 앞 GRANDSTAND 좌석에 앉아요.", "출전표에서 말을 골라 쿠폰을 걸고 함께 응원해요."],
-    notes: ["중계 일정은 카페 사정에 따라 바뀔 수 있어요."],
-    startDate: "2026-10-24",
-    endDate: "2026-11-01",
-    statusOverride: null,
-    visible: false,
-    ctaLabel: "좌석 예약하기",
-    ctaHref: "/seat",
-  },
-  {
-    id: 5,
-    title: "GRAND OPENING CUP",
-    period: "기간 한정",
-    timeMode: "NONE",
-    time: "",
-    description: "그랜드 오픈 기념 경주 주간이 끝났어요. 함께 응원해 주셔서 감사합니다.",
-    steps: [],
-    notes: ["종료된 이벤트예요."],
-    startDate: "2026-10-01",
-    endDate: "2026-10-07",
-    statusOverride: null,
-    visible: false,
-  },
-];
+/**
+ * DAILY RACE — 지점 이벤트가 아니라 /event 맨 위에 늘 붙는 상시 고정 카드(사용자 결정 2026-10-27). 이벤트 목록 · 관리자 관리에 들지 않고,
+ * 시각은 관리자 경주 관리의 일정 문구(useRaceDayText)를 그대로 보여 준다. 참여는 /race 에서 쿠폰을 거는 것이라 신청 버튼이 없다.
+ */
+export const DAILY_RACE = {
+  title: "DAILY RACE",
+  description: "쿠폰 1장으로 7마리 말 중 한 마리를 응원하세요. 내 말이 1~3위면 건 쿠폰과 함께 추가 쿠폰을 돌려받아요.",
+  ctaLabel: "Race 참여하기",
+  ctaHref: "/race",
+} as const;

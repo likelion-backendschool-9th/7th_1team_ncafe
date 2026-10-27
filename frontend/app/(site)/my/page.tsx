@@ -3,6 +3,7 @@ import { cacheLife } from "next/cache";
 import { getCategories, getMenus } from "../menu/_lib/menuService";
 import FavoriteMenus from "./_components/FavoriteMenus";
 import MyCoupons from "./_components/MyCoupons";
+import MyEvents from "./_components/MyEvents";
 import MyOverview from "./_components/MyOverview";
 import MyRaces from "./_components/MyRaces";
 import MySeats from "./_components/MySeats";
@@ -13,10 +14,10 @@ export const metadata: Metadata = { title: "MY PAGE" };
 
 /**
  * 마이페이지 — /my. 설계: BLUEPRINT 8.10.
- * 내 정보 + 요약 → 주문 내역 → 찜한 메뉴 → 쿠폰 → 내 레이스 기록 → 좌석 예약 내역 을 세로로 놓는다.
+ * 내 정보 + 요약 → 주문 내역 → 찜한 메뉴 → 쿠폰 → 내 레이스 기록 → 내 이벤트 참여 → 좌석 예약 내역 을 세로로 놓는다.
  * 프로필 · 메뉴 목록은 모두에게 같아 "use cache" 로 정적 셸에 넣고(Mock 사용자 1명 기준),
  * 쿠폰 · 찜 · 주문 · 좌석 예약은 UserProvider(React State)에서 읽는다 — 정적 셸에는 초기값(쿠폰 5장 · 나머지 비어 있음)이 들어간다.
- * 내 레이스 기록은 로그인 회원의 서버 기록이라 MyRaces 가 마운트 뒤 불러온다.
+ * 내 레이스 기록은 로그인 회원의 서버 기록이라 MyRaces 가 마운트 뒤 불러온다. 내 이벤트 참여는 로그인 회원 기준 Mock 신청 기록(MyEvents).
  */
 export default async function MyPage() {
   "use cache";
@@ -40,6 +41,7 @@ export default async function MyPage() {
       <FavoriteMenus menus={pickable} />
       <MyCoupons />
       <MyRaces />
+      <MyEvents />
       <MySeats />
     </div>
   );

@@ -125,12 +125,69 @@
   gap: 6px;
 }
 
-.timeText {
-  max-width: 320px;
-}
-
 .listInput {
   min-height: 112px;
+}
+
+/* 지급 쿠폰 수 · 선착순 인원 — 숫자 칸 + 단위 */
+.numRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.numInput {
+  max-width: 120px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 신청자가 있어 잠긴 종류 · 지급 쿠폰 수 */
+.locked {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px dashed var(--brown-300);
+  border-radius: var(--radius-sm);
+  background: var(--cream-100);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.locked strong {
+  font-size: 0.92rem;
+  color: var(--text-strong);
+}
+
+/* 목록 — 종류 · 신청 현황 */
+.typeCoupon,
+.typeJoin {
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.typeCoupon {
+  color: var(--text-strong);
+}
+
+.typeJoin {
+  color: var(--text-muted);
+}
+
+.applies {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.appliesFull {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-strong);
 }
 
 /* ===== 상세 ===== */
@@ -289,6 +346,14 @@
   font-family: ui-monospace, monospace;
   font-size: 0.82rem;
   color: var(--text-muted);
+}
+
+.imagePath {
+  display: block;
+}
+
+.imagePath + .imagePath {
+  margin-top: 4px;
 }
 
 @media (max-width: 767px) {

@@ -35,6 +35,9 @@ public class SecurityConfig {
                         // 경주 조회(출전표 · 일정 · 결과 · 기록)는 로그인 없이. 내 걸기 기록은 아래 규칙(로그인 필요)으로
                         .requestMatchers(HttpMethod.GET, "/api/v1/races/bets/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/races/**").permitAll()
+                        // 이벤트 조회는 로그인 없이. 내 참여 기록 · 참여(POST)는 로그인 필요
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events/applies/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // 그 외 API는 로그인 필요. 로그인 없이 열어야 하는 API는 위에 추가한다.
                         .anyRequest().authenticated())
