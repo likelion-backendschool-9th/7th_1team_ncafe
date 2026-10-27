@@ -68,9 +68,9 @@ public class SeatService {
         for (ReservedChair chair : reservedChairRepository.findAllBySeatBranchIdAndDateAndStartTime(branchId, date, start)) {
             statuses.put(chair.chairId(), taken);
         }
-        for (Seat seat : seatRepository.findAllByBranchIdAndUnderRepairTrue(branchId)) {
+        for (Seat seat : seatRepository.findAllByBranchIdOrderByIdAsc(branchId)) {
             for (int no = 1; no <= seat.getCapacity(); no++) {
-                statuses.put(seat.chairId(no), ChairStatus.REPAIR);
+                if (seat.isChairUnderRepair(no)) statuses.put(seat.chairId(no), ChairStatus.REPAIR);
             }
         }
         return statuses;
@@ -111,7 +111,7 @@ public class SeatService {
     private List<SlotAvailabilityResponse> slotsOf(List<Seat> seats, LocalDate date, Map<LocalTime, Long> taken,
             LocalDateTime now) {
         int total = seats.stream().mapToInt(Seat::getCapacity).sum();
-        int usable = seats.stream().filter(s -> !s.isUnderRepair()).mapToInt(Seat::getCapacity).sum();
+        int usable = seats.stream().mapToInt(Seat::usableCapacity).sum();
         return SeatSchedule.TIME_BLOCKS.stream()
                 .map(block -> new SlotAvailabilityResponse(
                         block.start(),

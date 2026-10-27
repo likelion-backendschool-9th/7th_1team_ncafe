@@ -26,10 +26,27 @@ import lombok.RequiredArgsConstructor;
 public class SeatController {
 
     private final SeatService seatService;
+    private final com.newcafe.backend.service.BranchAdminService branchAccess;
+
+    @PatchMapping("/branches/{branchId}/seats/{code}/chairs/{chairNo}/repair")
+    public SeatResponse updateChairRepair(@PathVariable String branchId, @PathVariable String code,
+            @PathVariable int chairNo, @RequestBody SeatRepairRequest request,
+            org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
+        return seatService.updateChairRepair(branchId, code, chairNo, request, com.newcafe.backend.service.AuthService.loginMemberNo(auth));
+    }
+
+    @GetMapping("/branches/{branchId}/seats/{code}/repair-conflicts")
+    public List<SeatReservationResponse> repairConflicts(@PathVariable String branchId, @PathVariable String code,
+            @RequestParam(required = false) Integer chairNo, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
+        return seatService.repairConflicts(branchId, code, chairNo);
+    }
 
     // GET /api/v1/admin/branches/{branchId}/seats
     @GetMapping("/branches/{branchId}/seats")
-    public List<SeatResponse> findSeats(@PathVariable String branchId) {
+    public List<SeatResponse> findSeats(@PathVariable String branchId, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
         return seatService.findSeats(branchId);
     }
 
@@ -37,27 +54,29 @@ public class SeatController {
     @PatchMapping("/branches/{branchId}/seats/{code}/repair")
     public SeatResponse updateRepair(@PathVariable String branchId,
                                      @PathVariable String code,
-                                     @RequestBody SeatRepairRequest request) {
-        return seatService.updateRepair(branchId, code, request);
+                                     @RequestBody SeatRepairRequest request, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
+        return seatService.updateRepair(branchId, code, request, com.newcafe.backend.service.AuthService.loginMemberNo(auth));
     }
 
     // GET /api/v1/admin/branches/{branchId}/seat-reservations?date=2026-10-17
     @GetMapping("/branches/{branchId}/seat-reservations")
     public List<SeatReservationResponse> findReservations(
             @PathVariable String branchId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date, org.springframework.security.core.Authentication auth) {
+        branchAccess.requireAccess(com.newcafe.backend.service.AuthService.loginMemberNo(auth), branchId);
         return seatService.findReservations(branchId, date);
     }
 
     // PATCH /api/v1/admin/seat-reservations/{id}/check-in (방문 확인)
     @PatchMapping("/seat-reservations/{id}/check-in")
-    public SeatReservationResponse checkIn(@PathVariable Long id) {
-        return seatService.checkIn(id);
+    public SeatReservationResponse checkIn(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
+        return seatService.checkIn(id, com.newcafe.backend.service.AuthService.loginMemberNo(auth));
     }
 
     // PATCH /api/v1/admin/seat-reservations/{id}/no-show (노쇼 처리)
     @PatchMapping("/seat-reservations/{id}/no-show")
-    public SeatReservationResponse markNoShow(@PathVariable Long id) {
-        return seatService.markNoShow(id);
+    public SeatReservationResponse markNoShow(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
+        return seatService.markNoShow(id, com.newcafe.backend.service.AuthService.loginMemberNo(auth));
     }
 }

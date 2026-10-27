@@ -57,6 +57,20 @@ public class Seat {
     @Column(nullable = false)
     private boolean underRepair = false;  // under_repair BOOLEAN (수리 중)
 
+    @ElementCollection
+    @CollectionTable(name = "seat_chair_repairs", joinColumns = @JoinColumn(name = "seat_id"),
+            uniqueConstraints = @UniqueConstraint(columnNames = {"seat_id", "chair_no"}))
+    @Column(name = "chair_no", nullable = false)
+    private Set<Integer> repairChairNos = new HashSet<>();
+
+    public boolean isChairUnderRepair(int no) {
+        return underRepair || repairChairNos.contains(no);
+    }
+
+    public int usableCapacity() {
+        return underRepair ? 0 : capacity - repairChairNos.size();
+    }
+
     // 의자 id "T03-1" (프론트 geometry.chairId와 같은 규칙)
     public String chairId(int chairNo) {
         return code + "-" + chairNo;

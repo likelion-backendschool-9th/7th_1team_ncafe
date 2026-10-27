@@ -4,7 +4,7 @@
 // - apiFetch: 각 라우트의 _lib/*Service.ts 가 쓴다. 서버(서버 컴포넌트 · "use cache")에서는 BACKEND_URL 로 백엔드를 바로 부르고,
 //   브라우저에서는 같은 출처의 /api/... 로 부른다.
 
-const SERVER_API_BASE = process.env.BACKEND_URL ?? "http://localhost:8080";
+const SERVER_API_BASE = process.env.BACKEND_URL ?? process.env.API_BASE_URL ?? process.env.API_ORIGIN ?? "http://127.0.0.1:8080";
 
 /** 백엔드 오류 응답(common/dto/ErrorResponse) */
 export class ApiError extends Error {
@@ -24,7 +24,7 @@ type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 /** 변경 요청에 붙일 CSRF 헤더 — 로그인하면 토큰이 바뀌므로 요청할 때마다 받는다 */
 async function csrfHeader(): Promise<Record<string, string>> {
   const res = await fetch("/api/v1/auth/csrf", { credentials: "same-origin", cache: "no-store" });
-  if (!res.ok) throw new Error(`csrf ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, "CSRF_UNAVAILABLE", "요청을 준비하지 못했습니다.");
   const csrf = (await res.json()) as { headerName: string; token: string };
   return { [csrf.headerName]: csrf.token };
 }
@@ -42,7 +42,8 @@ export async function api<T>(path: string, init: { method?: Method; body?: unkno
       credentials: "same-origin",
       cache: "no-store",
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(0, "NETWORK", UNREACHABLE);
   }
   if (res.status === 204) return undefined as T;

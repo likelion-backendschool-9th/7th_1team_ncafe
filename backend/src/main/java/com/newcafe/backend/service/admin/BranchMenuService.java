@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class BranchMenuService {
 
+    private final com.newcafe.backend.service.BranchOperationLogService operationLogs;
     private final MenuRepository menuRepository;
     private final MenuAvailabilityRepository menuAvailabilityRepository;
     private final BranchRepository branchRepository;
@@ -45,8 +46,9 @@ public class BranchMenuService {
 
     // 지점의 메뉴 판매 상태 변경 (행이 없으면 만든다)
     @Transactional
-    public BranchMenuResponse updateStatus(String branchId, Long menuId, BranchMenuStatusRequest request) {
-        Branch branch = getBranch(branchId);
+    public BranchMenuResponse updateStatus(String branchId, Long menuId, BranchMenuStatusRequest request, Long actor) {
+        Branch branch = branchRepository.findForOperations(branchId)
+                .orElseThrow(() -> new NotFoundException("BRANCH_NOT_FOUND", "지점을 찾을 수 없습니다."));
         if (request == null || request.status() == null) {
             throw new BadRequestException("MENU_STATUS_REQUIRED", "판매 상태(ON_SALE, SOLD_OUT, HIDDEN)를 입력해야 합니다.");
         }
@@ -60,6 +62,7 @@ public class BranchMenuService {
                     created.setMenu(menu);
                     return created;
                 });
+        operationLogs.record(branchId, actor, "MENU_STATUS", menuId.toString(), availability.getStatus(), request.status());
         availability.setStatus(request.status());
         menuAvailabilityRepository.save(availability);
 

@@ -51,6 +51,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/seats/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/members", "/api/v1/admin/members/**")
                         .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/branches/*/menus", "/api/v1/admin/branches/*/seats", "/api/v1/admin/branches/*/seat-reservations",
+                                "/api/v1/admin/branches/*/seats/*/repair-conflicts", "/api/v1/admin/branches/*/operation-logs")
+                        .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/branches/*/menus/*/status", "/api/v1/admin/branches/*/seats/*/repair",
+                                "/api/v1/admin/branches/*/seats/*/chairs/*/repair",
+                                "/api/v1/admin/seat-reservations/*/check-in", "/api/v1/admin/seat-reservations/*/no-show")
+                        .hasAnyRole("ADMIN", "HQ_ADMIN", "BRANCH_ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "HQ_ADMIN")
                         // 그 외 API는 로그인 필요. 로그인 없이 열어야 하는 API는 위에 추가한다.
                         .anyRequest().authenticated())

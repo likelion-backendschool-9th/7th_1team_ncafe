@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 //   가입: save(member)  (no가 없는 새 엔티티)
 //   수정: 영속 상태의 member를 수정한 뒤 save(member)
 public interface MemberRepository extends JpaRepository<Member, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Member m where m.no = :no")
+    Optional<Member> findForBranchAssignment(@Param("no") Long no);
     // 회원 목록 조회 (탈퇴하지 않은 회원)
     List<Member> findAllByDeletedFalseOrderByNoAsc();
 

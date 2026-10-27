@@ -20,6 +20,7 @@ public record SeatReservationResponse(
         @JsonFormat(pattern = "HH:mm") LocalTime start,
         @JsonFormat(pattern = "HH:mm") LocalTime end,
         int people,
+        List<String> chairIds,
         List<String> chairLabels,
         OffsetDateTime reservedAt,
         OffsetDateTime canceledAt) {
@@ -35,6 +36,7 @@ public record SeatReservationResponse(
                 reservation.getStartTime(),
                 reservation.getEndTime(),
                 reservation.getPeople(),
+                reservation.chairsInOrder().stream().map(ReservedChair::chairId).toList(),
                 reservation.chairsInOrder().stream().map(ReservedChair::chairLabel).toList(),
                 reservation.getReservedAt(),
                 reservation.getCanceledAt());

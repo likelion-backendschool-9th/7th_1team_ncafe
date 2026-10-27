@@ -24,13 +24,15 @@ interface SeatCanvasProps {
   mine: Set<string>;
   selected: Set<string>;
   interactive: boolean;
+  allowOccupiedSelection?: boolean;
+  fitToWidth?: boolean;
   branchName: string | null;
   summary: SeatSummaryData | null;
   /** 제목 아래 작은 안내("미리보기 …") */
   caption: string | null;
   /** 상태를 모를 때 배치도를 덮는 안내 */
   dimmed: string | null;
-  waitlist: { enabled: boolean; done: boolean; onOpen: () => void };
+  waitlist?: { enabled: boolean; done: boolean; onOpen: () => void };
   /** 제목과 배치도 사이 — 필터 줄 + 추천 줄(12단계) */
   toolbar?: ReactNode;
   dimSeats?: ReadonlySet<string>;
@@ -60,6 +62,8 @@ export default function SeatCanvas({
   mine,
   selected,
   interactive,
+  allowOccupiedSelection = false,
+  fitToWidth = false,
   branchName,
   summary,
   caption,
@@ -100,12 +104,12 @@ export default function SeatCanvas({
     const el = viewportRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
-      setFit(Math.max(el.clientWidth, MIN_STAGE) / FLOOR.width);
+      setFit(Math.max(el.clientWidth, fitToWidth ? 1 : MIN_STAGE) / FLOOR.width);
       measure();
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [measure]);
+  }, [measure, fitToWidth]);
 
   const measureSoon = useCallback(() => {
     cancelAnimationFrame(frame.current);
@@ -150,16 +154,16 @@ export default function SeatCanvas({
             {caption}
           </p>
         </div>
-        <button type="button" className={styles.waitBtn} disabled={!waitlist.enabled} onClick={waitlist.onOpen}>
+        {waitlist && <button type="button" className={styles.waitBtn} disabled={!waitlist.enabled} onClick={waitlist.onOpen}>
           <BellIcon />
           {waitlist.done ? "예약대기 신청됨" : "예약대기"}
-        </button>
+        </button>}
       </div>
 
       {toolbar && <div className={styles.toolbar}>{toolbar}</div>}
 
       <div className={styles.viewportWrap}>
-        <div ref={viewportRef} className={styles.viewport} onScroll={measureSoon} tabIndex={0} aria-label="좌석 배치도 — 스크롤 · 확대할 수 있어요">
+        <div ref={viewportRef} className={`${styles.viewport} ${fitToWidth ? styles.viewportFit : ""}`} style={fitToWidth ? { height: Math.ceil(FLOOR.height * fit) } : undefined} onScroll={measureSoon} tabIndex={0} aria-label="좌석 배치도 — 스크롤 · 확대할 수 있어요">
           <div className={styles.stage} style={stageStyle}>
             <div className={styles.scaled} style={{ ...floorStyle, transform: `scale(${scale})` }}>
               <CafeFloorPlan
@@ -170,6 +174,7 @@ export default function SeatCanvas({
                 mine={mine}
                 selected={selected}
                 interactive={interactive}
+                allowOccupiedSelection={allowOccupiedSelection}
                 dimSeats={dimSeats}
                 recommendedSeats={recommendedSeats}
                 recommendedChairs={recommendedChairs}
