@@ -22,4 +22,3 @@ INSERT INTO branch_admins (branch_id,member_no)
 SELECT b.id,m.no FROM branches b JOIN members m ON m.id='test_seongsu_admin'
 WHERE b.id='seongsu' AND m.role='BRANCH_ADMIN' AND m.deleted=FALSE
 AND NOT EXISTS (SELECT 1 FROM branch_admins a WHERE a.branch_id=b.id AND a.member_no=m.no);
-

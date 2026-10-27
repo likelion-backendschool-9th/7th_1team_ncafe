@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.newcafe.backend.entity.ReservedChair;
 import com.newcafe.backend.entity.SeatReservation;
 
@@ -16,8 +17,8 @@ public record SeatReservationResponse(
         Long memberNo,
         String memberNickname,
         LocalDate date,
-        LocalTime start,
-        LocalTime end,
+        @JsonFormat(pattern = "HH:mm") LocalTime start,
+        @JsonFormat(pattern = "HH:mm") LocalTime end,
         int people,
         List<String> chairIds,
         List<String> chairLabels,
