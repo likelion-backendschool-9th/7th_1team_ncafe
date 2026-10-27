@@ -5,6 +5,7 @@
 import { apiFetch } from "@/lib/api";
 import { MENU_IMAGES } from "../_data/menus";
 import { MENU_SIZES } from "./menuSize";
+import type { Branch } from "../../seat/_types";
 import type { Category, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
 
 // ───────── 백엔드 응답 → 프론트 타입 ─────────
@@ -78,6 +79,12 @@ export async function getMenus(categoryId?: number): Promise<Menu[]> {
 export async function getMenuStatuses(branchId: string): Promise<Map<number, MenuStatus>> {
   const menus = await apiFetch<MenuResponse[]>(`/api/v1/menus?branchId=${encodeURIComponent(branchId)}`);
   return new Map(menus.map((m) => [m.id, m.status ?? "ON_SALE"]));
+}
+
+/** GET /api/v1/branches — 메뉴판 지점 선택 칩. 등록된 지점이 없으면 빈 배열(칩을 숨긴다) */
+export async function getMenuBranches(): Promise<Branch[]> {
+  const branches = await apiFetch<{ id: string; name: string; address: string }[]>("/api/v1/branches");
+  return branches.map(({ id, name, address }) => ({ id, name, address }));
 }
 
 export async function getTodayWinnerMenu(): Promise<Menu | null> {

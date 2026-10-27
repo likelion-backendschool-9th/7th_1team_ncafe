@@ -1,3 +1,5 @@
+import { api, ApiError as SharedApiError } from "@/lib/api";
+
 export interface Branch {
   id: string;
   name: string;
@@ -53,13 +55,19 @@ export async function getAdminSession(): Promise<boolean> {
   }
 }
 
-export function saveBranch(input: BranchInput, editingId: string | null) {
+export async function saveBranch(input: BranchInput, editingId: string | null) {
   const { id, ...fields } = input;
-  return request<Branch>(`/api/v1/admin/branches${editingId === null ? "" : `/${encodeURIComponent(editingId)}`}`, {
-    method: editingId === null ? "POST" : "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(editingId === null ? { id, ...fields } : fields),
-  });
+  try {
+    // 공통 API 헬퍼가 매 변경 요청마다 최신 CSRF 토큰을 받아 세션 쿠키와 함께 전송한다.
+    return await api<Branch>(`/admin/branches${editingId === null ? "" : `/${encodeURIComponent(editingId)}`}`, {
+      method: editingId === null ? "POST" : "PUT",
+      body: editingId === null ? { id, ...fields } : fields,
+    });
+  } catch (error) {
+    // 기존 화면의 401/403 처리와 입력 유지 동작을 보존한다.
+    if (error instanceof SharedApiError) throw new ApiError(error.status, error.message);
+    throw error;
+  }
 }
 
 export function validateBranch(input: BranchInput): Partial<Record<keyof BranchInput, string>> {
