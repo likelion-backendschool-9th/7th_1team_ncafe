@@ -1,6 +1,9 @@
 package com.newcafe.backend.service;
 
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import com.newcafe.backend.common.exception.UnauthorizedException;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -53,11 +56,7 @@ public class MemberService {
                 || !LOGIN_ID_PATTERN.matcher(request.loginId().trim()).matches()) {
             throw new BadRequestException("MEMBER_ID_INVALID", "회원아이디는 영문·숫자·밑줄 4~20자로 입력해야 합니다.");
         }
-        if (request.password() == null || request.password().length() < PASSWORD_MIN_LENGTH
-                || request.password().length() > PASSWORD_MAX_LENGTH) {
-            throw new BadRequestException("MEMBER_PASSWORD_INVALID",
-                    "비밀번호는 " + PASSWORD_MIN_LENGTH + "~" + PASSWORD_MAX_LENGTH + "자로 입력해야 합니다.");
-        }
+        validatePassword(request.password());
         if (isBlank(request.nickname())) {
             throw new BadRequestException("MEMBER_NICKNAME_REQUIRED", "닉네임은 필수입니다.");
         }
@@ -86,6 +85,36 @@ public class MemberService {
         applyProfile(member, request);
 
         return member;
+    }
+
+    @Transactional
+    public void changePassword(Long no, String currentPassword, String newPassword) {
+        Member member = getActiveMember(no);
+        verifyPassword(member, currentPassword);
+        validatePassword(newPassword);
+        member.setPassword(passwordEncoder.encode(newPassword));
+    }
+
+    @Transactional
+    public void withdraw(Long no, String password) {
+        verifyPassword(getActiveMember(no), password);
+        if (memberRepository.withdrawById(no) == 0) {
+            throw new NotFoundException("MEMBER_NOT_FOUND", "회원을 찾을 수 없습니다.");
+        }
+    }
+
+    private void verifyPassword(Member member, String password) {
+        if (password == null || !passwordEncoder.matches(password, member.getPassword())) {
+            throw new UnauthorizedException("PASSWORD_MISMATCH", "현재 비밀번호가 올바르지 않습니다.");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < PASSWORD_MIN_LENGTH
+                || password.length() > PASSWORD_MAX_LENGTH
+                || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BadRequestException("MEMBER_PASSWORD_INVALID", "비밀번호는 8~64자, UTF-8 기준 72바이트 이하여야 합니다.");
+        }
     }
 
     private Member getActiveMember(Long no) {
@@ -127,6 +156,15 @@ public class MemberService {
         }
         if (request.nickname() != null && request.nickname().isBlank()) {
             throw new BadRequestException("MEMBER_NICKNAME_REQUIRED", "닉네임은 비울 수 없습니다.");
+        }
+        String[] fields = { request.nickname(), request.email(), request.postcode(), request.address1(), request.address2() };
+        for (String field : fields) {
+            if (field != null && field.trim().length() > 255) {
+                throw new BadRequestException("MEMBER_FIELD_TOO_LONG", "회원정보는 항목별 255자 이하여야 합니다.");
+            }
+        }
+        if (request.birth() != null && request.birth().isAfter(LocalDate.now(java.time.ZoneId.of("Asia/Seoul")))) {
+            throw new BadRequestException("MEMBER_BIRTH_INVALID", "생일은 미래 날짜일 수 없습니다.");
         }
         String gender = trimToNull(request.gender());
         if (gender != null && !gender.equals("M") && !gender.equals("F")) {

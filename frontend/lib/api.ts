@@ -1,10 +1,13 @@
-// 백엔드(Spring) API 호출 — 브라우저에서 /api/v1/* 로 부르면 Next 가 Spring 으로 넘긴다(next.config.ts rewrites).
-// 같은 출처라 로그인 세션 쿠키(JSESSIONID)가 그대로 오간다. 실패하면 ApiError(서버 ErrorResponse 의 code · message).
-// 상대 경로라 브라우저에서만 부른다 — 서버 렌더 · 빌드 때는 부르지 않는다.
+// 백엔드(Spring) API 호출 헬퍼 — 각 라우트의 _lib/*Service.ts 가 쓴다.
+// 서버(서버 컴포넌트 · "use cache")에서는 API_BASE_URL 로 백엔드를 바로 부르고,
+// 브라우저에서는 같은 출처의 /api/... 로 부른다(next.config.ts 의 rewrites 가 백엔드로 넘긴다 — 로그인 세션 쿠키가 그대로 간다).
 
+const SERVER_API_BASE = process.env.API_BASE_URL ?? "http://localhost:8080";
+
+/** 백엔드 오류 응답(common/dto/ErrorResponse) */
 export class ApiError extends Error {
   constructor(
-    readonly status: number, // 0 = 서버에 닿지 못함
+    readonly status: number,
     readonly code: string,
     message: string,
   ) {

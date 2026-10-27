@@ -5,6 +5,7 @@ import { RaceProvider } from "@/components/RaceProvider";
 import RaceSettlement from "@/components/RaceSettlement";
 import { UserProvider } from "@/components/UserProvider";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
 
 // 루트 레이아웃 — 폰트 · 전역 Provider 만. 사용자 사이트의 Header/Footer 는 (site)/layout.tsx,
 // 관리자 화면은 admin/layout.tsx 가 각각 붙인다. RaceSettlement 는 화면 없이 레이스 정산 결과를 받고(어느 페이지에 있든),
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <link rel="stylesheet" href={PRETENDARD_CSS} />
       </head>
       <body>
-        <UserProvider>
+        <AuthProvider><UserProvider>
           <CartProvider>
             <RaceProvider>
               <RaceSettlement />
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               {children}
             </RaceProvider>
           </CartProvider>
-        </UserProvider>
+        </UserProvider></AuthProvider>
       </body>
     </html>
   );
