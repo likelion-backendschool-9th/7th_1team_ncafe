@@ -2,7 +2,7 @@
 // 조회는 백엔드 API(GET /api/v1/menus, /api/v1/menus/categories)에서 받아 프론트 타입으로 바꾼다.
 //
 // 관리자 쓰기 함수는 아직 Mock 이다: 성공 결과만 돌려주고, 변경은 호출한 화면의 React State 에만 반영된다.
-import { menuFetch } from "./menuApi";
+import { apiFetch } from "@/lib/api";
 import { MENU_IMAGES } from "../_data/menus";
 import { MENU_SIZES } from "./menuSize";
 import type { Category, CategoryInput, Menu, MenuBadge, MenuInput, MenuStatus, SizePrices } from "../_types";
@@ -72,7 +72,7 @@ function toCategory(c: CategoryResponse, index: number): Category {
 /** GET /api/v1/menus?categoryId= */
 export async function getMenus(categoryId?: number): Promise<Menu[]> {
   const query = categoryId === undefined ? "" : `?categoryId=${categoryId}`;
-  return (await menuFetch<MenuResponse[]>(`/api/v1/menus${query}`)).map(toMenu);
+  return (await apiFetch<MenuResponse[]>(`/api/v1/menus${query}`)).map(toMenu);
 }
 
 /**
@@ -80,7 +80,7 @@ export async function getMenus(categoryId?: number): Promise<Menu[]> {
  * 그 지점에서 숨긴(HIDDEN) 메뉴는 응답에서 빠지므로 결과에 없다. 메뉴판이 화면에 뜬 뒤 브라우저에서 부른다.
  */
 export async function getMenuStatuses(branchId: string): Promise<Map<number, MenuStatus>> {
-  const menus = await menuFetch<MenuResponse[]>(`/api/v1/menus?branchId=${encodeURIComponent(branchId)}`);
+  const menus = await apiFetch<MenuResponse[]>(`/api/v1/menus?branchId=${encodeURIComponent(branchId)}`);
   return new Map(menus.map((m) => [m.id, m.status ?? "ON_SALE"]));
 }
 
@@ -90,7 +90,7 @@ export async function getTodayWinnerMenu(): Promise<Menu | null> {
 
 /** GET /api/v1/menus/categories */
 export async function getCategories(): Promise<Category[]> {
-  return (await menuFetch<CategoryResponse[]>("/api/v1/menus/categories")).map(toCategory);
+  return (await apiFetch<CategoryResponse[]>("/api/v1/menus/categories")).map(toCategory);
 }
 
 export async function getMenuImageOptions(): Promise<{ path: string; label: string }[]> {
