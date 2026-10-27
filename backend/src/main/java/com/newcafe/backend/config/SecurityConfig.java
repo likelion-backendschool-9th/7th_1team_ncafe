@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/menus/**").permitAll()
+                        // 지점 조회는 로그인 없이. 등록·수정은 아래 /api/v1/admin/** 규칙(관리자)으로
+                        .requestMatchers(HttpMethod.GET, "/api/v1/branches", "/api/v1/branches/**").permitAll()
                         // 경주 조회(출전표 · 일정 · 결과 · 기록)는 로그인 없이. 내 걸기 기록은 아래 규칙(로그인 필요)으로
                         .requestMatchers(HttpMethod.GET, "/api/v1/races/bets/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/races/**").permitAll()

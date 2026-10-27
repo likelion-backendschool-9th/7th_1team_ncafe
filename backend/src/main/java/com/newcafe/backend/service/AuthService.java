@@ -28,14 +28,20 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class AuthService {
 
+    // 가입 축하 쿠폰 수 (프론트 목업 UserProvider의 INITIAL_COUPONS)
+    private static final int WELCOME_COUPONS = 5;
+
     private final MemberService memberService;
+    private final CouponService couponService;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
-    // 회원가입
+    // 회원가입 — 가입 축하 쿠폰 5장을 같은 트랜잭션에서 적립한다(쿠폰 내역에도 남는다). 관리자가 추가한 회원은 받지 않는다
     @Transactional
     public MemberResponse signup(MemberCreateRequest request) {
-        return MemberResponse.from(memberService.createMember(request));
+        Long no = memberService.createMember(request).getNo();
+        couponService.earn(no, WELCOME_COUPONS, "가입 축하 쿠폰");
+        return memberService.findByNo(no);
     }
 
     // 로그인: 아이디·비밀번호를 확인하고 인증 정보를 세션에 저장한다 (응답에 JSESSIONID 쿠키가 실린다).
