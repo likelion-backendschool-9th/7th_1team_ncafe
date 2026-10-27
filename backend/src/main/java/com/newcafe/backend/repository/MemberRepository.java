@@ -28,7 +28,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     // 회원 탈퇴 (논리 삭제). 변경된 행 수를 반환하며 0이면 대상 회원이 없거나 이미 탈퇴한 상태.
     // no는 남겨 주문·베팅 FK를 유지하고, 아이디는 재가입이 가능하도록 'deleted#{no}'로 바꾸고 비밀번호·개인정보는 비운다.
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update Member m
                set m.deleted = true,

@@ -56,6 +56,10 @@ public class AuthService {
         if (httpRequest.getSession(false) != null) {
             httpRequest.changeSessionId();
         }
+        // 직접 구현한 로그인에서도 로그인 전 CSRF 토큰을 폐기한다.
+        new org.springframework.security.web.csrf.CsrfAuthenticationStrategy(
+                new org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository())
+                .onAuthentication(authentication, httpRequest, httpResponse);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
