@@ -467,3 +467,57 @@
     height: 64px;
   }
 }
+
+/* ----- 지점 선택 (메뉴판 안 임시 선택 — 좌석 예약의 지점 칩과 같은 모양) ----- */
+.branchRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.branches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.branchLabel {
+  margin-right: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.branchBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.branchBtn:hover {
+  background: var(--bg-subtle);
+}
+
+.branchBtn[aria-pressed="true"] {
+  border-color: var(--brand-900);
+  background: var(--brand-900);
+  color: #fff;
+}
+
+.branchNote {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}

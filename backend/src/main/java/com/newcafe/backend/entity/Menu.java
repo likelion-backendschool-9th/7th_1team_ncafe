@@ -23,9 +23,18 @@ public class Menu {
     @Column(nullable = false)
     private String nameEng;
 
+    // 카테고리 (category_id INT, FK → categories.id)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Category category;
+
     private String description;
     private String image;
-    private String label;
+
+    @Column(length = 10)
+    private String label;                 // label VARCHAR(10) (배지: BEST / WINNER / NEW)
 
     // 논리 삭제 플래그 (true면 목록/상세에서 숨김)
     @Column(nullable = false)
@@ -38,5 +47,5 @@ public class Menu {
     private List<MenuSize> sizes = new ArrayList<>();
 
     // 해금 조건 (추후 구현)
-    // 지점별 판매가능여부(임시)
+    // 지점별 판매가능여부는 MenuAvailability (menus_available)
 }
