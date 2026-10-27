@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useMyBets } from "@/app/(site)/race/_hooks/useRaceData";
 import { losingStreakStore, myBetsStore, raceHistoryStore } from "@/app/(site)/race/_lib/raceStores";
 import { RACE_SETTLE_MS } from "@/app/(site)/race/_lib/simulation";
-import { authStore, useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/AuthProvider";
 import { raceScheduleStore } from "@/lib/raceSchedule";
 import { useNow } from "@/lib/useCountdown";
 import { useRaceSchedule } from "@/lib/useRaceSchedule";
@@ -22,7 +22,7 @@ const POLL_MS = 2000;
  */
 export default function RaceSettlement() {
   const now = useNow();
-  const { member } = useAuth();
+  const { member, refresh: refreshMember } = useAuth();
   const schedule = useRaceSchedule().data;
   const myBets = useMyBets().data;
   const memberNo = member?.no ?? null;
@@ -45,14 +45,14 @@ export default function RaceSettlement() {
       void raceHistoryStore.refresh();
       if (memberNo !== null) {
         void myBetsStore.refresh();
-        void authStore.refresh();
+        void refreshMember();
         void losingStreakStore.refresh();
       }
     };
     refreshAll();
     const timer = setInterval(refreshAll, POLL_MS);
     return () => clearInterval(timer);
-  }, [waiting, memberNo]);
+  }, [waiting, memberNo, refreshMember]);
 
   return null;
 }

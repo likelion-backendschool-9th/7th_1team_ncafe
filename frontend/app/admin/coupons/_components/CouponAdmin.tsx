@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState, useSyncExternalStore, type SubmitEvent } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { formatRaceDate } from "@/lib/time";
 import adminStyles from "../../_components/admin.module.css";
 import AdminToast, { useToast } from "../../_components/AdminToast";
@@ -32,7 +32,7 @@ const toDraft = (p: LosingStreakAdmin): Draft => ({
  * 값은 서버(GET · PUT /api/v1/admin/coupons/losing-streak)에 저장하고, 지급은 서버 스케줄러가 한다. ADMIN 으로 로그인해야 쓸 수 있다.
  */
 export default function CouponAdmin() {
-  const { member, loaded } = useAuth();
+  const { member, loading } = useAuth();
 
   return (
     <>
@@ -47,7 +47,7 @@ export default function CouponAdmin() {
       {member?.role === "ADMIN" ? (
         <LosingStreakManager key={member.no} />
       ) : (
-        loaded && (
+        !loading && (
           <div className={adminStyles.empty}>
             <p>{member ? "관리자 계정만 쿠폰을 관리할 수 있어요." : "관리자 계정으로 로그인해야 쿠폰을 관리할 수 있어요."}</p>
             <Link href={`/login?next=${encodeURIComponent("/admin/coupons")}`} className="btn btn-outline btn-sm">

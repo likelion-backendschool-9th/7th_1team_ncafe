@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { useRaceSession } from "@/components/RaceProvider";
 import { ApiError } from "@/lib/api";
-import { authStore, useAuth } from "@/lib/auth";
 import { raceScheduleStore } from "@/lib/raceSchedule";
 import { getRaceSchedule, RACE_GATE_CLOSE_MS } from "@/lib/time";
 import { useNow } from "@/lib/useCountdown";
@@ -52,7 +52,7 @@ export function useRace() {
   const horsesState = useRaceHorses();
   const { session, history, races: settledRaces } = useRaceHistory();
   const myBets = useMyBets().data;
-  const { member, loaded: authLoaded } = useAuth();
+  const { member, loading: authLoading, refresh: refreshMember } = useAuth();
   const placing = useRef(false);
   const horses = horsesState.data;
   const races = schedule.data;
@@ -115,7 +115,7 @@ export function useRace() {
   const running = liveRace !== null && now !== null && now < liveRace.startsAt + RACE_SETTLE_MS;
   const gateClosed = running || (nextRace !== null && now !== null && now >= nextRace.startsAt - RACE_GATE_CLOSE_MS);
   const noRace = schedule.loaded && slots !== null && nextRace === null;
-  const loggedOut = authLoaded && member === null;
+  const loggedOut = !authLoading && member === null;
   const lock: BetLock = gateClosed
     ? "GATE_CLOSED"
     : noRace
@@ -136,7 +136,7 @@ export function useRace() {
     placing.current = true;
     try {
       await requestBet(nextRace.raceNo, horse.id);
-      await Promise.all([myBetsStore.refresh(), authStore.refresh()]);
+      await Promise.all([myBetsStore.refresh(), refreshMember()]);
       return { ok: true };
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return { ok: false, message: "로그인이 풀렸어요. 다시 로그인해 주세요." };

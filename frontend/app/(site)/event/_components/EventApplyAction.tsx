@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "@/components/AuthProvider";
 import Modal from "@/components/Modal";
-import { authStore, useAuth } from "@/lib/auth";
 import { useMyApplies } from "../_hooks/useEvents";
 import { applyEvent, EventError } from "../_lib/eventService";
 import { applyState, branchName, seatsLeft } from "../_lib/eventStatus";
@@ -28,7 +28,7 @@ type Step = { kind: "confirm"; error: string } | { kind: "done"; coupons: number
  * 신청은 서버(POST /api/v1/events/{id}/applies)가 처리하고 쿠폰 지급 이벤트면 그 자리에서 쿠폰을 적립한다 — 끝나면 목록 · 내 신청 · 쿠폰 수를 다시 불러온다.
  */
 export default function EventApplyAction({ event, today, variant }: { event: CafeEvent; today: string; variant: "card" | "detail" }) {
-  const { member } = useAuth();
+  const { member, refresh: refreshMember } = useAuth();
   const applied = useMyApplies(member?.no ?? null).data.some((a) => a.eventId === event.id);
   const [step, setStep] = useState<Step>(null);
   const [busy, setBusy] = useState(false);
@@ -48,7 +48,7 @@ export default function EventApplyAction({ event, today, variant }: { event: Caf
     } finally {
       setBusy(false);
       // 성공하면 참여 인원 · 내 신청 · 쿠폰 수가, 실패하면(방금 마감 등) 최신 현황이 보이도록
-      void Promise.all([eventsStore.refresh(), myAppliesStore.refresh(), authStore.refresh()]);
+      void Promise.all([eventsStore.refresh(), myAppliesStore.refresh(), refreshMember()]);
     }
   }
 
