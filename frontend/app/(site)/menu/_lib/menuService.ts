@@ -75,6 +75,15 @@ export async function getMenus(categoryId?: number): Promise<Menu[]> {
   return (await apiFetch<MenuResponse[]>(`/api/v1/menus${query}`)).map(toMenu);
 }
 
+/**
+ * GET /api/v1/menus?branchId= — 그 지점의 메뉴별 판매 상태(메뉴 id → 상태).
+ * 그 지점에서 숨긴(HIDDEN) 메뉴는 응답에서 빠지므로 결과에 없다. 메뉴판이 화면에 뜬 뒤 브라우저에서 부른다.
+ */
+export async function getMenuStatuses(branchId: string): Promise<Map<number, MenuStatus>> {
+  const menus = await apiFetch<MenuResponse[]>(`/api/v1/menus?branchId=${encodeURIComponent(branchId)}`);
+  return new Map(menus.map((m) => [m.id, m.status ?? "ON_SALE"]));
+}
+
 export async function getTodayWinnerMenu(): Promise<Menu | null> {
   return (await getMenus()).find((m) => m.badge === "WINNER") ?? null;
 }
