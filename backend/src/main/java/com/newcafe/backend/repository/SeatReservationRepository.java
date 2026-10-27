@@ -44,7 +44,8 @@ public interface SeatReservationRepository extends JpaRepository<SeatReservation
     List<SeatReservation> findAllByBranchIdAndDateOrderByStartTimeAscReservedAtAsc(String branchId, LocalDate date);
 
     // 한 시간대의 유효한 예약대기 중 인원이 available 이하인 것에 알림 시각을 남긴다. 변경된 행 수를 반환한다.
-    @Modifying(flushAutomatically = true)
+    // 영속성 컨텍스트에 남은 예약대기가 바뀌기 전 값으로 읽히지 않도록 실행 뒤 비운다
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update SeatReservation r
                set r.notifiedAt = :now
@@ -60,7 +61,7 @@ public interface SeatReservationRepository extends JpaRepository<SeatReservation
                      @Param("status") SeatReservation.Status status);
 
     // 한 회원의 한 시간대 유효한 예약대기를 취소한다 — 그 시간대를 예약했으면 대기는 필요 없다. 변경된 행 수를 반환한다.
-    @Modifying(flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update SeatReservation r
                set r.status = :canceled, r.canceledAt = :now
