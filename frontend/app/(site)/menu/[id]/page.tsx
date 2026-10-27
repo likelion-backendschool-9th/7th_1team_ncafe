@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import MenuDetail, { MenuDetailSkeleton } from "../_components/MenuDetail";
+import { MENU_CACHE_TAG } from "../_lib/menuCache";
 import { parseMenuId, selectBoard, selectDetail } from "../_lib/menuBoard";
 import { getCategories, getMenus } from "../_lib/menuService";
 
@@ -24,6 +25,7 @@ export async function generateStaticParams() {
 async function loadDetail(param: string) {
   "use cache";
   cacheLife("hours");
+  cacheTag(MENU_CACHE_TAG); // 관리자가 메뉴 · 카테고리를 바꾸면 app/api/menu-cache 가 무효화한다
 
   const id = parseMenuId(param);
   if (id === null) return null;

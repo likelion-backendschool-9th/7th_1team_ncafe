@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import MenuBoard from "./_components/MenuBoard";
+import { MENU_CACHE_TAG } from "./_lib/menuCache";
 import { selectBoard } from "./_lib/menuBoard";
 import { getCategories, getMenuBranches, getMenus } from "./_lib/menuService";
 
@@ -16,6 +17,7 @@ export const metadata: Metadata = { title: "MENU BOARD" };
 export default async function MenuPage() {
   "use cache";
   cacheLife("hours");
+  cacheTag(MENU_CACHE_TAG); // 관리자가 메뉴 · 카테고리를 바꾸면 app/api/menu-cache 가 무효화한다
 
   const [categories, menus, branches] = await Promise.all([getCategories(), getMenus(), getMenuBranches()]);
   const board = selectBoard(categories, menus);
