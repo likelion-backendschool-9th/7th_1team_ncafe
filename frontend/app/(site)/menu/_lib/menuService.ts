@@ -1,21 +1,17 @@
 // 메뉴 도메인의 유일한 데이터 창구 — /menu 와 /admin/* 가 함께 쓴다.
 // 조회는 백엔드 API(GET /api/v1/menus, /api/v1/menus/categories)에서 받아 프론트 타입으로 바꾼다.
 //
-// 관리자 쓰기 함수는 아직 Mock 이다: 성공 결과만 돌려주고, 변경은 호출한 화면의 React State 에만 반영된다.
+// 관리자 등록 · 수정 · 삭제는 app/admin/menus/_lib/menuAdminService.ts (로그인 · CSRF 가 필요해 브라우저에서 부른다).
 import { apiFetch } from "@/lib/api";
 import { MENU_IMAGES } from "../_data/menus";
 import { MENU_SIZES } from "./menuSize";
 import type { Branch } from "../../seat/_types";
-import type { Category, CategoryInput, Menu, MenuBadge, MenuInput, MenuStatus, SizePrices } from "../_types";
-
-// Mock id 발급기 — 실제로는 서버가 정한다(관리자 쓰기 함수 연결 전까지).
-let nextMenuId = 1000;
-let nextCategoryId = 1000;
+import type { Category, Menu, MenuBadge, MenuStatus, SizePrices } from "../_types";
 
 // ───────── 백엔드 응답 → 프론트 타입 ─────────
 
 /** GET /api/v1/menus 의 한 항목(dto/menu/MenuResponse) */
-interface MenuResponse {
+export interface MenuResponse {
   id: number;
   categoryId: number;
   nameKor: string;
@@ -42,7 +38,7 @@ const FALLBACK_IMAGE = MENU_IMAGES[0].path;
  * 사이즈 S·M·L·XL 가 모두 있으면 사이즈 메뉴(대표 가격 = S), 아니면 단일 가격 메뉴(대표 가격 = 가장 싼 값).
  * 판매 상태는 지점별이라, 지점 없이 조회하면 오지 않아 ON_SALE 로 둔다(삭제된 메뉴는 백엔드가 빼고 준다).
  */
-function toMenu(m: MenuResponse): Menu {
+export function toMenu(m: MenuResponse): Menu {
   const priceBySize = new Map(m.sizes.map((s) => [s.size, s.price]));
   const sized = MENU_SIZES.every((size) => priceBySize.has(size));
   const sizePrices = sized
@@ -102,48 +98,4 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getMenuImageOptions(): Promise<{ path: string; label: string }[]> {
   return structuredClone(MENU_IMAGES);
-}
-
-// ───────── 관리자: 메뉴 ─────────
-
-/** POST /api/admin/menus */
-export async function createMenu(input: MenuInput): Promise<Menu> {
-  return { ...structuredClone(input), id: nextMenuId++ };
-}
-
-/** PUT /api/admin/menus/{id} */
-export async function updateMenu(id: number, input: MenuInput): Promise<Menu> {
-  return { ...structuredClone(input), id };
-}
-
-/** DELETE /api/admin/menus/{id} */
-export async function deleteMenu(id: number): Promise<{ ok: true; id: number }> {
-  return { ok: true, id };
-}
-
-/** PATCH /api/admin/menus/{id}/status */
-export async function updateMenuStatus(id: number, status: MenuStatus): Promise<{ ok: true; id: number; status: MenuStatus }> {
-  return { ok: true, id, status };
-}
-
-// ───────── 관리자: 카테고리 ─────────
-
-/** POST /api/admin/categories — order 는 맨 뒤 */
-export async function createCategory(input: CategoryInput, order: number): Promise<Category> {
-  return { ...structuredClone(input), id: nextCategoryId++, order };
-}
-
-/** PUT /api/admin/categories/{id} */
-export async function updateCategory(id: number, input: CategoryInput, order: number): Promise<Category> {
-  return { ...structuredClone(input), id, order };
-}
-
-/** DELETE /api/admin/categories/{id} — 메뉴가 남아 있으면 서버가 거절하는 것을 가정 */
-export async function deleteCategory(id: number): Promise<{ ok: true; id: number }> {
-  return { ok: true, id };
-}
-
-/** PUT /api/admin/categories/order — ids 순서대로 order 1, 2, 3 … */
-export async function reorderCategories(ids: number[]): Promise<{ ok: true; ids: number[] }> {
-  return { ok: true, ids: [...ids] };
 }
