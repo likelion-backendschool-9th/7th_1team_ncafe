@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { Category, Menu, MenuStatus } from "@/app/(site)/menu/_types";
+import type { Branch } from "@/app/(site)/seat/_types";
 import Modal from "@/components/Modal";
 import TicketBadge from "@/components/TicketBadge";
 import AdminToast from "../../_components/AdminToast";
@@ -19,12 +20,16 @@ export const STATUS_OPTIONS: { value: MenuStatus; label: string }[] = [
 interface MenuAdminTableProps {
   initialMenus: Menu[];
   categories: Category[];
+  /** 판매 상태를 관리할 지점(첫 번째가 기본) */
+  branches: Branch[];
   imageOptions: { path: string; label: string }[];
 }
 
-/** 메뉴 관리 화면 — 검색·필터 + 목록 표 + 등록/수정 폼 + 삭제 확인 */
-export default function MenuAdminTable({ initialMenus, categories, imageOptions }: MenuAdminTableProps) {
-  const a = useMenuAdmin(initialMenus, categories);
+/** 메뉴 관리 화면 — 검색·필터 + 목록 표 + 등록/수정 폼 + 삭제 확인. 상태 칸은 고른 지점의 판매 상태다. */
+export default function MenuAdminTable({ initialMenus, categories, branches, imageOptions }: MenuAdminTableProps) {
+  const a = useMenuAdmin(initialMenus, categories, branches);
+  const statusReady = branches.length > 0 && !a.statusLoading && !a.statusError;
+  const branchName = branches.find((b) => b.id === a.branchId)?.name;
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const filtering = a.query !== "" || a.categoryFilter !== "ALL" || a.statusFilter !== "ALL";
 
@@ -35,7 +40,8 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
           <span className="eyebrow">Menu Management</span>
           <h1 className={styles.pageTitle}>메뉴 관리</h1>
           <p className="subtitle">
-            전체 {a.menus.length}개 · 판매중 {a.menus.filter((m) => m.status === "ON_SALE").length}개
+            전체 {a.menus.length}개
+            {statusReady && ` · ${branchName} 판매중 ${a.menus.filter((m) => m.status === "ON_SALE").length}개`}
           </p>
         </div>
         <button type="button" className="btn btn-gold" onClick={a.openCreate}>
@@ -44,6 +50,22 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
       </header>
 
       <div className={styles.toolbar} role="search">
+        <label className={styles.toolField}>
+          <span className={styles.label}>판매 상태 지점</span>
+          <select
+            className={styles.input}
+            value={a.branchId}
+            disabled={branches.length === 0}
+            onChange={(e) => a.setBranchId(e.target.value)}
+          >
+            {branches.length === 0 && <option value="">등록된 지점 없음</option>}
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className={styles.toolField}>
           <span className={styles.label}>검색</span>
           <input
@@ -90,6 +112,16 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
           </button>
         )}
       </div>
+
+      {branches.length === 0 ? (
+        <p className={styles.resultCount} role="note">
+          판매 상태는 지점별로 관리합니다. 지점 관리에서 지점을 먼저 등록하세요.
+        </p>
+      ) : a.statusError ? (
+        <p className={styles.resultCount} role="alert">
+          {branchName}의 판매 상태를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+        </p>
+      ) : null}
 
       <p className={styles.resultCount} aria-live="polite">
         {filtering ? `검색 결과 ${a.filtered.length}개` : `${a.filtered.length}개 메뉴`}
@@ -153,7 +185,8 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
                   <select
                     className={`${styles.input} ${styles.statusSelect} ${styles[`status_${m.status}`]}`}
                     value={m.status}
-                    aria-label={`${m.name} 상태`}
+                    disabled={!statusReady}
+                    aria-label={`${branchName ?? ""} ${m.name} 상태`}
                     onChange={(e) => a.changeStatus(m, e.target.value as MenuStatus)}
                   >
                     {STATUS_OPTIONS.map((o) => (
@@ -206,7 +239,7 @@ export default function MenuAdminTable({ initialMenus, categories, imageOptions 
           <>
             <strong>{a.deleting?.name}</strong> 메뉴를 삭제할까요?
             <br />
-            삭제한 메뉴는 되돌릴 수 없습니다. 잠시 내리려면 상태를 <strong>숨김</strong>으로 바꾸세요.
+            모든 지점의 메뉴판에서 사라지고 되돌릴 수 없습니다. 한 지점에서만 잠시 내리려면 그 지점의 상태를 <strong>숨김</strong>으로 바꾸세요.
           </>
         }
         confirmLabel="삭제"

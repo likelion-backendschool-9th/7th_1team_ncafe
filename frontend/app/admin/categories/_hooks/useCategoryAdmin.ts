@@ -6,7 +6,7 @@ import {
   deleteCategory,
   reorderCategories,
   updateCategory,
-} from "@/app/(site)/menu/_lib/menuService";
+} from "../../menus/_lib/menuAdminService";
 import type { Category, CategoryInput, Menu } from "@/app/(site)/menu/_types";
 import { useToast } from "../../_components/AdminToast";
 import { validateCategory, type CategoryErrors } from "../_lib/validateCategory";
@@ -14,6 +14,9 @@ import { validateCategory, type CategoryErrors } from "../_lib/validateCategory"
 export type CategoryEditing = { mode: "create" } | { mode: "edit"; category: Category } | null;
 
 const byOrder = (a: Category, b: Category) => a.order - b.order;
+
+/** 서버가 준 오류 메시지(예: "같은 이름의 카테고리가 이미 있습니다.")를 그대로 보여 준다 */
+const messageOf = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
 /** 카테고리 관리 — 목록 State + 추가/수정/삭제/순서/노출 */
 export function useCategoryAdmin(initialCategories: Category[], menus: Menu[]) {
@@ -60,18 +63,17 @@ export function useCategoryAdmin(initialCategories: Category[], menus: Menu[]) {
     setBusy(true);
     try {
       if (editing.mode === "create") {
-        const order = categories.reduce((max, c) => Math.max(max, c.order), 0) + 1;
-        const created = await createCategory(clean, order);
+        const created = await createCategory(clean); // 노출 순서는 서버가 맨 뒤로 정한다
         setCategories((prev) => [...prev, created].sort(byOrder));
         show(`"${created.name}" 카테고리를 추가했습니다.`);
       } else {
-        const updated = await updateCategory(editing.category.id, clean, editing.category.order);
+        const updated = await updateCategory(editing.category.id, clean);
         setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
         show(`"${updated.name}" 카테고리를 저장했습니다.`);
       }
       closeForm();
-    } catch {
-      show("저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+    } catch (error) {
+      show(messageOf(error, "저장하지 못했습니다. 잠시 후 다시 시도해 주세요."), "error");
     } finally {
       setBusy(false);
     }
@@ -85,11 +87,11 @@ export function useCategoryAdmin(initialCategories: Category[], menus: Menu[]) {
     const next = [...categories];
     [next[index], next[target]] = [next[target], next[index]];
     try {
-      await reorderCategories(next.map((c) => c.id));
-      setCategories(next.map((c, i) => ({ ...c, order: i + 1 })));
+      const saved = await reorderCategories(next.map((c) => c.id));
+      setCategories([...saved].sort(byOrder));
       return true;
-    } catch {
-      show("순서를 바꾸지 못했습니다.", "error");
+    } catch (error) {
+      show(messageOf(error, "순서를 바꾸지 못했습니다."), "error");
       return false;
     }
   }
@@ -97,15 +99,11 @@ export function useCategoryAdmin(initialCategories: Category[], menus: Menu[]) {
   async function toggleVisible(category: Category) {
     const visible = !category.visible;
     try {
-      const updated = await updateCategory(
-        category.id,
-        { name: category.name, engName: category.engName, visible },
-        category.order,
-      );
+      const updated = await updateCategory(category.id, { name: category.name, engName: category.engName, visible });
       setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       show(`"${category.name}" 카테고리를 메뉴판에서 ${visible ? "보이게" : "숨기게"} 했습니다.`);
-    } catch {
-      show("노출 설정을 바꾸지 못했습니다.", "error");
+    } catch (error) {
+      show(messageOf(error, "노출 설정을 바꾸지 못했습니다."), "error");
     }
   }
 
@@ -123,8 +121,8 @@ export function useCategoryAdmin(initialCategories: Category[], menus: Menu[]) {
       setCategories((prev) => prev.filter((c) => c.id !== target.id).map((c, i) => ({ ...c, order: i + 1 })));
       setDeleting(null);
       show(`"${target.name}" 카테고리를 삭제했습니다.`);
-    } catch {
-      show("삭제하지 못했습니다.", "error");
+    } catch (error) {
+      show(messageOf(error, "삭제하지 못했습니다."), "error");
     } finally {
       setBusy(false);
     }

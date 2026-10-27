@@ -14,11 +14,7 @@ const BADGE_OPTIONS: { value: MenuBadge | ""; label: string }[] = [
   { value: "NEW", label: "NEW — 신메뉴" },
 ];
 
-const STATUS_OPTIONS: { value: MenuStatus; label: string; hint: string }[] = [
-  { value: "ON_SALE", label: "판매중", hint: "메뉴판에 보입니다" },
-  { value: "SOLD_OUT", label: "품절", hint: "메뉴판에 '품절'로 보입니다" },
-  { value: "HIDDEN", label: "숨김", hint: "메뉴판에서 숨깁니다" },
-];
+// 판매 상태는 지점별이라 이 폼에서 정하지 않는다 — 메뉴 관리 표에서 지점을 고르고 바꾼다.
 
 interface MenuFormProps {
   initial: Menu | null; // null = 등록
@@ -231,23 +227,6 @@ export default function MenuForm({ initial, categories, imageOptions, errors, bu
           />
         </Field>
 
-        <fieldset className={`${styles.field} ${styles.fieldWide}`}>
-          <legend className={styles.label}>판매 상태</legend>
-          <div className={styles.radioRow}>
-            {STATUS_OPTIONS.map((o) => (
-              <label key={o.value} className={styles.radio} title={o.hint}>
-                <input
-                  type="radio"
-                  name={id("status")}
-                  checked={draft.status === o.value}
-                  onChange={() => set("status", o.value)}
-                />
-                {o.label}
-              </label>
-            ))}
-          </div>
-          <span className={styles.hint}>{STATUS_OPTIONS.find((o) => o.value === draft.status)?.hint}</span>
-        </fieldset>
       </div>
 
       <div className={styles.dialogActions}>
