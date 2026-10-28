@@ -10,7 +10,7 @@ import styles from "./my.module.css";
 
 const PREVIEW = 3;
 
-/** 주문 내역 — 최신순 영수증 카드. 처음엔 최근 3건, "전체 보기"로 나머지를 펼친다. */
+/** 주문 내역 — 결제한 주문(서버)을 최신순 영수증 카드로. 처음엔 최근 3건, "전체 보기"로 나머지를 펼친다. */
 export default function OrderHistory() {
   const { orders } = useUser();
   const { visible, expanded, hasMore, total, toggle } = useShowMore(orders, PREVIEW);
@@ -49,6 +49,7 @@ function OrderCard({ order }: { order: Order }) {
     <li className={styles.order}>
       <div className={styles.orderHead}>
         <span className={styles.orderNo}>ORDER No.{serial(order.orderNo)}</span>
+        <span className={styles.orderBranch}>{order.branchName}</span>
         <time className={styles.orderAt} dateTime={order.orderedAt}>
           {formatDateTime(order.orderedAt)}
         </time>

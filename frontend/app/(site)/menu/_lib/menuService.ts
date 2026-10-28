@@ -34,7 +34,8 @@ interface CategoryResponse {
 }
 
 const BADGES: readonly string[] = ["BEST", "WINNER", "NEW"] satisfies MenuBadge[];
-const FALLBACK_IMAGE = MENU_IMAGES[0].path;
+/** 메뉴 이미지가 없을 때 — 장바구니 · 주문 내역도 같은 그림을 쓴다 */
+export const FALLBACK_IMAGE = MENU_IMAGES[0].path;
 
 /**
  * 사이즈 S·M·L·XL 가 모두 있으면 사이즈 메뉴(대표 가격 = S), 아니면 단일 가격 메뉴(대표 가격 = 가장 싼 값).
