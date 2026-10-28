@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "@/lib/api";
 import { useSeatBooking } from "../_hooks/useSeatBooking";
 import { useSeatFilter } from "../_hooks/useSeatFilter";
 import { matchesFilter } from "../_lib/filter";
@@ -45,6 +46,8 @@ export default function SeatBooking({ layouts, branches, timeBlocks }: SeatBooki
   const [confirming, setConfirming] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [error, setError] = useState("");
+  // 예약 요청이 401 — 로그인 표시는 남아 있는데 세션이 끝난 경우. 예약 안내에 로그인 칸을 띄운다
+  const [unauthorized, setUnauthorized] = useState(false);
   const stepRef = useRef(step);
   useEffect(() => {
     stepRef.current = step;
@@ -56,6 +59,7 @@ export default function SeatBooking({ layouts, branches, timeBlocks }: SeatBooki
       setConfirming(false);
       setWaitlistOpen(false);
       setError("");
+      setUnauthorized(false);
       if (stepRef.current === "DONE") restart();
     };
   }, [restart]);
@@ -90,11 +94,13 @@ export default function SeatBooking({ layouts, branches, timeBlocks }: SeatBooki
 
   const confirmReserve = async () => {
     setError("");
+    setUnauthorized(false);
     try {
       const result = await reserve();
       if (result) setConfirming(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "예약하지 못했어요. 잠시 후 다시 시도해 주세요.");
+      if (e instanceof ApiError && e.status === 401) setUnauthorized(true); // 로그인 칸으로 — 로그인하면 이 예약을 이어서 보낸다
+      else setError(e instanceof Error ? e.message : "예약하지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -146,6 +152,7 @@ export default function SeatBooking({ layouts, branches, timeBlocks }: SeatBooki
         open={confirming}
         booking={booking}
         error={error}
+        unauthorized={unauthorized}
         onCancel={() => !booking.busy && setConfirming(false)}
         onConfirm={confirmReserve}
       />
