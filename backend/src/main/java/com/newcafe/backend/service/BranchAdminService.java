@@ -75,8 +75,8 @@ public class BranchAdminService {
 
     public List<BranchResponse> findMine(Long memberNo) {
         var member = active(memberNo);
-        if (headOffice(member)) return branches.findAll().stream()
-                .sorted(java.util.Comparator.comparing(Branch::getId)).map(BranchResponse::from).toList();
+        if (headOffice(member)) return branches.findAllByOrderBySortAscIdAsc().stream()
+                .map(BranchResponse::from).toList();
         if (!eligible(member)) throw new ForbiddenException("BRANCH_ADMIN_REQUIRED", "관리자 권한이 필요합니다.");
         return assignments.findByMemberNoOrderByBranchIdAsc(memberNo).stream()
                 .map(a -> BranchResponse.from(a.getBranch())).toList();

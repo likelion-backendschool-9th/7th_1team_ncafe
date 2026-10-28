@@ -7,8 +7,8 @@ import { kstDate, kstMinutes, minutesOf } from "@/lib/kst";
 import SeatCanvas from "@/app/(site)/seat/_components/SeatCanvas";
 import { chairsOf } from "@/app/(site)/seat/_lib/geometry";
 import { summarize } from "@/app/(site)/seat/_lib/summary";
-import { FLOOR_PLAN } from "@/app/(site)/seat/_data/floorPlan";
-import type { ChairStatusMap, Seat } from "@/app/(site)/seat/_types";
+import { parseFloorPlan } from "@/app/(site)/seat/_lib/floorPlan";
+import type { ChairStatusMap, FloorPlan, Seat } from "@/app/(site)/seat/_types";
 import styles from "./member.module.css";
 import operations from "./branchOperations.module.css";
 
@@ -20,7 +20,7 @@ export default function AdminSeatMap({ branchId, branchName, date, version, sele
   selectedCode: string; selectedChairNo: number; busy: boolean; onSelect: (code: string, chairNo: number) => void;
 }) {
   const now = useNow();
-  const [layout, setLayout] = useState<{ seats: Seat[]; blocks: Block[]; error: string } | null>(null);
+  const [layout, setLayout] = useState<{ plan: FloorPlan; seats: Seat[]; blocks: Block[]; error: string } | null>(null);
   const [time, setTime] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [result, setResult] = useState<{ key: string; statuses: ChairStatusMap; error: string } | null>(null);
@@ -35,9 +35,14 @@ export default function AdminSeatMap({ branchId, branchName, date, version, sele
 
   useEffect(() => {
     let active = true;
-    Promise.all([memberApi<Seat[]>(`/seats?branchId=${encodeURIComponent(branchId)}`), memberApi<Block[]>("/seats/time-blocks")])
-      .then(([seats, blocks]) => { if (active) setLayout({ seats, blocks: blocks.map(b => ({ start: b.start.slice(0, 5), end: b.end.slice(0, 5) })), error: "" }); })
-      .catch((e: unknown) => { if (active) setLayout({ seats: [], blocks: [], error: e instanceof Error ? e.message : "배치도를 불러오지 못했습니다." }); });
+    // 평면도(구역 · 구조물)는 지점마다 다르다 — 지점 정보의 sections · fixtures
+    Promise.all([
+      memberApi<{ sections: string | null; fixtures: string | null }>(`/branches/${encodeURIComponent(branchId)}`),
+      memberApi<Seat[]>(`/seats?branchId=${encodeURIComponent(branchId)}`),
+      memberApi<Block[]>("/seats/time-blocks"),
+    ])
+      .then(([branch, seats, blocks]) => { if (active) setLayout({ plan: parseFloorPlan(branch.sections, branch.fixtures), seats, blocks: blocks.map(b => ({ start: b.start.slice(0, 5), end: b.end.slice(0, 5) })), error: "" }); })
+      .catch((e: unknown) => { if (active) setLayout({ plan: { sections: [], fixtures: [] }, seats: [], blocks: [], error: e instanceof Error ? e.message : "배치도를 불러오지 못했습니다." }); });
     return () => { active = false; };
   }, [branchId]);
 
@@ -74,7 +79,7 @@ export default function AdminSeatMap({ branchId, branchName, date, version, sele
     {summary && <p className={operations.mapSummary} role="status"><span>전체 <strong>{summary.total}자리</strong></span><span>빈자리 <strong>{summary.available}</strong></span><span>예약 <strong>{summary.byStatus.RESERVED}</strong></span><span>사용 중 <strong>{summary.byStatus.USING}</strong></span><span>수리 중 <strong>{summary.byStatus.REPAIR}</strong></span></p>}
     </div>
     {current?.error && <p role="alert">{current.error}</p>}
-    <SeatCanvas fitToWidth plan={FLOOR_PLAN} seats={layout.seats} chairs={chairs} statuses={statuses}
+    <SeatCanvas fitToWidth plan={layout.plan} seats={layout.seats} chairs={chairs} statuses={statuses}
       mine={empty} selected={selectedChairs} interactive={!!statuses && !busy} allowOccupiedSelection branchName={branchName} summary={summary}
       caption={`${date} ${start}~${block?.end ?? ""} · 실제 좌석 현황 · 15초마다 갱신`}
       dimmed={current?.error ? "좌석 상태를 확인하지 못했습니다. 새로고침해주세요." : !statuses ? "좌석 상태를 불러오는 중…" : null}

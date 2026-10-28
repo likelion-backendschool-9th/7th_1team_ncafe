@@ -45,20 +45,24 @@ export interface RaceEntry extends RaceBet {
 }
 
 /**
- * 좌석 예약 한 건(11단계) — 지점 · 날짜 · 2시간 시간대 · 의자 단위(BLUEPRINT 8.3).
+ * 좌석 예약 한 건(11단계) — 지점 · 날짜 · 1시간 시간대 · 의자 단위(BLUEPRINT 8.3). 백엔드 dto/seat/SeatReservationResponse 와 같은 모양.
  * RESERVED 는 자리를 잡은 예약, WAITING 은 자리가 없을 때 넣는 예약대기(의자 없음).
  * /seat 는 같은 시간대의 내 예약을 배치도에 겹쳐 그리고, /my 는 목록으로 보여 준다. 결제 · 쿠폰은 없다.
  */
 export type SeatReservationKind = "RESERVED" | "WAITING";
 
+/** ACTIVE: 예약됨 · 대기 중, CHECKED_IN: 방문 확인, NO_SHOW: 노쇼(직원 처리). 취소한 건은 내 목록에 오지 않는다 */
+export type SeatReservationStatus = "ACTIVE" | "CHECKED_IN" | "NO_SHOW";
+
 export interface SeatReservation {
-  id: string; // "S-0001"
+  id: number; // 서버 예약 번호
   kind: SeatReservationKind;
+  status: SeatReservationStatus;
   branchId: string;
   branchName: string; // "마포 본점" — 지점 데이터를 다시 보지 않아도 되게 이름을 함께 남긴다
   date: string; // "2026-10-17"(KST)
   start: string; // "13:00"
-  end: string; // "15:00"
+  end: string; // "14:00"
   people: number;
   chairIds: string[]; // 의자 id("T03-1") — 예약대기는 빈 배열
   chairLabels: string[]; // 표시용 "T03 1번" · "B07"
@@ -73,9 +77,12 @@ export interface UserState {
   earnCoupons: (amount: number, reason: CouponReason, label: string) => void; // amount 장 적립 + 내역 기록
   favorites: number[]; // 찜한 메뉴 id, 최근 찜한 순
   toggleFavorite: (menuId: number) => void;
+  
   orders: Order[]; // 주문 내역(결제한 주문), 최신순 — 서버 값
+  addOrder: (order: Order) => void;
   reloadOrders: () => void; // 결제를 마친 뒤 다시 불러온다
-  seatReservations: SeatReservation[]; // 좌석 예약 · 예약대기, 최신순
+  seatReservations: SeatReservation[]; // 좌석 예약 · 예약대기, 최신순 — 서버의 내 예약(로그인하지 않았으면 빈 목록)
+  refreshSeatReservations: () => Promise<void>; // 예약 · 예약대기 · 취소 뒤 서버에서 다시 불러온다
   addSeatReservation: (reservation: SeatReservation) => void;
   cancelSeatReservation: (id: string) => boolean; // 목록에서 지운다 — 없으면 false
 }
