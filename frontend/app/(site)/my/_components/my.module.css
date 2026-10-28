@@ -796,6 +796,14 @@
   color: var(--text-muted);
 }
 
+/* 취소하지 못한 이유(서버 문구) — 빨강은 위험 · 실패 전용 */
+.seatError {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--red-600);
+}
+
 /* 예약대기에 자리가 났다 — 대기 중(점선)보다 눈에 띄게 금색 */
 .seatStatusOpened {
   border: 1px solid var(--gold-500);

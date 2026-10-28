@@ -4,22 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@/components/UserProvider";
 import { addDays, kstDate } from "@/lib/kst";
 import type { SeatReservation } from "@/types/common";
-import { chairLabel } from "../_lib/labels";
 import { blockState, bookingRange, hasOpenBlock, sameSlot } from "../_lib/schedule";
 import { getChairStatuses, getSlotAvailability, joinWaitlist as joinWaitlistService, reserveChairs } from "../_lib/seatService";
 import { summarize, type SeatSummaryData } from "../_lib/summary";
-import type { Branch, Chair, ChairStatusMap, Seat, SeatSlot, SlotAvailability, TimeBlock } from "../_types";
+import { allChairs } from "../_lib/geometry";
+import type { Branch, BranchLayout, Chair, ChairStatusMap, SeatSlot, SlotAvailability, TimeBlock } from "../_types";
 import { useMinuteClock } from "./useMinuteClock";
 
 /** SCHEDULE: 일정 선택(날짜 · 지점 · 인원 · 시간대) → SEATS: 배치도에서 의자 고르기 → DONE: 예약 완료 */
 export type BookingStep = "SCHEDULE" | "SEATS" | "DONE";
 
 interface Options {
-  seats: Seat[];
-  chairs: Chair[];
+  layouts: Readonly<Record<string, BranchLayout>>; // 지점 id → 배치도(평면도 + 좌석)
   branches: Branch[];
   timeBlocks: TimeBlock[];
 }
+
+/** 배치도가 없는 지점(영업을 막 시작해 정적 셸에 없음 등) — 빈 배치도 */
+const EMPTY_LAYOUT: BranchLayout = { floorPlan: { sections: [], fixtures: [] }, seats: [] };
 
 /** 안내 문구가 떠 있는 시간 */
 const HINT_MS = 2600;
@@ -39,12 +41,14 @@ interface AvailabilitySnapshot {
 
 /**
  * /seat 예약 흐름의 단일 State — BLUEPRINT 8.3.
- * 좌석 상태의 단일 소스는 "Mock 서버가 준 시간대 상태 + 같은 시간대의 내 예약(UserProvider)"이고,
+ * 좌석 상태의 단일 소스는 "서버가 준 시간대 상태 + 같은 시간대의 내 예약(UserProvider)"이고,
  * 요약 · 범례 · 시간대 잔여석 · 배치도는 모두 여기서 파생한다(별도 카운트 State 없음).
- * 그래서 예약하면 배치도 · 잔여석 숫자가 즉시 바뀌고, /my 에서 취소해도 돌아오면 자리가 풀려 있다.
+ * 배치도(평면도 · 좌석 · 의자)는 고른 지점 것이다 — 지점을 바꾸면 그 지점 배치도로 다시 그린다.
+ * 서버 상태 · 잔여석은 내 예약까지 찬 자리로 센다 — 내 예약은 배치도에 "내 예약"으로 겹쳐 그리기만 한다.
+ * 예약 · 예약대기를 하거나 자리를 뺏기면 서버 상태를 다시 받는다(reloadKey). /my 에서 취소해도 돌아오면 자리가 풀려 있다.
  */
-export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options) {
-  const { seatReservations, addSeatReservation } = useUser();
+export function useSeatBooking({ layouts, branches, timeBlocks }: Options) {
+  const { seatReservations, refreshSeatReservations } = useUser();
   const now = useMinuteClock();
   const today = now === null ? null : kstDate(now);
   const range = now === null ? null : bookingRange(now);
@@ -58,6 +62,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   const [hint, setHint] = useState<{ id: number; text: string } | null>(null);
   const [reservation, setReservation] = useState<SeatReservation | null>(null);
   const [busy, setBusy] = useState(false);
+  // 올리면 시간대 상태 · 잔여석을 서버에서 다시 받는다 — 예약 · 예약대기 뒤, 다른 사람이 먼저 잡은 자리를 고른 뒤
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   // 고른 의자는 클릭 결과를 바로 돌려줘야 하므로(인원 초과 안내) 최신 값을 ref 로도 들고 있는다 —
   // 같은 틱에 두 번 눌려도 렌더 전 값으로 두 번 통과하지 않게(UserProvider 의 지갑과 같은 패턴).
@@ -76,6 +83,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   // 날짜: 고른 날이 없거나 범위를 벗어났으면(자정이 지남) 기본 날짜
   const date = pickedDate && range && pickedDate >= range.from && pickedDate <= range.to ? pickedDate : fallbackDate;
   const branch = branches.find((b) => b.id === branchId) ?? branches[0] ?? null;
+  // 고른 지점의 배치도 — 평면도 · 좌석이 지점마다 다르다
+  const { floorPlan, seats } = (branch && layouts[branch.id]) ?? EMPTY_LAYOUT;
+  const chairs = useMemo(() => allChairs(seats), [seats]);
 
   // 시간대: 고른 시간대가 지나가 버리면(자정 · 시간대 종료) 없는 것으로 — 고른 의자도 함께 버리고 일정 선택으로 돌아간다
   // (useMemo 는 성능보다 React Compiler 린트 때문이다 — date 와 now 를 함께 넘기는 이 호출을 렌더 본문에 두면 컴파일러가 아래 setter 들을 불안정하다고 본다)
@@ -94,20 +104,25 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   );
   const slotKey = slot ? `${slot.branchId}|${slot.date}|${slot.start}` : null;
 
-  // 시간대 좌석 상태(Mock 서버) — 시간대가 바뀌거나 분이 바뀌면(OPEN → LIVE 전환) 다시 받는다
+  // 시간대 좌석 상태(서버) — 시간대가 바뀌거나 분이 바뀌면(OPEN → LIVE 전환 · 다른 사람의 예약) 다시 받는다
   const [status, setStatus] = useState<StatusSnapshot | null>(null);
   useEffect(() => {
     if (!slotKey || now === null) return;
     const [branchId, date, start] = slotKey.split("|");
     const end = timeBlocks.find((b) => b.start === start)?.end ?? start;
     let alive = true;
-    getChairStatuses({ branchId, date, start, end }, now).then((map) => {
-      if (alive) setStatus({ key: slotKey, map, fetchedAt: Date.now() });
-    });
+    getChairStatuses({ branchId, date, start, end }).then(
+      (map) => {
+        if (alive) setStatus({ key: slotKey, map, fetchedAt: Date.now() });
+      },
+      () => {
+        if (alive) setHint({ id: Date.now(), text: "좌석 상태를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." });
+      },
+    );
     return () => {
       alive = false;
     };
-  }, [slotKey, now, timeBlocks]);
+  }, [slotKey, now, timeBlocks, reloadKey]);
 
   // 그 날 시간대별 잔여석
   const dayKey = branch && date ? `${branch.id}|${date}` : null;
@@ -116,13 +131,18 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
     if (!dayKey || now === null) return;
     const [branchId, date] = dayKey.split("|");
     let alive = true;
-    getSlotAvailability(branchId, date, now).then((list) => {
-      if (alive) setAvailability({ key: dayKey, list });
-    });
+    getSlotAvailability(branchId, date).then(
+      (list) => {
+        if (alive) setAvailability({ key: dayKey, list });
+      },
+      () => {
+        if (alive) setHint({ id: Date.now(), text: "남은 자리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." });
+      },
+    );
     return () => {
       alive = false;
     };
-  }, [dayKey, now]);
+  }, [dayKey, now, reloadKey]);
 
   // 같은 시간대의 내 예약 — 배치도에 "내 예약"으로 겹친다
   const myReservations = useMemo(
@@ -141,16 +161,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
     return map;
   }, [status, slotKey, mine]);
 
-  // 시간대 카드의 잔여석 — 내 예약만큼 뺀다(내가 잡은 자리도 서버 기준으로는 찬 자리)
-  const slots: SlotAvailability[] | null = useMemo(() => {
-    if (!availability || availability.key !== dayKey || !branch || !date) return null;
-    return availability.list.map((s) => {
-      const taken = seatReservations
-        .filter((r) => r.kind === "RESERVED" && r.branchId === branch.id && r.date === date && r.start === s.start)
-        .reduce((n, r) => n + r.chairIds.length, 0);
-      return { ...s, available: Math.max(0, s.available - taken) };
-    });
-  }, [availability, dayKey, branch, date, seatReservations]);
+  // 시간대 카드의 잔여석 — 서버가 내 예약까지 찬 자리로 세어 준 값 그대로
+  const slots: SlotAvailability[] | null =
+    availability && availability.key === dayKey ? availability.list : null;
 
   const summary: SeatSummaryData | null = useMemo(() => (statuses ? summarize(seats, statuses) : null), [seats, statuses]);
 
@@ -288,32 +301,30 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
     if (!slot || !branch || people === null || selected.length !== people || busy) return null;
     setBusy(true);
     try {
-      const chairLabels = selected.map((id) => {
-        const c = chairById.get(id);
-        return c ? chairLabel(c.seat, c.no) : id;
-      });
-      const result = await reserveChairs({ slot, branchName: branch.name, people, chairIds: selected, chairLabels });
-      addSeatReservation(result);
+      const result = await reserveChairs({ slot, people, chairIds: selected });
+      await refreshSeatReservations(); // 배치도에 "내 예약"이 바로 겹치도록 완료 화면 전에 받는다
       setReservation(result);
       commitSelected([]);
       setStep("DONE");
       return result;
     } finally {
+      // 성공하면 잔여석이 줄고, 실패(다른 사람이 먼저 잡음 등)하면 찬 자리를 배치도에 보여 줘야 한다 — 둘 다 다시 받는다
+      reload();
       setBusy(false);
     }
-  }, [slot, branch, people, selected, busy, chairById, addSeatReservation, commitSelected]);
+  }, [slot, branch, people, selected, busy, refreshSeatReservations, reload, commitSelected]);
 
   const joinWaitlist = useCallback(async (): Promise<SeatReservation | null> => {
     if (!slot || !branch || people === null || busy) return null;
     setBusy(true);
     try {
-      const result = await joinWaitlistService({ slot, branchName: branch.name, people });
-      addSeatReservation(result);
+      const result = await joinWaitlistService({ slot, people });
+      await refreshSeatReservations();
       return result;
     } finally {
       setBusy(false);
     }
-  }, [slot, branch, people, busy, addSeatReservation]);
+  }, [slot, branch, people, busy, refreshSeatReservations]);
 
   /** 완료 뒤 "다른 좌석 예약하기" · 페이지가 숨겨질 때 — 날짜 · 지점 · 인원은 남기고 시간대 · 선택만 비운다 */
   const restart = useCallback(() => {
@@ -324,6 +335,9 @@ export function useSeatBooking({ seats, chairs, branches, timeBlocks }: Options)
   }, [commitSelected]);
 
   return {
+    floorPlan,
+    seats,
+    chairs,
     now,
     today,
     range,

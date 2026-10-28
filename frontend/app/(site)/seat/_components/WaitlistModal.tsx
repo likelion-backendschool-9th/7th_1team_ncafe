@@ -37,8 +37,9 @@ export default function WaitlistModal({ open, booking, onClose }: WaitlistModalP
     try {
       const result = await joinWaitlist();
       if (result) setDone(result);
-    } catch {
-      setError("신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } catch (e) {
+      // 서버가 막은 이유(이미 신청함 · 시간대 시작 · 노쇼 제한 · 로그인 필요)는 그 문구를 그대로 보여 준다
+      setError(e instanceof Error ? e.message : "신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
   };
 

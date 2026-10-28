@@ -1,8 +1,8 @@
--- 좌석 30자리(테이블 17 + 바석 13 = 의자 71석) 초기 데이터 (프론트 목업 frontend/app/(site)/seat/_data/seats.ts와 같은 값).
+-- 좌석 30자리(테이블 17 + 바석 13 = 의자 71석) 초기 데이터 (프론트 목업이던 값 — /seat 배치도는 이제 이 데이터를 그린다).
 -- data.sql이 아니라 자동 실행되지 않는다 — spring.sql.init.data-locations에 classpath:seats_data.sql을 넣어 실행한다.
 -- branches_data.sql 다음에 실행한다. 지점 3곳 모두 같은 배치로 넣는다(평면도는 같고 예약 · 수리 중 상태만 지점마다 다르다).
 -- 서버를 시작할 때마다 실행되지만 같은 지점 · 좌석 코드가 있으면 넣지 않는다 — 관리자가 켠 수리 중(under_repair)은 그대로 둔다.
--- x, y는 평면도 기준 %(0~100). 위치를 옮기려면 이 값만 고친다.
+-- x, y는 평면도 기준 %(0~100). 위치를 옮기려면 이 값만 고친다(이미 들어간 DB는 seats 행을 고친다).
 
 INSERT INTO seats (branch_id, code, section, type, capacity, x, y, under_repair)
 SELECT b.id, v.code, v.section, v.type, v.capacity, v.x, v.y, FALSE

@@ -43,6 +43,11 @@ public class Branch {
     @Column(nullable = false)
     private boolean open = false;
 
+    // 손님 화면의 지점 순서 — 작을수록 앞, 같으면 지점 ID 순. 맨 앞 지점이 기본 선택이 된다.
+    // 이미 행이 있는 테이블에도 추가할 수 있게 DB 기본값을 0으로 둔다.
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    private int sort = 0;
+
     @Column(name = "created_date", nullable = false, updatable = false)
     private OffsetDateTime createdDate;
 

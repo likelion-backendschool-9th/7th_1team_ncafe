@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -97,7 +96,7 @@ public class SeatService {
                 .collect(Collectors.groupingBy(BranchSlotCount::getBranchId,
                         Collectors.toMap(BranchSlotCount::getStartTime, BranchSlotCount::getCount)));
 
-        List<BranchOccupancyResponse.Item> branches = branchRepository.findAll(Sort.by("id")).stream()
+        List<BranchOccupancyResponse.Item> branches = branchRepository.findAllByOrderBySortAscIdAsc().stream()
                 .filter(Branch::isOpen)
                 .map(branch -> new BranchOccupancyResponse.Item(
                         BranchSummary.from(branch),
